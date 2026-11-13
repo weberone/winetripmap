@@ -1,13 +1,609 @@
-// WineTripMap: mappa delle cantine (dati OpenStreetMap in /data/cantine.json, creati da tools/osm-cantine.mjs).
-// La mappa è il modulo comune core/js/map/map-gl.js (MapLibre + OpenFreeMap, gratuita): qui solo dati, colori e interfaccia.
+/* winetripmap.com — web app, stessa esperienza di SkateboardMap: posizione, raggio, radar che scopre i pin, elenco dei più vicini, scheda.
+   - Mappa: modulo comune core/js/map/map-gl.js (MapLibre + OpenFreeMap, gratuita), interfaccia window.SkateMap.
+   - Luoghi: cantine, degustazioni ed enoteche di OpenStreetMap in /data/cantine.json (tools/osm-cantine.mjs), tutti nel browser:
+     la ricerca nel raggio è istantanea e non chiede niente al server.
+   - Ricerca di un luogo: /api/geocode.php (Nominatim di OpenStreetMap, gratuito, con memoria), altrimenti Nominatim direttamente. */
 (() => {
 "use strict";
 const M = window.SkateMap; // nome storico dell'interfaccia del core
-const $ = (s) => document.querySelector(s);
-const status = $("#status");
-const darkMq = matchMedia("(prefers-color-scheme: dark)");
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem("wtm." + k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem("wtm." + k, JSON.stringify(v)); } catch {} }
+};
+const ITALY = { west: 6.6, south: 36.6, east: 18.6, north: 47.1 };
+const RADII = [5, 10, 20, 30, 50];
+
+const state = {
+  me: null,                       // { lat, lng, name, gps }: da qui si misurano le distanze
+  center: null,                   // centro dell'ultima ricerca (cerchio del raggio)
+  radiusKm: RADII.includes(store.get("radius")) ? store.get("radius") : 20,
+  filter: ["all", "c", "d", "e"].includes(store.get("filter")) ? store.get("filter") : "all",
+  showPreview: store.get("preview") !== false, // radar: cerca da solo quando sposti la mappa
+  all: [], byId: new Map(), sel: null, mapsReady: false, areaOk: false, loading: false, userMoved: false
+};
+
+// ---------- utilità ----------
+function distKm(a, b) {
+  const t = (x) => x * Math.PI / 180, R = 6371;
+  const h = Math.sin(t(b.lat - a.lat) / 2) ** 2 + Math.cos(t(a.lat)) * Math.cos(t(b.lat)) * Math.sin(t(b.lng - a.lng) / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+const fmtKm = (k) => k < 1 ? Math.round(k * 1000) + " m" : k >= 100 ? Math.round(k).toLocaleString("it-IT") + " km"
+  : k.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " km";
+const fmtN = (n) => Number(n || 0).toLocaleString("it-IT");
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const norm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+function offsetLatLng(c, m, deg) {
+  const a = deg * Math.PI / 180;
+  return { lat: c.lat + (m * Math.cos(a)) / 111320, lng: c.lng + (m * Math.sin(a)) / (111320 * Math.cos(c.lat * Math.PI / 180)) };
+}
+function boundsAround(c, m) {
+  const n = offsetLatLng(c, m, 0), e = offsetLatLng(c, m, 90), s = offsetLatLng(c, m, 180), w = offsetLatLng(c, m, 270);
+  return { north: n.lat, south: s.lat, east: e.lng, west: w.lng };
+}
+function setStatus(msg) { $("status").textContent = msg; }
+
+// ---------- tipi di luogo e segnaposto ----------
+const TYPES = {
+  c: { one: "Cantina", many: "cantine", color: ["#8e1b33", "#c23a55"] },
+  d: { one: "Cantina con degustazione", many: "degustazioni", color: ["#d0506a", "#e8798e"] },
+  e: { one: "Enoteca", many: "enoteche", color: ["#b8860b", "#d9a93a"] }
+};
+const dark = () => document.documentElement.dataset.scheme === "dark";
+const typeColor = (t) => TYPES[t].color[dark() ? 1 : 0];
+// goccia con un calice bianco; la punta (ax, in basso) è il punto esatto
+function pinSvg(t, w = 28) {
+  const h = Math.round(w * 38 / 28);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 28 38"><path d="M14 37C14 37 2 23.5 2 14a12 12 0 0 1 24 0c0 9.5-12 23-12 23z" fill="${typeColor(t)}" stroke="#fff" stroke-width="2"/><path d="M9.5 8h9c0 3.6-1.7 6.3-4.5 6.8V19h2.6v1.6H11.4V19H14v-4.2C11.2 14.3 9.5 11.6 9.5 8z" fill="#fff"/></svg>`;
+}
+function markerIcon(x, sel) { const w = sel ? 36 : 28; return { svg: pinSvg(x.t, w), w, h: Math.round(w * 38 / 28), ax: w / 2 }; }
+// gruppo: cerchio del colore del filtro scelto (bordeaux con "Tutti") e il numero
+function clusterIcon(n) {
+  const d = n < 10 ? 36 : n < 50 ? 42 : n < 500 ? 48 : 54, r = d / 2, c = state.filter === "all" ? typeColor("c") : typeColor(state.filter);
+  const label = n < 1000 ? n : (Math.round(n / 100) / 10).toLocaleString("it-IT") + "k";
+  return { w: d, h: d, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${d}" height="${d}" viewBox="0 0 ${d} ${d}"><circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="${c}" stroke="#fff" stroke-width="2"/><text x="${r}" y="${r + 4.5}" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="${n < 100 ? 14 : 12}" fill="#fff">${label}</text></svg>` };
+}
+const title = (x) => x.n || TYPES[x.t].one + (x.c ? " a " + x.c : "");
+
+// ---------- dati ----------
+let dataP = null;
+function loadData() {
+  if (!dataP) dataP = fetch("/data/cantine.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((d) => {
+    state.all = d.items; state.byId = new Map(d.items.map((x) => [x.id, x]));
+    return d;
+  });
+  return dataP;
+}
+// luoghi nel raggio della ricerca, col filtro scelto, dal più vicino a te
+function visible() {
+  if (!state.center) return [];
+  const from = state.me || state.center, f = state.filter, b = boundsAround(state.center, state.radiusKm * 1000 * 1.01);
+  return state.all.filter((x) => x.lat <= b.north && x.lat >= b.south && x.lng <= b.east && x.lng >= b.west && (f === "all" || x.t === f))
+    .map((x) => Object.assign(x, { kmC: distKm(state.center, x), km: distKm(from, x) }))
+    .filter((x) => x.kmC <= state.radiusKm).sort((a, b) => a.km - b.km);
+}
+
+// ---------- elenco, pin, cerchio ----------
+function renderList() {
+  document.querySelectorAll(".chip[data-f]").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.f === state.filter)));
+  document.querySelectorAll("[data-lf]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lf === state.filter)));
+  const v = visible();
+  $("count").textContent = fmtN(v.length);
+  $("countLbl").textContent = state.filter === "all" ? (v.length === 1 ? "luogo trovato" : "luoghi trovati") : TYPES[state.filter].many;
+  $("countMob").innerHTML = state.areaOk ? `<span class="cm-n">${fmtN(v.length)}</span> ${state.filter === "all" ? (v.length === 1 ? "luogo" : "luoghi") : TYPES[state.filter].many} entro ${state.radiusKm} km` : "";
+  if (state.areaOk && !state.loading) setStatus(`${fmtN(v.length)} ${state.filter === "all" ? "luoghi" : TYPES[state.filter].many} entro ${state.radiusKm} km`);
+  radarLabel();
+  if (!v.length) {
+    $("list").innerHTML = state.areaOk ? `<div class="empty">Nessun luogo in questo raggio. Prova un raggio più grande o “Trova le più vicine” sulla mappa.</div>`
+      : `<div class="empty">Cerca un luogo o usa la tua posizione per vedere cantine, degustazioni ed enoteche intorno.</div>`;
+  } else {
+    $("list").innerHTML = v.slice(0, 300).map((x) => {
+      const meta = [TYPES[x.t].one, x.c].filter(Boolean).join(" · ");
+      return `<button class="item" data-id="${esc(x.id)}"><span class="mk">${pinSvg(x.t, 20)}</span>
+        <span style="min-width:0"><div class="name">${esc(title(x))}</div><div class="meta">${esc(meta)}</div></span>
+        <span class="km">${fmtKm(x.km)}</span></button>`;
+    }).join("");
+  }
+  drawMarkers();
+}
+function drawMarkers() {
+  if (!state.mapsReady) return;
+  const v = visible(), sel = state.sel && state.byId.get(state.sel);
+  if (sel && !v.includes(sel)) v.push(sel); // la cantina aperta resta sulla mappa anche fuori dal raggio
+  M.setSpots(v.map((x) => ({ id: x.id, lat: x.lat, lng: x.lng, selected: x.id === state.sel, icon: markerIcon(x, x.id === state.sel), label: x.c || "" })), clusterIcon);
+  drawMe();
+}
+function drawMe() {
+  if (!state.mapsReady) return;
+  if (state.me) M.setUser({ lat: state.me.lat, lng: state.me.lng });
+  M.setCircle("radius", state.center, state.radiusKm);
+}
+function refresh() { closeDetail(true); renderList(); }
+
+// ---------- telefono: mappa intera o pannello aperto ----------
+const MOB_MQ = "(max-width:760px), (max-height:500px) and (orientation:landscape)";
+const isMobile = () => matchMedia(MOB_MQ).matches;
+const app = document.querySelector(".app");
+const mapOnly = () => app.classList.contains("map-only");
+// tasto Indietro: chiude l'ultima cosa aperta (pannello, scheda, ricerca) invece di uscire
+const layers = []; let ignorePop = 0, fromHistory = false;
+function pushLayer(n) { layers.push(n); history.pushState({ wtm: layers.length }, ""); }
+function popLayer(n) {
+  if (fromHistory) return;
+  const i = layers.lastIndexOf(n); if (i < 0) return;
+  const top = i === layers.length - 1; layers.splice(i, 1);
+  if (top) { ignorePop++; history.back(); }
+}
+addEventListener("popstate", () => {
+  if (ignorePop > 0) { ignorePop--; return; }
+  const n = layers.pop(); if (!n) return;
+  fromHistory = true;
+  try { if (n === "sheet") setSheet(false); else if (n === "detail") closeDetail(); else if (n === "search") closeSearch(); }
+  finally { fromHistory = false; }
+});
+function setSheet(open) {
+  const wasOpen = !mapOnly();
+  if (isMobile() && open && !wasOpen) pushLayer("sheet");
+  if (isMobile() && !open && wasOpen && !$("detail").hidden) closeDetail(true);
+  if (isMobile() && !open && wasOpen) popLayer("sheet");
+  app.classList.toggle("map-only", !open && isMobile());
+  app.classList.toggle("mob", isMobile());
+  $("menuBtn").setAttribute("aria-expanded", String(open));
+  document.querySelector("aside.panel").inert = !open && isMobile();
+  if (!state.mapsReady) return;
+  // il pannello sale in 0,3 s: a movimento finito la mappa prende la nuova misura
+  setTimeout(() => { M.resize(); M.setBottomPadding(mapPad(), 0); }, 320);
+}
+// telefono a mappa intera: il centro sale un poco, sopra l'onda e i pulsanti in basso (puntino e cerchio restano al centro del visibile)
+function mapPad() {
+  const p = isMobile() && mapOnly() ? 60 : 0;
+  document.documentElement.style.setProperty("--mobpad", p + "px");
+  return p;
+}
+function fitToRadius(duration = 0) {
+  if (!state.mapsReady || !state.center) return;
+  M.fitBounds(boundsAround(state.center, state.radiusKm * 1000), isMobile() ? 12 : 24, null, duration);
+}
+
+// ---------- radar (come SkateboardMap) ----------
+// Lancetta che fa perno al centro e gira fino al bordo del raggio, con la scia che sfuma (un giro ogni 3 s).
+let radarRaf = 0, radarAngle = 0, revealing = false, radarHold = false, radarWait = null, autoTimer = 0, tipFly = 0;
+const noMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+function startRadar() {
+  if (radarRaf || revealing || noMotion()) return;
+  const period = 3000, t0 = performance.now() - radarAngle / 360 * period, start = performance.now();
+  const tick = (now) => {
+    radarAngle = ((now - t0) % period) / period * 360;
+    M.setSweep(M.getCenter(), state.radiusKm, radarAngle, Math.min(1, (now - start) / 250));
+    radarRaf = requestAnimationFrame(tick);
+  };
+  radarRaf = requestAnimationFrame(tick);
+}
+// risultati pronti: un ultimo giro veloce (1,5 s) e ogni pin compare quando la lancetta ci passa sopra
+function radarReveal() {
+  if (!radarRaf) return null;
+  cancelAnimationFrame(radarRaf); radarRaf = 0; revealing = true;
+  const c = M.getCenter(), a0 = radarAngle, km = state.radiusKm, ms = 1500;
+  M.revealStart(c, a0);
+  return () => new Promise((done) => {
+    const t0 = performance.now();
+    const tick = (now) => {
+      const k = Math.min(1, (now - t0) / ms), swept = 360 * (1 - Math.pow(1 - k, 1.4));
+      radarAngle = (a0 + swept) % 360;
+      M.setSweep(c, km, radarAngle); M.revealAt(swept);
+      if (k < 1) return requestAnimationFrame(tick);
+      M.revealEnd(); revealing = false; done();
+    };
+    requestAnimationFrame(tick);
+  });
+}
+// ricerche fatte dall'app (posizione, luogo cercato, "Cerca in questa zona"): radarBegin prima, radarFinish(disegna) dopo
+function radarBegin(delay = 0) {
+  if (!state.mapsReady || noMotion()) return false;
+  radarHold = true;
+  radarWait = delay ? new Promise((ok) => setTimeout(() => { startRadar(); ok(); }, delay)) : (startRadar(), null);
+  M.setRadiusAccent(true);
+  M.revealStart(M.getCenter(), radarAngle);
+  radarLabel();
+  return true;
+}
+async function radarFinish(draw, on) {
+  if (on && radarWait) { await radarWait; radarWait = null; }
+  const sweep = on ? radarReveal() : null;
+  draw();
+  if (sweep) await sweep(); else if (on) M.revealEnd();
+  if (!on) return;
+  M.setRadiusAccent(false);
+  radarHold = false; updatePreview(); radarLabel();
+}
+function stopRadar() {
+  if (revealing || radarHold) return;
+  cancelAnimationFrame(radarRaf); radarRaf = 0;
+  if (state.mapsReady) M.setSweep(null);
+}
+// con "Cerca in questa zona" visibile e il radar acceso: velo colorato e lancetta che gira sulla nuova zona
+function updatePreview() {
+  if (!state.mapsReady) return;
+  const show = !$("searchHere").hidden && state.showPreview;
+  M.setCircle("preview", show ? M.getCenter() : null, state.radiusKm);
+  if (show) startRadar(); else stopRadar();
+}
+// dopo ogni spostamento: zona nuova? Allora "Cerca in questa zona" e, col radar acceso, ricerca da sola dopo 3 s di mappa ferma
+function checkArea() {
+  if (!state.center) return;
+  if (tipFly && Date.now() - tipFly < 1500) { tipFly = 0; return; } // spostamento fatto dall'app su una cantina
+  tipFly = 0;
+  const moved = distKm(state.center, M.getCenter());
+  $("searchHere").hidden = radarHold || !$("detail").hidden || moved < Math.max(1.5, state.radiusKm * 0.08);
+  updatePreview();
+  $("previewBtn").classList.toggle("idle", $("searchHere").hidden || !state.showPreview);
+  radarLabel();
+  clearTimeout(autoTimer);
+  if (state.showPreview && !$("searchHere").hidden) autoTimer = setTimeout(searchHere, 3000);
+}
+// scritta del radar sulla mappa: Cerco… / Nessun luogo qui / Radar attivo / Radar spento
+function radarLabel() {
+  const el = $("noRes");
+  const searching = radarHold || (!$("searchHere").hidden && state.showPreview);
+  const empty = state.areaOk && !state.loading && !visible().length;
+  const k = searching ? "radarSearching" : empty ? "noResHere" : state.showPreview ? "radarOn" : "radarOff";
+  el.textContent = { radarSearching: "Cerco…", noResHere: "Nessun luogo qui", radarOn: "Radar attivo", radarOff: "Radar spento" }[k];
+  el.dataset.k = k;
+  el.hidden = !state.center;
+  const nb = $("nearBtn");
+  if (!nb.classList.contains("busy")) nb.hidden = k !== "noResHere" || !$("searchHere").hidden;
+}
+
+// ---------- ricerche ----------
+let areaSeq = 0;
+async function loadArea(minMs = 0) {
+  const seq = ++areaSeq, t0 = performance.now();
+  state.loading = true;
+  if (state.mapsReady) M.setLink(null);
+  setStatus("Cerco…");
+  try {
+    await loadData();
+    const rest = minMs - (performance.now() - t0); if (rest > 0) await sleep(rest); // i dati sono già qui: il radar fa almeno un mezzo giro
+    if (seq !== areaSeq) return;
+    state.areaOk = true;
+  } catch (e) {
+    console.error(e);
+    state.areaOk = false;
+    setStatus("Non riesco a caricare le cantine");
+  } finally { if (seq === areaSeq) state.loading = false; }
+}
+// nuova posizione (GPS o luogo cercato): le distanze si misurano da qui
+async function setMe(lat, lng, name, gps, msg) {
+  const prev = state.center;
+  state.me = { lat, lng, name, gps };
+  state.center = { lat, lng };
+  store.set("me", gps ? null : state.me);
+  $("worldAsk").hidden = true;
+  $("locmsg").textContent = msg || "";
+  $("searchHere").hidden = true; updatePreview();
+  closeDetail(true);
+  fitToRadius();
+  drawMe();
+  const rv = (!prev || distKm(prev, state.center) > Math.max(1.5, state.radiusKm * 0.08)) && radarBegin(prev ? 0 : 300);
+  try { await loadArea(rv ? 900 : 0); }
+  finally { await radarFinish(() => renderList(), rv); }
+}
+// "Cerca in questa zona": il raggio si sposta al centro della mappa (le distanze restano da te)
+async function searchHere() {
+  clearTimeout(autoTimer);
+  if (!state.mapsReady) return;
+  state.center = M.getCenter();
+  $("searchHere").hidden = true;
+  M.setCircle("preview", null);
+  const rv = radarBegin();
+  drawMe();
+  try { await loadArea(rv ? 700 : 0); }
+  finally { await radarFinish(() => renderList(), rv); }
+}
+// radar vuoto: il luogo più vicino al punto cercato (col filtro scelto), poi tutti quelli del raggio intorno a lui
+async function findNearest() {
+  const nb = $("nearBtn"), lbl = nb.querySelector("span");
+  if (nb.classList.contains("busy")) return;
+  clearTimeout(autoTimer);
+  await loadData();
+  const from = { lat: state.center.lat, lng: state.center.lng }, f = state.filter;
+  let best = null, bk = Infinity;
+  for (const x of state.all) { if (f !== "all" && x.t !== f) continue; const k = distKm(from, x); if (k < bk) { bk = k; best = x; } }
+  if (!best) { lbl.textContent = "Nessun luogo trovato"; setTimeout(() => { lbl.textContent = "Trova le più vicine"; }, 2500); return; }
+  nb.hidden = true;
+  state.center = { lat: best.lat, lng: best.lng };
+  tipFly = Date.now() + 600;
+  const vb = boundsAround(state.center, state.radiusKm * 1000);
+  vb.north = Math.max(vb.north, from.lat); vb.south = Math.min(vb.south, from.lat);
+  vb.east = Math.max(vb.east, from.lng); vb.west = Math.min(vb.west, from.lng);
+  M.fitBounds(vb, isMobile() ? 28 : 48, null, noMotion() ? 0 : 1200);
+  drawMe();
+  await loadArea(); renderList();
+  M.setLink(from, best, fmtKm(bk));
+  setStatus(`Il più vicino è a ${fmtKm(bk)}`);
+}
+
+// ---------- posizione ----------
+function getPosition(fresh = false) {
+  if (!navigator.geolocation) return Promise.resolve({ err: { code: 2 } });
+  return new Promise((res) => navigator.geolocation.getCurrentPosition((p) => res({ p }), (err) => res({ err }),
+    fresh ? { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 } : { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }));
+}
+async function applyPosition(r, silent) {
+  if (r.p) {
+    store.set("lastgps", { lat: r.p.coords.latitude, lng: r.p.coords.longitude });
+    await setMe(r.p.coords.latitude, r.p.coords.longitude, "La tua posizione", true, "");
+    $("meBtn").setAttribute("aria-pressed", "true");
+    return true;
+  }
+  if (silent) return false;
+  const why = !navigator.geolocation ? "il browser non la fornisce" : r.err.code === 1 ? "permesso negato" : r.err.code === 3 ? "il GPS non risponde" : "posizione non disponibile";
+  $("locmsg").textContent = `Niente posizione (${why}): cerca un luogo.`;
+  setStatus("Posizione non disponibile");
+  return false;
+}
+async function restartGeo() {
+  state.userMoved = false;
+  $("meBtn").classList.add("busy"); setStatus("Cerco la tua posizione…");
+  let r = await getPosition(true);
+  if (!r.p && r.err && r.err.code !== 1) r = await getPosition(false); // al chiuso il GPS è lento: la posizione più recente
+  $("meBtn").classList.remove("busy");
+  return applyPosition(r, false);
+}
+// pulsante acceso quando la mappa è centrata sulla tua posizione GPS
+function syncMeBtn() {
+  if (!state.mapsReady || !state.me || !state.me.gps) return $("meBtn").setAttribute("aria-pressed", "false");
+  const b = M.getBounds(), c = M.getCenter();
+  const width = distKm({ lat: c.lat, lng: b.west }, { lat: c.lat, lng: b.east });
+  $("meBtn").setAttribute("aria-pressed", String(distKm(c, state.me) <= Math.max(0.05, width * 0.03)));
+}
+
+// ---------- fumetto e scheda ----------
+function pinTip(id) {
+  const x = state.byId.get(id); if (!x) return;
+  const from = state.me || state.center;
+  state.sel = id; drawMarkers();
+  M.showPopup({ lat: x.lat, lng: x.lng }, `<button class="pintip" type="button"><span class="tk"><i class="dot t-${x.t}"></i>${esc(TYPES[x.t].one)}</span><b>${esc(title(x))}</b>${x.c ? `<small>${esc(x.c)}</small>` : ""}${from ? `<small>a ${fmtKm(distKm(from, x))}</small>` : ""}<em>Apri la scheda</em></button>`,
+    () => openDetail(id, false));
+}
+const directionsUrl = (x) => `https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}`;
+const osmUrl = (x) => `https://www.openstreetmap.org/${{ n: "node", w: "way", r: "relation" }[x.id[0]]}/${x.id.slice(1)}`;
+const placeUrl = (x) => `${location.origin}${location.pathname}?c=${encodeURIComponent(x.id)}`;
+function openDetail(id, fly = true) {
+  const x = state.byId.get(id); if (!x) return;
+  const from = state.me || state.center;
+  const wasOpen = !$("detail").hidden;
+  state.sel = id;
+  M.showPopup(null);
+  const tel = x.p ? x.p.split(/[;,]/)[0].trim() : "";
+  const host = x.w ? x.w.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "") : "";
+  $("detail").innerHTML = `<div class="dhead"><h2>${esc(title(x))}</h2><button class="x" id="dClose" aria-label="Chiudi">✕</button></div>
+    <div class="dkind"><i class="dot t-${x.t}"></i>${esc(TYPES[x.t].one)}${from ? ` · a ${fmtKm(distKm(from, x))}` : ""}</div>
+    ${x.a || x.c ? `<p class="dline"><small>Indirizzo</small>${esc([x.a, x.c].filter(Boolean).join(", "))}</p>` : ""}
+    ${x.o ? `<p class="dline"><small>Orari</small>${esc(x.o)}</p>` : ""}
+    ${tel ? `<p class="dline"><small>Telefono</small><a href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">${esc(tel)}</a></p>` : ""}
+    ${host ? `<p class="dline"><small>Sito</small><a href="${esc(x.w)}" target="_blank" rel="noopener nofollow">${esc(host)}</a></p>` : ""}
+    <div class="dbtns">
+      <a class="btn primary" href="${directionsUrl(x)}" target="_blank" rel="noopener">Indicazioni</a>
+      ${tel ? `<a class="btn" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">Chiama</a>` : ""}
+      ${x.w ? `<a class="btn" href="${esc(x.w)}" target="_blank" rel="noopener nofollow">Sito</a>` : ""}
+      <button class="btn" id="dShare" type="button">Condividi</button>
+    </div>
+    <p class="dsrc">Dati da OpenStreetMap · <a href="${osmUrl(x)}" target="_blank" rel="noopener">correggi o completa</a></p>`;
+  $("detail").hidden = false; $("list").hidden = true;
+  app.classList.add("has-detail");
+  $("dClose").onclick = () => closeDetail();
+  $("dShare").onclick = () => share(title(x), placeUrl(x));
+  $("detail").scrollTop = 0; document.querySelector("aside.panel").scrollTop = 0;
+  if (isMobile() && mapOnly()) setSheet(true);
+  if (!wasOpen) pushLayer("detail");
+  drawMarkers();
+  if (fly) { tipFly = Date.now(); M.flyTo({ lat: x.lat, lng: x.lng }, 14); }
+  $("searchHere").hidden = true; updatePreview();
+}
+function closeDetail(silent) {
+  if ($("detail").hidden && !state.sel) return;
+  const wasOpen = !$("detail").hidden;
+  $("detail").hidden = true; $("list").hidden = false;
+  app.classList.remove("has-detail");
+  state.sel = null;
+  M.showPopup && state.mapsReady && M.showPopup(null);
+  if (wasOpen) popLayer("detail");
+  if (!silent) drawMarkers();
+}
+async function share(text, url) {
+  try { if (navigator.share) return await navigator.share({ title: "WineTripMap", text, url }); } catch (e) { return; }
+  try { await navigator.clipboard.writeText(url); setStatus("Link copiato"); } catch (e) { prompt("Copia il link", url); }
+}
+
+// ---------- ricerca: cantine per nome, comuni, luoghi (Nominatim) ----------
+let hits = [], hi = -1;
+function openSearch() { $("searchModal").hidden = false; pushLayer("search"); $("searchMsg").textContent = ""; setTimeout(() => $("q").focus(), 30); suggest(); }
+function closeSearch() { if ($("searchModal").hidden) return; $("searchModal").hidden = true; popLayer("search"); }
+function suggest() {
+  const s = norm($("q").value.trim());
+  hits = []; hi = -1;
+  if (s.length < 2) { $("results").innerHTML = ""; return; }
+  const towns = new Map();
+  state.all.forEach((x) => { if (x.c && norm(x.c).startsWith(s)) { const k = x.c; const t = towns.get(k) || { name: k, n: 0, lat: 0, lng: 0 }; t.n++; t.lat += x.lat; t.lng += x.lng; towns.set(k, t); } });
+  const tw = [...towns.values()].sort((a, b) => b.n - a.n).slice(0, 4).map((t) => ({ kind: "town", name: t.name, n: t.n, lat: t.lat / t.n, lng: t.lng / t.n }));
+  const ws = state.all.filter((x) => x.n && norm(x.n).includes(s)).sort((a, b) => (norm(a.n).startsWith(s) ? 0 : 1) - (norm(b.n).startsWith(s) ? 0 : 1)).slice(0, 8).map((x) => ({ kind: "place", x }));
+  hits = [{ kind: "geo", q: $("q").value.trim() }, ...tw, ...ws];
+  let html = `<li data-i="0">🔎 Cerca il luogo “${esc(hits[0].q)}”</li>`;
+  if (tw.length) html += `<li class="rhead">Comuni con cantine</li>` + tw.map((t, i) => `<li data-i="${i + 1}"><i class="dot all"></i>${esc(t.name)}<small>${fmtN(t.n)}</small></li>`).join("");
+  if (ws.length) html += `<li class="rhead">Cantine ed enoteche</li>` + ws.map((w, i) => `<li data-i="${i + 1 + tw.length}"><i class="dot t-${w.x.t}"></i>${esc(w.x.n)}<small>${esc(w.x.c || "")}</small></li>`).join("");
+  $("results").innerHTML = html;
+}
+function pick(i) {
+  const h = hits[i]; if (!h) return;
+  if (h.kind === "geo") return geocode(h.q);
+  closeSearch(); state.userMoved = true;
+  if (h.kind === "town") return setMe(h.lat, h.lng, h.name, false, `Luogo: ${h.name}`);
+  // una cantina: il raggio intorno a lei (le distanze restano da te) e la sua scheda
+  const x = h.x;
+  state.center = { lat: x.lat, lng: x.lng };
+  fitToRadius(); drawMe();
+  loadArea().then(() => { renderList(); openDetail(x.id, false); });
+}
+async function geocode(q) {
+  if (q.length < 2) return;
+  const msg = (m) => { $("searchMsg").textContent = m; };
+  const go = (lat, lng, name, full) => { closeSearch(); state.userMoved = true; setMe(lat, lng, name || q, false, `Luogo: ${full || name || q}`); };
+  msg(`Cerco “${q}”…`);
+  // prima in Italia ("Alba" è quella delle Langhe), poi nel resto del mondo
+  for (const cc of ["it", ""]) {
+    const p = await lookup(q, cc);
+    if (p === "down") return msg("La ricerca non risponde, riprova tra poco.");
+    if (p) return go(p.lat, p.lng, p.name, p.full);
+  }
+  msg(`Non trovo “${q}”.`);
+}
+// un luogo dal nostro server (con memoria); se non risponde (o in prova locale senza PHP) da Nominatim direttamente.
+// Restituisce il luogo, null se non esiste, "down" se nessuno risponde.
+async function lookup(q, cc) {
+  try {
+    const r = await fetch("/api/geocode.php?" + new URLSearchParams({ q, lang: "it", cc }));
+    if (r.status === 404) return null;
+    const d = r.ok ? await r.json() : null;
+    if (d && !d.error) return d;
+  } catch (e) {}
+  try {
+    const r = await fetch("https://nominatim.openstreetmap.org/search?" + new URLSearchParams(Object.assign({ q, format: "jsonv2", limit: "1", "accept-language": "it" }, cc ? { countrycodes: cc } : {})));
+    if (!r.ok) return "down";
+    const x = (await r.json())[0];
+    return x ? { lat: +x.lat, lng: +x.lon, name: x.name, full: x.display_name } : null;
+  } catch (e) { return "down"; }
+}
+
+// ---------- filtri, raggio, tema ----------
+function setFilter(f) {
+  state.filter = f; store.set("filter", f);
+  refresh();
+}
+function setRadius(km) {
+  state.radiusKm = km; store.set("radius", km);
+  $("radius").value = String(km); $("kmVal").textContent = km;
+  document.querySelectorAll("[data-km]").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.km === km)));
+  if (!state.center) return;
+  fitToRadius(noMotion() ? 0 : 400);
+  drawMe(); updatePreview();
+  searchHereAt(state.center);
+}
+async function searchHereAt(c) {
+  state.center = c; $("searchHere").hidden = true;
+  const rv = radarBegin();
+  try { await loadArea(rv ? 600 : 0); } finally { await radarFinish(() => renderList(), rv); }
+}
+function toggleKm(open) {
+  const p = $("kmPick"), o = open ?? !p.classList.contains("open");
+  p.classList.toggle("open", o); $("kmBtn").setAttribute("aria-expanded", String(o));
+}
+function applyScheme() {
+  const d = document.documentElement, t = d.dataset.theme;
+  d.dataset.scheme = t === "light" || (t === "auto" && !matchMedia("(prefers-color-scheme: dark)").matches) ? "light" : "dark";
+  d.dataset.mapscheme = d.dataset.scheme;
+  if (state.mapsReady) { M.setDark(d.dataset.scheme === "dark"); M.redrawPins(); drawMarkers(); }
+}
+
+// ---------- pulsanti ----------
+function bind() {
+  $("menuBtn").onclick = () => setSheet(mapOnly());
+  $("searchBtn").onclick = openSearch; $("placeBtn").onclick = openSearch; $("worldAskBtn").onclick = openSearch;
+  $("locBtn").onclick = restartGeo; $("worldAskGps").onclick = restartGeo;
+  $("meBtn").onclick = () => { state.me && state.me.gps ? setMe(state.me.lat, state.me.lng, state.me.name, true, "") : restartGeo(); };
+  $("searchHere").onclick = searchHere;
+  $("nearBtn").onclick = findNearest;
+  $("previewBtn").setAttribute("aria-pressed", String(state.showPreview));
+  $("previewBtn").onclick = () => {
+    state.showPreview = !state.showPreview; store.set("preview", state.showPreview);
+    $("previewBtn").setAttribute("aria-pressed", String(state.showPreview));
+    checkArea();
+  };
+  $("kmBtn").onclick = () => toggleKm();
+  document.querySelectorAll("[data-km]").forEach((b) => b.onclick = () => { toggleKm(false); setRadius(+b.dataset.km); });
+  $("radius").onchange = () => setRadius(+$("radius").value);
+  document.querySelectorAll(".chip[data-f]").forEach((c) => c.onclick = () => setFilter(c.dataset.f));
+  // filtri sulla mappa: sul telefono il pulsante tondo apre la tendina, una voce sceglie e chiude
+  const legend = document.querySelector(".legend");
+  document.querySelectorAll("[data-lf]").forEach((b) => b.onclick = () => {
+    if (isMobile() && !legend.classList.contains("open")) { legend.classList.add("open"); return; }
+    legend.classList.remove("open");
+    setFilter(b.dataset.lf);
+  });
+  $("list").onclick = (e) => { const b = e.target.closest(".item"); if (b) openDetail(b.dataset.id); };
+  $("zoomIn").onclick = () => M.zoomBy(1); $("zoomOut").onclick = () => M.zoomBy(-1);
+  $("mapThemeBtn").onclick = () => {
+    const d = document.documentElement; d.dataset.theme = d.dataset.scheme === "dark" ? "light" : "dark";
+    store.set("theme", d.dataset.theme); applyScheme();
+  };
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyScheme);
+  $("shareHdr").onclick = () => share("WineTripMap: cantine, degustazioni ed enoteche vicino a te", location.origin + location.pathname);
+  // Invio: il comune o la cantina con esattamente quel nome, altrimenti la ricerca del luogo
+  $("searchForm").onsubmit = (e) => {
+    e.preventDefault(); suggest();
+    const exact = hits.findIndex((h) => h.kind !== "geo" && norm(h.name || (h.x && h.x.n)) === norm($("q").value.trim()));
+    pick(hi >= 0 ? hi : exact > 0 ? exact : 0);
+  };
+  $("q").oninput = suggest;
+  $("q").onkeydown = (e) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const idx = [...$("results").querySelectorAll("li[data-i]")].map((li) => +li.dataset.i);
+    const pos = Math.max(0, Math.min(idx.length - 1, idx.indexOf(hi) + (e.key === "ArrowDown" ? 1 : -1)));
+    hi = idx[pos];
+    $("results").querySelectorAll("li[data-i]").forEach((li) => li.classList.toggle("sel", +li.dataset.i === hi));
+  };
+  $("results").onclick = (e) => { const li = e.target.closest("li[data-i]"); if (li) pick(+li.dataset.i); };
+  document.querySelectorAll("[data-close]").forEach((b) => b.onclick = closeSearch);
+  $("searchModal").onclick = (e) => { if (e.target === $("searchModal")) closeSearch(); };
+  addEventListener("keydown", (e) => { if (e.key === "Escape") { closeSearch(); toggleKm(false); legend.classList.remove("open"); } });
+  matchMedia(MOB_MQ).addEventListener("change", () => setSheet(!mapOnly() && isMobile()));
+  $("footYear").textContent = new Date().getFullYear();
+}
+
+// ---------- avvio ----------
+async function start() {
+  applyScheme();
+  bind();
+  setSheet(false);
+  setRadius(state.radiusKm);
+  loadData().catch(() => {});
+  const saved = store.get("me"), last = store.get("lastgps");
+  const startAt = saved || last;
+  await M.create($("map"), { lib: "maplibre", style: STYLE, styleLight: STYLE, dark: dark(), palette: PALETTE,
+    center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 42.5, lng: 12.5 },
+    bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : ITALY, padding: 12 });
+  state.mapsReady = true; app.classList.add("mapready");
+  M.setBottomPadding(mapPad(), 0);
+  M.on("moveend", () => { syncMeBtn(); checkArea(); });
+  M.on("movestart", () => clearTimeout(autoTimer));
+  M.on("dragstart", () => { state.userMoved = true; toggleKm(false); document.querySelector(".legend").classList.remove("open"); $("meBtn").setAttribute("aria-pressed", "false"); });
+  M.on("pinclick", (id) => pinTip(id));
+  M.on("click", () => {
+    document.querySelector(".legend").classList.remove("open"); toggleKm(false);
+    if (isMobile() && !mapOnly()) { setSheet(false); return; }
+    if (state.sel && $("detail").hidden) { state.sel = null; drawMarkers(); }
+  });
+  // link di una cantina (?c=n123): si apre lei, con il raggio intorno
+  const shared = new URLSearchParams(location.search).get("c");
+  if (shared) {
+    await loadData().catch(() => {});
+    const x = state.byId.get(shared);
+    if (x) { state.center = { lat: x.lat, lng: x.lng }; if (saved) state.me = saved; fitToRadius(); drawMe(); await loadArea(); renderList(); openDetail(x.id, false); return; }
+  }
+  if (saved) await setMe(saved.lat, saved.lng, saved.name, false, saved.name ? `Luogo: ${saved.name}` : "");
+  // posizione: se il permesso c'è già si usa subito, altrimenti si chiede (o si invita a cercare un luogo)
+  let perm = "prompt";
+  try { perm = (await navigator.permissions.query({ name: "geolocation" })).state; } catch (e) {}
+  if (perm === "granted") { if (!(await applyPosition(await getPosition(false), true)) && !saved) askWhere(); }
+  else if (!saved) { askWhere(); if (perm === "prompt" && last) restartGeo(); }
+}
+function askWhere() { $("worldAsk").hidden = false; setStatus("Dove vuoi andare?"); renderList(); }
 
 // ---------- colori della mappa (stesse chiavi della palette del core) ----------
+const STYLE = "https://tiles.openfreemap.org/styles/liberty"; // stessa base per chiaro e scuro: il core la ricolora
 const PALETTE = {
   light: { paper: "#fbf7f2", text: "#8f8580", halo: "#fbf7f2", residential: "rgba(214,184,174,0.28)", park: "#eef0e2", parkLine: "#e2e5d2",
     wood: "rgba(206,214,186,0.45)", pitch: "#efe8d8", soft: "#f2ece2", school: "#f4ece6", hospital: "#f5e9e6", aero: "#f1ebe6",
@@ -18,129 +614,6 @@ const PALETTE = {
     water: "#14222b", river: "#1d3340", building: "#3a2e2c", border: "#5a4643", border3: "#352a28", rail: "#463936", relief: 0,
     motorway: ["#4a2630", "#2b1a1e"], major: ["#3d232a", "#241a1c"], medium: ["#30212a", "#1e1719"], minor: ["#241c1c", "#181213"] }
 };
-const STYLE = "https://tiles.openfreemap.org/styles/liberty"; // stessa base per chiaro e scuro: il core la ricolora con PALETTE
-const ITALY = { west: 6.6, south: 36.6, east: 18.6, north: 47.1 };
 
-// ---------- tipi di luogo ----------
-const TYPES = {
-  c: { name: "Cantina", light: "#8e1b33", dark: "#c23a55" },
-  d: { name: "Cantina con degustazione", light: "#d0506a", dark: "#e8798e" },
-  e: { name: "Enoteca", light: "#b8860b", dark: "#d9a93a" }
-};
-const color = (t) => TYPES[t][darkMq.matches ? "dark" : "light"];
-// pin a goccia con un calice; la punta (ax, in basso) è il punto esatto
-const pinIcon = (t) => {
-  const c = color(t);
-  return { w: 28, h: 38, ax: 14, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
-<path d="M14 37C14 37 2 23.5 2 14a12 12 0 0 1 24 0c0 9.5-12 23-12 23z" fill="${c}" stroke="#fff" stroke-width="2"/>
-<path d="M9.5 8h9c0 3.6-1.7 6.3-4.5 6.8V19h2.6v1.6H11.4V19H14v-4.2C11.2 14.3 9.5 11.6 9.5 8z" fill="#fff"/></svg>` };
-};
-// gruppo di luoghi vicini: cerchio con il numero, più grande se sono tanti
-const clusterIcon = (n) => {
-  const s = n < 10 ? 34 : n < 100 ? 40 : n < 1000 ? 48 : 56, r = s / 2, c = color("c");
-  const label = n < 1000 ? n : Math.round(n / 100) / 10 + "k";
-  return { w: s, h: s, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">
-<circle cx="${r}" cy="${r}" r="${r - 1}" fill="${c}" fill-opacity=".28"/><circle cx="${r}" cy="${r}" r="${r - 6}" fill="${c}" stroke="#fff" stroke-width="2"/>
-<text x="50%" y="50%" dy=".35em" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="${s < 40 ? 12 : 13}" font-weight="700" fill="#fff">${label}</text></svg>` };
-};
-
-// ---------- dati ----------
-let all = [], byId = new Map(), selected = null;
-const shown = { c: true, d: true, e: true };
-const norm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const title = (x) => x.n || TYPES[x.t].name + (x.c ? " a " + x.c : "");
-
-function draw() {
-  const icons = { c: pinIcon("c"), d: pinIcon("d"), e: pinIcon("e") };
-  M.setSpots(all.filter((x) => shown[x.t] || x.id === selected).map((x) => ({ id: x.id, lat: x.lat, lng: x.lng, icon: icons[x.t], selected: x.id === selected })), clusterIcon);
-}
-
-// ---------- fumetto ----------
-function open(id, fly) {
-  const x = byId.get(id); if (!x) return;
-  selected = id; draw();
-  if (fly) M.flyTo({ lat: x.lat, lng: x.lng }, 15, 80);
-  const where = [x.a, x.c].filter(Boolean).join(", ");
-  const links = [
-    x.w && `<a href="${esc(x.w)}" target="_blank" rel="noopener nofollow">Sito</a>`,
-    x.p && `<a href="tel:${esc(x.p.split(/[;,]/)[0].replace(/[^\d+]/g, ""))}">Chiama</a>`,
-    `<a href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}" target="_blank" rel="noopener">Indicazioni</a>`,
-    `<a href="https://www.openstreetmap.org/${{ n: "node", w: "way", r: "relation" }[x.id[0]]}/${x.id.slice(1)}" target="_blank" rel="noopener" title="Correggi o completa i dati su OpenStreetMap">OSM</a>`
-  ].filter(Boolean).join("");
-  M.showPopup({ lat: x.lat, lng: x.lng }, `<div class="pop">
-<div class="kind"><i class="dot t-${x.t}"></i>${TYPES[x.t].name}</div>
-<h3>${esc(title(x))}</h3>${where ? `<p>${esc(where)}</p>` : ""}${x.o ? `<p>Orari: ${esc(x.o)}</p>` : ""}
-<div class="links">${links}</div></div>`);
-}
-function closeSel() { if (!selected) return; selected = null; M.showPopup(null); draw(); }
-
-// ---------- ricerca (nei dati già scaricati: nessun servizio esterno) ----------
-const q = $("#q"), results = $("#results");
-let hits = [], hi = -1;
-function search() {
-  const s = norm(q.value.trim());
-  if (s.length < 2) { results.hidden = true; return; }
-  hits = all.filter((x) => norm(x.n).includes(s) || norm(x.c).includes(s))
-    .sort((a, b) => (norm(a.n).startsWith(s) ? 0 : 1) - (norm(b.n).startsWith(s) ? 0 : 1)).slice(0, 12);
-  hi = -1;
-  results.innerHTML = hits.length ? hits.map((x, i) => `<li data-i="${i}"><i class="dot t-${x.t}"></i>${esc(title(x))}<small>${esc(x.c || "")}</small></li>`).join("")
-    : `<li class="none">Nessun risultato</li>`;
-  results.hidden = false;
-}
-function pick(i) { const x = hits[i]; if (!x) return; results.hidden = true; q.value = title(x); q.blur(); open(x.id, true); }
-q.addEventListener("input", search);
-q.addEventListener("focus", search);
-q.addEventListener("keydown", (e) => {
-  if (results.hidden) return;
-  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-    e.preventDefault(); hi = Math.max(0, Math.min(hits.length - 1, hi + (e.key === "ArrowDown" ? 1 : -1)));
-    results.querySelectorAll("li").forEach((li, i) => li.classList.toggle("sel", i === hi));
-  } else if (e.key === "Enter") { e.preventDefault(); pick(hi < 0 ? 0 : hi); }
-  else if (e.key === "Escape") results.hidden = true;
-});
-results.addEventListener("click", (e) => { const li = e.target.closest("li[data-i]"); if (li) pick(+li.dataset.i); });
-document.addEventListener("click", (e) => { if (!e.target.closest(".search")) results.hidden = true; });
-
-// ---------- filtri ----------
-document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
-  const t = b.dataset.t; shown[t] = !shown[t];
-  b.classList.toggle("on", shown[t]); b.setAttribute("aria-pressed", shown[t]);
-  draw();
-}));
-function counts() {
-  const n = { c: 0, d: 0, e: 0 }; all.forEach((x) => n[x.t]++);
-  document.querySelectorAll(".chip").forEach((b) => { b.querySelector("span").textContent = n[b.dataset.t].toLocaleString("it-IT"); });
-}
-
-// ---------- pulsanti ----------
-$("#zin").addEventListener("click", () => M.zoomBy(1));
-$("#zout").addEventListener("click", () => M.zoomBy(-1));
-$("#me").addEventListener("click", () => {
-  if (!navigator.geolocation) return;
-  status.textContent = "Cerco la tua posizione…";
-  navigator.geolocation.getCurrentPosition((p) => {
-    status.textContent = "";
-    const pos = { lat: p.coords.latitude, lng: p.coords.longitude };
-    M.setUser(pos); M.flyTo(pos, 11);
-  }, () => { status.textContent = "Posizione non disponibile"; setTimeout(() => { status.textContent = ""; }, 2500); }, { enableHighAccuracy: false, timeout: 10000 });
-});
-
-// ---------- avvio ----------
-async function start() {
-  const dataP = fetch("/data/cantine.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
-  await M.create($("#map"), { lib: "maplibre", style: STYLE, styleLight: STYLE, dark: darkMq.matches, palette: PALETTE, center: { lat: 42.5, lng: 12.5 }, bounds: ITALY, padding: 20 });
-  M.on("pinclick", (id) => open(id, false));
-  M.on("click", closeSel);
-  darkMq.addEventListener("change", () => { M.setDark(darkMq.matches); draw(); });
-  try {
-    const d = await dataP;
-    all = d.items; byId = new Map(all.map((x) => [x.id, x]));
-    counts(); draw();
-    status.textContent = "";
-  } catch (e) {
-    status.textContent = "Non riesco a caricare le cantine, riprova tra poco";
-  }
-}
-start().catch(() => { status.textContent = "La mappa non si è caricata, ricarica la pagina"; });
+start().catch((e) => { console.error(e); setStatus("La mappa non si è caricata, ricarica la pagina"); });
 })();

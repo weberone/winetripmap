@@ -1,36 +1,109 @@
 <!doctype html>
-<html lang="it">
+<html lang="it" data-theme="auto">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>WineTripMap · mappa delle cantine</title>
-<meta name="description" content="WineTripMap: la mappa delle cantine, delle degustazioni e delle enoteche.">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>WineTripMap · cantine, degustazioni ed enoteche vicino a te</title>
+<meta name="description" content="La mappa delle cantine, delle degustazioni e delle enoteche: trova le più vicine a te, con indicazioni, orari e contatti.">
 <meta name="robots" content="noindex"><!-- in prova: da togliere quando la mappa sostituisce la pagina "in arrivo" -->
-<meta name="theme-color" content="#1a0f12">
+<script>
+// tema prima di disegnare la pagina (niente lampo del tema sbagliato): quello scelto col pulsante, altrimenti quello del sistema
+try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+{ const d = document.documentElement; d.dataset.scheme = d.dataset.theme === "light" || (d.dataset.theme === "auto" && !matchMedia("(prefers-color-scheme: dark)").matches) ? "light" : "dark"; }
+</script>
+<meta name="theme-color" content="#8e1b33">
 <!-- il CSS di MapLibre prima del nostro: valgono le nostre regole per fumetti e pulsanti -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.css">
 <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
-<header class="bar">
-  <a class="logo" href="/">Wine<b>Trip</b>Map</a>
-  <form class="search" role="search" onsubmit="return false">
-    <input id="q" type="search" placeholder="Cerca cantina o comune" autocomplete="off" aria-label="Cerca cantina o comune">
-    <ul id="results" class="results" hidden></ul>
-  </form>
-</header>
-<nav class="filters" aria-label="Cosa mostrare">
-  <button type="button" class="chip on" data-t="c" aria-pressed="true"><i class="dot t-c"></i>Cantine <span></span></button>
-  <button type="button" class="chip on" data-t="d" aria-pressed="true"><i class="dot t-d"></i>Degustazioni <span></span></button>
-  <button type="button" class="chip on" data-t="e" aria-pressed="true"><i class="dot t-e"></i>Enoteche <span></span></button>
-</nav>
-<main id="map" aria-label="Mappa"></main>
-<div class="zoom">
-  <button type="button" id="zin" aria-label="Avvicina">+</button>
-  <button type="button" id="zout" aria-label="Allontana">−</button>
-  <button type="button" id="me" aria-label="Dove sono">◎</button>
+<div class="app map-only">
+  <h1 class="sr-only">WineTripMap: cantine, degustazioni ed enoteche vicino a te</h1>
+  <header class="top">
+    <a class="logo" href="./" aria-label="WineTripMap, torna all'inizio"><svg class="lpin" viewBox="0 0 28 38" aria-hidden="true"><path d="M14 37C14 37 2 23.5 2 14a12 12 0 0 1 24 0c0 9.5-12 23-12 23z" fill="var(--accent)"/><path d="M9.5 8h9c0 3.6-1.7 6.3-4.5 6.8V19h2.6v1.6H11.4V19H14v-4.2C11.2 14.3 9.5 11.6 9.5 8z" fill="#fff"/></svg><span>Wine<b>Trip</b>Map</span></a>
+    <div class="hstat">
+      <span class="status" id="status" role="status">Avvio…</span>
+      <button class="info" id="shareHdr" aria-label="Condividi" title="Condividi"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </header>
+
+  <aside class="panel">
+    <div class="controls">
+      <div class="locmsg" id="locmsg" role="status"></div>
+      <div class="locrow">
+        <button class="btn" id="locBtn"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>La mia posizione</button>
+        <button class="btn" id="placeBtn"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>Cerca un luogo</button>
+      </div>
+      <div class="row">
+        <span><strong id="count">0</strong> <span id="countLbl">luoghi trovati</span></span>
+        <label class="radius-pick">Raggio
+          <select id="radius"><option value="5">5 km</option><option value="10">10 km</option><option value="20">20 km</option><option value="30">30 km</option><option value="50">50 km</option></select>
+        </label>
+      </div>
+    </div>
+    <div class="filters">
+      <div class="chips" role="group" aria-label="Filtra">
+        <button class="chip" data-f="all" aria-pressed="true"><span class="dot all"></span>Tutti</button>
+        <button class="chip" data-f="c" aria-pressed="false"><span class="dot t-c"></span>Cantine</button>
+        <button class="chip" data-f="d" aria-pressed="false"><span class="dot t-d"></span>Degustazioni</button>
+        <button class="chip" data-f="e" aria-pressed="false"><span class="dot t-e"></span>Enoteche</button>
+      </div>
+    </div>
+    <div class="list" id="list"></div>
+    <div class="detail" id="detail" hidden></div>
+    <p class="appfoot">© <span id="footYear">2026</span> winetripmap.com · dati © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
+  </aside>
+
+  <main class="mapwrap">
+    <div class="map-logo" aria-hidden="true">Wine<b>Trip</b>Map</div>
+    <div id="map" aria-label="Mappa delle cantine"></div>
+    <!-- primo accesso senza posizione: invito a dire dove si è -->
+    <div class="worldask" id="worldAsk" hidden><b>Dove vuoi andare?</b><p>Cerca un luogo o usa la tua posizione: ti mostriamo subito cantine, degustazioni ed enoteche intorno.</p><div class="wa-btns"><button type="button" class="btn primary" id="worldAskGps">Usa la mia posizione</button><button type="button" class="btn" id="worldAskBtn">Cerca un luogo</button></div></div>
+    <button class="btn here" id="searchHere" hidden><svg class="radar" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="8.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="4.4" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".6"/><g class="sweep"><path d="M10 10 L10 1.8 A8.2 8.2 0 0 1 16.4 5z" fill="currentColor" opacity=".35"/><path d="M10 10 L10 1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></g><circle cx="10" cy="10" r="1.4" fill="currentColor"/></svg><span>Cerca in questa zona</span></button>
+    <div class="crosshair" aria-hidden="true"></div>
+    <div class="nores" id="noRes" hidden>Nessuna cantina qui</div>
+    <button type="button" class="nearbtn" id="nearBtn" hidden><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 1.5v3.5M12 19v3.5M1.5 12H5M19 12h3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Trova le più vicine</span></button>
+    <button class="mapbtn idle" id="previewBtn" aria-pressed="true" aria-label="Radar: cerca da solo quando sposti la mappa" title="Radar">
+      <svg class="radar" viewBox="0 0 20 20" width="30" height="30" aria-hidden="true"><circle cx="10" cy="10" r="8.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="4.4" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".6"/><g class="sweep"><path d="M10 10 L10 1.8 A8.2 8.2 0 0 1 16.4 5z" fill="currentColor" opacity=".35"/><path d="M10 10 L10 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g><circle cx="10" cy="10" r="1.3" fill="currentColor"/></svg>
+    </button>
+    <p class="countmob" id="countMob" aria-hidden="true"></p>
+    <button class="mapbtn search" id="searchBtn" aria-label="Cerca un luogo o una cantina" title="Cerca">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+    </button>
+    <div class="zoombtns"><button type="button" id="mapThemeBtn" class="mtbtn" aria-label="Mappa chiara o scura" title="Mappa chiara o scura"></button><button type="button" id="zoomIn" aria-label="Avvicina">+</button><button type="button" id="zoomOut" aria-label="Allontana">−</button></div>
+    <button class="mapbtn me" id="meBtn" aria-pressed="false" aria-label="Cerca intorno a me" title="Cerca intorno a me">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <button class="mapbtn kmbtn" id="kmBtn" aria-expanded="false" aria-controls="kmPick" aria-label="Raggio di ricerca"><b id="kmVal">20</b><span>km</span></button>
+    <div class="kmpick" id="kmPick" role="group" aria-label="Raggio di ricerca">
+      <button data-km="5">5</button><button data-km="10">10</button><button data-km="20">20</button><button data-km="30">30</button><button data-km="50">50</button>
+      <span class="kmu">km</span>
+    </div>
+    <button class="fab" id="menuBtn" aria-expanded="false" aria-label="Apri o chiudi elenco e filtri"><svg class="ico-list" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="5" cy="6.5" r="1.8" fill="currentColor"/><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="5" cy="17.5" r="1.8" fill="currentColor"/><path d="M10 6.5h10M10 12h10M10 17.5h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><svg class="ico-down" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <!-- filtri sulla mappa: telefono in alto a sinistra (tendina), computer in basso a sinistra -->
+    <div class="legend" role="group" aria-label="Mostra sulla mappa">
+      <button class="lg" data-lf="all" aria-pressed="true"><span class="mk"><span class="dot all"></span></span><span class="lt">Tutti</span></button>
+      <button class="lg" data-lf="c" aria-pressed="false"><span class="mk"><span class="dot t-c"></span></span><span class="lt">Cantine</span></button>
+      <button class="lg" data-lf="d" aria-pressed="false"><span class="mk"><span class="dot t-d"></span></span><span class="lt">Degustazioni</span></button>
+      <button class="lg" data-lf="e" aria-pressed="false"><span class="mk"><span class="dot t-e"></span></span><span class="lt">Enoteche</span></button>
+    </div>
+  </main>
 </div>
-<p id="status" class="status" role="status">Carico le cantine…</p>
+
+<!-- ricerca: un luogo (Nominatim di OpenStreetMap, gratuito) oppure una cantina per nome -->
+<div class="modal" id="searchModal" hidden role="dialog" aria-modal="true" aria-labelledby="searchTitle">
+  <div class="card">
+    <button class="x" data-close aria-label="Chiudi">✕</button>
+    <h3 id="searchTitle">Cerca</h3>
+    <form id="searchForm" class="search">
+      <input id="q" type="search" placeholder="Città, paese o nome della cantina" autocomplete="off" enterkeyhint="search" aria-label="Città, paese o nome della cantina">
+      <button class="btn primary" type="submit">Cerca</button>
+    </form>
+    <ul class="results" id="results"></ul>
+    <p class="smsg" id="searchMsg" role="status"></p>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
 <script src="/core/js/map/map-gl.js"></script>
 <script src="/js/app.js"></script>
