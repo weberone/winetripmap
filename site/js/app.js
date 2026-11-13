@@ -1,7 +1,8 @@
-/* winetripmap.com — web app, stessa esperienza di SkateboardMap: posizione, raggio, radar che scopre i pin, elenco dei più vicini, scheda.
+/* winetripmap.com — web app, stessa esperienza di SkateboardMap: posizione, raggio, radar che scopre i pin, elenco delle più vicine, scheda.
    - Mappa: modulo comune core/js/map/map-gl.js (MapLibre + OpenFreeMap, gratuita), interfaccia window.SkateMap.
-   - Luoghi: cantine, degustazioni ed enoteche di OpenStreetMap in /data/cantine.json (tools/osm-cantine.mjs), tutti nel browser:
-     la ricerca nel raggio è istantanea e non chiede niente al server.
+   - Cantine di tutto il mondo da OpenStreetMap (tools/osm-cantine.mjs):
+     /data/cantine.json = tutti i punti (id, lat, lng, nome, comune), nel browser: raggio, ricerca e "più vicine" senza server;
+     /data/det/<riquadro>.json = indirizzo, telefono, sito e orari, caricati solo all'apertura di una scheda.
    - Ricerca di un luogo: /api/geocode.php (Nominatim di OpenStreetMap, gratuito, con memoria), altrimenti Nominatim direttamente. */
 (() => {
 "use strict";
@@ -12,14 +13,13 @@ const store = {
   get(k) { try { return JSON.parse(localStorage.getItem("wtm." + k)); } catch { return null; } },
   set(k, v) { try { localStorage.setItem("wtm." + k, JSON.stringify(v)); } catch {} }
 };
-const ITALY = { west: 6.6, south: 36.6, east: 18.6, north: 47.1 };
+const WORLD = { west: -150, south: -50, east: 165, north: 65 };
 const RADII = [5, 10, 20, 30, 50];
 
 const state = {
   me: null,                       // { lat, lng, name, gps }: da qui si misurano le distanze
   center: null,                   // centro dell'ultima ricerca (cerchio del raggio)
   radiusKm: RADII.includes(store.get("radius")) ? store.get("radius") : 20,
-  filter: ["all", "c", "d", "e"].includes(store.get("filter")) ? store.get("filter") : "all",
   showPreview: store.get("preview") !== false, // radar: cerca da solo quando sposti la mappa
   all: [], byId: new Map(), sel: null, mapsReady: false, areaOk: false, loading: false, userMoved: false
 };
@@ -35,6 +35,7 @@ const fmtKm = (k) => k < 1 ? Math.round(k * 1000) + " m" : k >= 100 ? Math.round
 const fmtN = (n) => Number(n || 0).toLocaleString("it-IT");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const norm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const cantine = (n) => n === 1 ? "cantina" : "cantine";
 function offsetLatLng(c, m, deg) {
   const a = deg * Math.PI / 180;
   return { lat: c.lat + (m * Math.cos(a)) / 111320, lng: c.lng + (m * Math.sin(a)) / (111320 * Math.cos(c.lat * Math.PI / 180)) };
@@ -45,66 +46,65 @@ function boundsAround(c, m) {
 }
 function setStatus(msg) { $("status").textContent = msg; }
 
-// ---------- tipi di luogo e segnaposto ----------
-const TYPES = {
-  c: { one: "Cantina", many: "cantine", color: ["#8e1b33", "#c23a55"] },
-  d: { one: "Cantina con degustazione", many: "degustazioni", color: ["#d0506a", "#e8798e"] },
-  e: { one: "Enoteca", many: "enoteche", color: ["#b8860b", "#d9a93a"] }
-};
+// ---------- segnaposto ----------
 const dark = () => document.documentElement.dataset.scheme === "dark";
-const typeColor = (t) => TYPES[t].color[dark() ? 1 : 0];
+const pinColor = () => dark() ? "#c23a55" : "#8e1b33";
 // goccia con un calice bianco; la punta (ax, in basso) è il punto esatto
-function pinSvg(t, w = 28) {
+function pinSvg(w = 28) {
   const h = Math.round(w * 38 / 28);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 28 38"><path d="M14 37C14 37 2 23.5 2 14a12 12 0 0 1 24 0c0 9.5-12 23-12 23z" fill="${typeColor(t)}" stroke="#fff" stroke-width="2"/><path d="M9.5 8h9c0 3.6-1.7 6.3-4.5 6.8V19h2.6v1.6H11.4V19H14v-4.2C11.2 14.3 9.5 11.6 9.5 8z" fill="#fff"/></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 28 38"><path d="M14 37C14 37 2 23.5 2 14a12 12 0 0 1 24 0c0 9.5-12 23-12 23z" fill="${pinColor()}" stroke="#fff" stroke-width="2"/><path d="M9.5 8h9c0 3.6-1.7 6.3-4.5 6.8V19h2.6v1.6H11.4V19H14v-4.2C11.2 14.3 9.5 11.6 9.5 8z" fill="#fff"/></svg>`;
 }
-function markerIcon(x, sel) { const w = sel ? 36 : 28; return { svg: pinSvg(x.t, w), w, h: Math.round(w * 38 / 28), ax: w / 2 }; }
-// gruppo: cerchio del colore del filtro scelto (bordeaux con "Tutti") e il numero
+function markerIcon(sel) { const w = sel ? 36 : 28; return { svg: pinSvg(w), w, h: Math.round(w * 38 / 28), ax: w / 2 }; }
+// gruppo di cantine vicine: cerchio bordeaux con il numero
 function clusterIcon(n) {
-  const d = n < 10 ? 36 : n < 50 ? 42 : n < 500 ? 48 : 54, r = d / 2, c = state.filter === "all" ? typeColor("c") : typeColor(state.filter);
+  const d = n < 10 ? 36 : n < 50 ? 42 : n < 500 ? 48 : 54, r = d / 2;
   const label = n < 1000 ? n : (Math.round(n / 100) / 10).toLocaleString("it-IT") + "k";
-  return { w: d, h: d, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${d}" height="${d}" viewBox="0 0 ${d} ${d}"><circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="${c}" stroke="#fff" stroke-width="2"/><text x="${r}" y="${r + 4.5}" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="${n < 100 ? 14 : 12}" fill="#fff">${label}</text></svg>` };
+  return { w: d, h: d, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${d}" height="${d}" viewBox="0 0 ${d} ${d}"><circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="${pinColor()}" stroke="#fff" stroke-width="2"/><text x="${r}" y="${r + 4.5}" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="${n < 100 ? 14 : 12}" fill="#fff">${label}</text></svg>` };
 }
-const title = (x) => x.n || TYPES[x.t].one + (x.c ? " a " + x.c : "");
+const title = (x) => x.n || "Cantina" + (x.c ? " a " + x.c : "");
 
 // ---------- dati ----------
 let dataP = null;
 function loadData() {
   if (!dataP) dataP = fetch("/data/cantine.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((d) => {
-    state.all = d.items; state.byId = new Map(d.items.map((x) => [x.id, x]));
+    state.all = d.items.map(([id, lat, lng, n, c]) => ({ id, lat, lng, n, c }));
+    state.byId = new Map(state.all.map((x) => [x.id, x]));
     return d;
   });
   return dataP;
 }
-// luoghi nel raggio della ricerca, col filtro scelto, dal più vicino a te
+// dettagli (indirizzo, telefono, sito, orari) del riquadro di 10° della cantina: stesso calcolo di tools/osm-cantine.mjs
+const cell = (x) => `${Math.floor(x.lat / 10)}_${Math.floor(x.lng / 10)}`;
+const detCache = new Map();
+function loadDetails(x) {
+  const k = cell(x);
+  if (!detCache.has(k)) detCache.set(k, fetch(`/data/det/${k}.json`).then((r) => r.ok ? r.json() : {}).catch(() => ({})));
+  return detCache.get(k).then((d) => d[x.id] || {});
+}
+// cantine nel raggio della ricerca, dalla più vicina a te
 function visible() {
   if (!state.center) return [];
-  const from = state.me || state.center, f = state.filter, b = boundsAround(state.center, state.radiusKm * 1000 * 1.01);
-  return state.all.filter((x) => x.lat <= b.north && x.lat >= b.south && x.lng <= b.east && x.lng >= b.west && (f === "all" || x.t === f))
+  const from = state.me || state.center, b = boundsAround(state.center, state.radiusKm * 1000 * 1.01);
+  return state.all.filter((x) => x.lat <= b.north && x.lat >= b.south && x.lng <= b.east && x.lng >= b.west)
     .map((x) => Object.assign(x, { kmC: distKm(state.center, x), km: distKm(from, x) }))
     .filter((x) => x.kmC <= state.radiusKm).sort((a, b) => a.km - b.km);
 }
 
 // ---------- elenco, pin, cerchio ----------
 function renderList() {
-  document.querySelectorAll(".chip[data-f]").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.f === state.filter)));
-  document.querySelectorAll("[data-lf]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lf === state.filter)));
   const v = visible();
   $("count").textContent = fmtN(v.length);
-  $("countLbl").textContent = state.filter === "all" ? (v.length === 1 ? "luogo trovato" : "luoghi trovati") : TYPES[state.filter].many;
-  $("countMob").innerHTML = state.areaOk ? `<span class="cm-n">${fmtN(v.length)}</span> ${state.filter === "all" ? (v.length === 1 ? "luogo" : "luoghi") : TYPES[state.filter].many} entro ${state.radiusKm} km` : "";
-  if (state.areaOk && !state.loading) setStatus(`${fmtN(v.length)} ${state.filter === "all" ? "luoghi" : TYPES[state.filter].many} entro ${state.radiusKm} km`);
+  $("countLbl").textContent = v.length === 1 ? "cantina trovata" : "cantine trovate";
+  $("countMob").innerHTML = state.areaOk ? `<span class="cm-n">${fmtN(v.length)}</span> ${cantine(v.length)} entro ${state.radiusKm} km` : "";
+  if (state.areaOk && !state.loading) setStatus(`${fmtN(v.length)} ${cantine(v.length)} entro ${state.radiusKm} km`);
   radarLabel();
   if (!v.length) {
-    $("list").innerHTML = state.areaOk ? `<div class="empty">Nessun luogo in questo raggio. Prova un raggio più grande o “Trova le più vicine” sulla mappa.</div>`
-      : `<div class="empty">Cerca un luogo o usa la tua posizione per vedere cantine, degustazioni ed enoteche intorno.</div>`;
+    $("list").innerHTML = state.areaOk ? `<div class="empty">Nessuna cantina in questo raggio. Prova un raggio più grande o “Trova le più vicine” sulla mappa.</div>`
+      : `<div class="empty">Cerca un luogo o usa la tua posizione per vedere le cantine intorno.</div>`;
   } else {
-    $("list").innerHTML = v.slice(0, 300).map((x) => {
-      const meta = [TYPES[x.t].one, x.c].filter(Boolean).join(" · ");
-      return `<button class="item" data-id="${esc(x.id)}"><span class="mk">${pinSvg(x.t, 20)}</span>
-        <span style="min-width:0"><div class="name">${esc(title(x))}</div><div class="meta">${esc(meta)}</div></span>
-        <span class="km">${fmtKm(x.km)}</span></button>`;
-    }).join("");
+    $("list").innerHTML = v.slice(0, 300).map((x) => `<button class="item" data-id="${esc(x.id)}"><span class="mk">${pinSvg(20)}</span>
+        <span style="min-width:0"><div class="name">${esc(title(x))}</div>${x.c && x.n ? `<div class="meta">${esc(x.c)}</div>` : ""}</span>
+        <span class="km">${fmtKm(x.km)}</span></button>`).join("");
   }
   drawMarkers();
 }
@@ -112,7 +112,7 @@ function drawMarkers() {
   if (!state.mapsReady) return;
   const v = visible(), sel = state.sel && state.byId.get(state.sel);
   if (sel && !v.includes(sel)) v.push(sel); // la cantina aperta resta sulla mappa anche fuori dal raggio
-  M.setSpots(v.map((x) => ({ id: x.id, lat: x.lat, lng: x.lng, selected: x.id === state.sel, icon: markerIcon(x, x.id === state.sel), label: x.c || "" })), clusterIcon);
+  M.setSpots(v.map((x) => ({ id: x.id, lat: x.lat, lng: x.lng, selected: x.id === state.sel, icon: markerIcon(x.id === state.sel), label: x.c || "" })), clusterIcon);
   drawMe();
 }
 function drawMe() {
@@ -120,7 +120,6 @@ function drawMe() {
   if (state.me) M.setUser({ lat: state.me.lat, lng: state.me.lng });
   M.setCircle("radius", state.center, state.radiusKm);
 }
-function refresh() { closeDetail(true); renderList(); }
 
 // ---------- telefono: mappa intera o pannello aperto ----------
 const MOB_MQ = "(max-width:760px), (max-height:500px) and (orientation:landscape)";
@@ -243,13 +242,13 @@ function checkArea() {
   clearTimeout(autoTimer);
   if (state.showPreview && !$("searchHere").hidden) autoTimer = setTimeout(searchHere, 3000);
 }
-// scritta del radar sulla mappa: Cerco… / Nessun luogo qui / Radar attivo / Radar spento
+// scritta del radar sulla mappa: Cerco… / Nessuna cantina qui / Radar attivo / Radar spento
 function radarLabel() {
   const el = $("noRes");
   const searching = radarHold || (!$("searchHere").hidden && state.showPreview);
   const empty = state.areaOk && !state.loading && !visible().length;
   const k = searching ? "radarSearching" : empty ? "noResHere" : state.showPreview ? "radarOn" : "radarOff";
-  el.textContent = { radarSearching: "Cerco…", noResHere: "Nessun luogo qui", radarOn: "Radar attivo", radarOff: "Radar spento" }[k];
+  el.textContent = { radarSearching: "Cerco…", noResHere: "Nessuna cantina qui", radarOn: "Radar attivo", radarOff: "Radar spento" }[k];
   el.dataset.k = k;
   el.hidden = !state.center;
   const nb = $("nearBtn");
@@ -290,28 +289,29 @@ async function setMe(lat, lng, name, gps, msg) {
   try { await loadArea(rv ? 900 : 0); }
   finally { await radarFinish(() => renderList(), rv); }
 }
-// "Cerca in questa zona": il raggio si sposta al centro della mappa (le distanze restano da te)
-async function searchHere() {
+// "Cerca in questa zona" (o raggio cambiato): il cerchio va in c, le distanze restano da te
+async function searchAt(c, minMs) {
   clearTimeout(autoTimer);
   if (!state.mapsReady) return;
-  state.center = M.getCenter();
+  state.center = c;
   $("searchHere").hidden = true;
   M.setCircle("preview", null);
   const rv = radarBegin();
   drawMe();
-  try { await loadArea(rv ? 700 : 0); }
+  try { await loadArea(rv ? minMs : 0); }
   finally { await radarFinish(() => renderList(), rv); }
 }
-// radar vuoto: il luogo più vicino al punto cercato (col filtro scelto), poi tutti quelli del raggio intorno a lui
+const searchHere = () => searchAt(M.getCenter(), 700);
+// radar vuoto: la cantina più vicina al punto cercato, poi tutte quelle del raggio intorno a lei
 async function findNearest() {
-  const nb = $("nearBtn"), lbl = nb.querySelector("span");
+  const nb = $("nearBtn");
   if (nb.classList.contains("busy")) return;
   clearTimeout(autoTimer);
   await loadData();
-  const from = { lat: state.center.lat, lng: state.center.lng }, f = state.filter;
+  const from = { lat: state.center.lat, lng: state.center.lng };
   let best = null, bk = Infinity;
-  for (const x of state.all) { if (f !== "all" && x.t !== f) continue; const k = distKm(from, x); if (k < bk) { bk = k; best = x; } }
-  if (!best) { lbl.textContent = "Nessun luogo trovato"; setTimeout(() => { lbl.textContent = "Trova le più vicine"; }, 2500); return; }
+  for (const x of state.all) { const k = distKm(from, x); if (k < bk) { bk = k; best = x; } }
+  if (!best) return;
   nb.hidden = true;
   state.center = { lat: best.lat, lng: best.lng };
   tipFly = Date.now() + 600;
@@ -322,7 +322,7 @@ async function findNearest() {
   drawMe();
   await loadArea(); renderList();
   M.setLink(from, best, fmtKm(bk));
-  setStatus(`Il più vicino è a ${fmtKm(bk)}`);
+  setStatus(`La più vicina è a ${fmtKm(bk)}`);
 }
 
 // ---------- posizione ----------
@@ -365,43 +365,48 @@ function pinTip(id) {
   const x = state.byId.get(id); if (!x) return;
   const from = state.me || state.center;
   state.sel = id; drawMarkers();
-  M.showPopup({ lat: x.lat, lng: x.lng }, `<button class="pintip" type="button"><span class="tk"><i class="dot t-${x.t}"></i>${esc(TYPES[x.t].one)}</span><b>${esc(title(x))}</b>${x.c ? `<small>${esc(x.c)}</small>` : ""}${from ? `<small>a ${fmtKm(distKm(from, x))}</small>` : ""}<em>Apri la scheda</em></button>`,
+  M.showPopup({ lat: x.lat, lng: x.lng }, `<button class="pintip" type="button"><b>${esc(title(x))}</b>${x.c && x.n ? `<small>${esc(x.c)}</small>` : ""}${from ? `<small>a ${fmtKm(distKm(from, x))}</small>` : ""}<em>Apri la scheda</em></button>`,
     () => openDetail(id, false));
 }
 const directionsUrl = (x) => `https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}`;
 const osmUrl = (x) => `https://www.openstreetmap.org/${{ n: "node", w: "way", r: "relation" }[x.id[0]]}/${x.id.slice(1)}`;
 const placeUrl = (x) => `${location.origin}${location.pathname}?c=${encodeURIComponent(x.id)}`;
-function openDetail(id, fly = true) {
+async function openDetail(id, fly = true) {
   const x = state.byId.get(id); if (!x) return;
   const from = state.me || state.center;
   const wasOpen = !$("detail").hidden;
   state.sel = id;
   M.showPopup(null);
-  const tel = x.p ? x.p.split(/[;,]/)[0].trim() : "";
-  const host = x.w ? x.w.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "") : "";
-  $("detail").innerHTML = `<div class="dhead"><h2>${esc(title(x))}</h2><button class="x" id="dClose" aria-label="Chiudi">✕</button></div>
-    <div class="dkind"><i class="dot t-${x.t}"></i>${esc(TYPES[x.t].one)}${from ? ` · a ${fmtKm(distKm(from, x))}` : ""}</div>
-    ${x.a || x.c ? `<p class="dline"><small>Indirizzo</small>${esc([x.a, x.c].filter(Boolean).join(", "))}</p>` : ""}
-    ${x.o ? `<p class="dline"><small>Orari</small>${esc(x.o)}</p>` : ""}
-    ${tel ? `<p class="dline"><small>Telefono</small><a href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">${esc(tel)}</a></p>` : ""}
-    ${host ? `<p class="dline"><small>Sito</small><a href="${esc(x.w)}" target="_blank" rel="noopener nofollow">${esc(host)}</a></p>` : ""}
-    <div class="dbtns">
-      <a class="btn primary" href="${directionsUrl(x)}" target="_blank" rel="noopener">Indicazioni</a>
-      ${tel ? `<a class="btn" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">Chiama</a>` : ""}
-      ${x.w ? `<a class="btn" href="${esc(x.w)}" target="_blank" rel="noopener nofollow">Sito</a>` : ""}
-      <button class="btn" id="dShare" type="button">Condividi</button>
-    </div>
-    <p class="dsrc">Dati da OpenStreetMap · <a href="${osmUrl(x)}" target="_blank" rel="noopener">correggi o completa</a></p>`;
+  const head = `<div class="dhead"><h2>${esc(title(x))}</h2><button class="x" id="dClose" aria-label="Chiudi">✕</button></div>
+    <div class="dkind">Cantina${from ? ` · a ${fmtKm(distKm(from, x))}` : ""}</div>`;
+  $("detail").innerHTML = head + `<p class="dline"><small>Carico i dettagli…</small></p>`;
   $("detail").hidden = false; $("list").hidden = true;
   app.classList.add("has-detail");
   $("dClose").onclick = () => closeDetail();
-  $("dShare").onclick = () => share(title(x), placeUrl(x));
   $("detail").scrollTop = 0; document.querySelector("aside.panel").scrollTop = 0;
   if (isMobile() && mapOnly()) setSheet(true);
   if (!wasOpen) pushLayer("detail");
   drawMarkers();
   if (fly) { tipFly = Date.now(); M.flyTo({ lat: x.lat, lng: x.lng }, 14); }
   $("searchHere").hidden = true; updatePreview();
+  const d = await loadDetails(x);
+  if (state.sel !== id) return; // nel frattempo ne hai aperta un'altra
+  const tel = d.p ? d.p.split(/[;,]/)[0].trim() : "";
+  const host = d.w ? d.w.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "") : "";
+  $("detail").innerHTML = head + `
+    ${d.a || x.c ? `<p class="dline"><small>Indirizzo</small>${esc([d.a, x.c].filter(Boolean).join(", "))}</p>` : ""}
+    ${d.o ? `<p class="dline"><small>Orari</small>${esc(d.o)}</p>` : ""}
+    ${tel ? `<p class="dline"><small>Telefono</small><a href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">${esc(tel)}</a></p>` : ""}
+    ${host ? `<p class="dline"><small>Sito</small><a href="${esc(d.w)}" target="_blank" rel="noopener nofollow">${esc(host)}</a></p>` : ""}
+    <div class="dbtns">
+      <a class="btn primary" href="${directionsUrl(x)}" target="_blank" rel="noopener">Indicazioni</a>
+      ${tel ? `<a class="btn" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">Chiama</a>` : ""}
+      ${d.w ? `<a class="btn" href="${esc(d.w)}" target="_blank" rel="noopener nofollow">Sito</a>` : ""}
+      <button class="btn" id="dShare" type="button">Condividi</button>
+    </div>
+    <p class="dsrc">Dati da OpenStreetMap · <a href="${osmUrl(x)}" target="_blank" rel="noopener">correggi o completa</a></p>`;
+  $("dClose").onclick = () => closeDetail();
+  $("dShare").onclick = () => share(title(x), placeUrl(x));
 }
 function closeDetail(silent) {
   if ($("detail").hidden && !state.sel) return;
@@ -409,7 +414,7 @@ function closeDetail(silent) {
   $("detail").hidden = true; $("list").hidden = false;
   app.classList.remove("has-detail");
   state.sel = null;
-  M.showPopup && state.mapsReady && M.showPopup(null);
+  if (state.mapsReady) M.showPopup(null);
   if (wasOpen) popLayer("detail");
   if (!silent) drawMarkers();
 }
@@ -420,20 +425,20 @@ async function share(text, url) {
 
 // ---------- ricerca: cantine per nome, comuni, luoghi (Nominatim) ----------
 let hits = [], hi = -1;
-function openSearch() { $("searchModal").hidden = false; pushLayer("search"); $("searchMsg").textContent = ""; setTimeout(() => $("q").focus(), 30); suggest(); }
+function openSearch() { $("searchModal").hidden = false; pushLayer("search"); $("searchMsg").textContent = ""; loadData().then(suggest, () => {}); setTimeout(() => $("q").focus(), 30); suggest(); }
 function closeSearch() { if ($("searchModal").hidden) return; $("searchModal").hidden = true; popLayer("search"); }
 function suggest() {
   const s = norm($("q").value.trim());
   hits = []; hi = -1;
   if (s.length < 2) { $("results").innerHTML = ""; return; }
   const towns = new Map();
-  state.all.forEach((x) => { if (x.c && norm(x.c).startsWith(s)) { const k = x.c; const t = towns.get(k) || { name: k, n: 0, lat: 0, lng: 0 }; t.n++; t.lat += x.lat; t.lng += x.lng; towns.set(k, t); } });
+  state.all.forEach((x) => { if (x.c && norm(x.c).startsWith(s)) { const t = towns.get(x.c) || { name: x.c, n: 0, lat: 0, lng: 0 }; t.n++; t.lat += x.lat; t.lng += x.lng; towns.set(x.c, t); } });
   const tw = [...towns.values()].sort((a, b) => b.n - a.n).slice(0, 4).map((t) => ({ kind: "town", name: t.name, n: t.n, lat: t.lat / t.n, lng: t.lng / t.n }));
   const ws = state.all.filter((x) => x.n && norm(x.n).includes(s)).sort((a, b) => (norm(a.n).startsWith(s) ? 0 : 1) - (norm(b.n).startsWith(s) ? 0 : 1)).slice(0, 8).map((x) => ({ kind: "place", x }));
   hits = [{ kind: "geo", q: $("q").value.trim() }, ...tw, ...ws];
   let html = `<li data-i="0">🔎 Cerca il luogo “${esc(hits[0].q)}”</li>`;
-  if (tw.length) html += `<li class="rhead">Comuni con cantine</li>` + tw.map((t, i) => `<li data-i="${i + 1}"><i class="dot all"></i>${esc(t.name)}<small>${fmtN(t.n)}</small></li>`).join("");
-  if (ws.length) html += `<li class="rhead">Cantine ed enoteche</li>` + ws.map((w, i) => `<li data-i="${i + 1 + tw.length}"><i class="dot t-${w.x.t}"></i>${esc(w.x.n)}<small>${esc(w.x.c || "")}</small></li>`).join("");
+  if (tw.length) html += `<li class="rhead">Comuni con cantine</li>` + tw.map((t, i) => `<li data-i="${i + 1}">${esc(t.name)}<small>${fmtN(t.n)}</small></li>`).join("");
+  if (ws.length) html += `<li class="rhead">Cantine</li>` + ws.map((w, i) => `<li data-i="${i + 1 + tw.length}">${esc(w.x.n)}<small>${esc(w.x.c || "")}</small></li>`).join("");
   $("results").innerHTML = html;
 }
 function pick(i) {
@@ -477,24 +482,15 @@ async function lookup(q, cc) {
   } catch (e) { return "down"; }
 }
 
-// ---------- filtri, raggio, tema ----------
-function setFilter(f) {
-  state.filter = f; store.set("filter", f);
-  refresh();
-}
+// ---------- raggio, tema ----------
 function setRadius(km) {
   state.radiusKm = km; store.set("radius", km);
   $("radius").value = String(km); $("kmVal").textContent = km;
   document.querySelectorAll("[data-km]").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.km === km)));
   if (!state.center) return;
+  closeDetail(true);
   fitToRadius(noMotion() ? 0 : 400);
-  drawMe(); updatePreview();
-  searchHereAt(state.center);
-}
-async function searchHereAt(c) {
-  state.center = c; $("searchHere").hidden = true;
-  const rv = radarBegin();
-  try { await loadArea(rv ? 600 : 0); } finally { await radarFinish(() => renderList(), rv); }
+  searchAt(state.center, 600);
 }
 function toggleKm(open) {
   const p = $("kmPick"), o = open ?? !p.classList.contains("open");
@@ -524,14 +520,6 @@ function bind() {
   $("kmBtn").onclick = () => toggleKm();
   document.querySelectorAll("[data-km]").forEach((b) => b.onclick = () => { toggleKm(false); setRadius(+b.dataset.km); });
   $("radius").onchange = () => setRadius(+$("radius").value);
-  document.querySelectorAll(".chip[data-f]").forEach((c) => c.onclick = () => setFilter(c.dataset.f));
-  // filtri sulla mappa: sul telefono il pulsante tondo apre la tendina, una voce sceglie e chiude
-  const legend = document.querySelector(".legend");
-  document.querySelectorAll("[data-lf]").forEach((b) => b.onclick = () => {
-    if (isMobile() && !legend.classList.contains("open")) { legend.classList.add("open"); return; }
-    legend.classList.remove("open");
-    setFilter(b.dataset.lf);
-  });
   $("list").onclick = (e) => { const b = e.target.closest(".item"); if (b) openDetail(b.dataset.id); };
   $("zoomIn").onclick = () => M.zoomBy(1); $("zoomOut").onclick = () => M.zoomBy(-1);
   $("mapThemeBtn").onclick = () => {
@@ -539,7 +527,7 @@ function bind() {
     store.set("theme", d.dataset.theme); applyScheme();
   };
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyScheme);
-  $("shareHdr").onclick = () => share("WineTripMap: cantine, degustazioni ed enoteche vicino a te", location.origin + location.pathname);
+  $("shareHdr").onclick = () => share("WineTripMap: le cantine vicino a te, in tutto il mondo", location.origin + location.pathname);
   // Invio: il comune o la cantina con esattamente quel nome, altrimenti la ricerca del luogo
   $("searchForm").onsubmit = (e) => {
     e.preventDefault(); suggest();
@@ -558,7 +546,7 @@ function bind() {
   $("results").onclick = (e) => { const li = e.target.closest("li[data-i]"); if (li) pick(+li.dataset.i); };
   document.querySelectorAll("[data-close]").forEach((b) => b.onclick = closeSearch);
   $("searchModal").onclick = (e) => { if (e.target === $("searchModal")) closeSearch(); };
-  addEventListener("keydown", (e) => { if (e.key === "Escape") { closeSearch(); toggleKm(false); legend.classList.remove("open"); } });
+  addEventListener("keydown", (e) => { if (e.key === "Escape") { closeSearch(); toggleKm(false); } });
   matchMedia(MOB_MQ).addEventListener("change", () => setSheet(!mapOnly() && isMobile()));
   $("footYear").textContent = new Date().getFullYear();
 }
@@ -573,16 +561,16 @@ async function start() {
   const saved = store.get("me"), last = store.get("lastgps");
   const startAt = saved || last;
   await M.create($("map"), { lib: "maplibre", style: STYLE, styleLight: STYLE, dark: dark(), palette: PALETTE,
-    center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 42.5, lng: 12.5 },
-    bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : ITALY, padding: 12 });
+    center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 30, lng: 10 },
+    bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : WORLD, padding: 12 });
   state.mapsReady = true; app.classList.add("mapready");
   M.setBottomPadding(mapPad(), 0);
   M.on("moveend", () => { syncMeBtn(); checkArea(); });
   M.on("movestart", () => clearTimeout(autoTimer));
-  M.on("dragstart", () => { state.userMoved = true; toggleKm(false); document.querySelector(".legend").classList.remove("open"); $("meBtn").setAttribute("aria-pressed", "false"); });
+  M.on("dragstart", () => { state.userMoved = true; toggleKm(false); $("meBtn").setAttribute("aria-pressed", "false"); });
   M.on("pinclick", (id) => pinTip(id));
   M.on("click", () => {
-    document.querySelector(".legend").classList.remove("open"); toggleKm(false);
+    toggleKm(false);
     if (isMobile() && !mapOnly()) { setSheet(false); return; }
     if (state.sel && $("detail").hidden) { state.sel = null; drawMarkers(); }
   });
