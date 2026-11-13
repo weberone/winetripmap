@@ -10,6 +10,7 @@ Progetto separato da SkateboardMap: lavora solo in questa cartella e nel core co
 ## Hosting
 - Infomaniak, stesso hosting di skateboardmap.com ("Hosting Web 1"), sito PHP creato il 2026-11-13 con certificato SSL gratuito.
 - Per ora online c'è solo la pagina "in arrivo" (`site/index.html`).
+- Utente FTP dedicato `5r1oeu_winetrip`, limitato a `/sites/winetripmap.com` (vede solo questo sito; server `5r1oeu.ftp.infomaniak.com`). La password la conosce solo l'utente: va nei GitHub Secrets, mai in chat o nei file.
 - Deploy automatico come SkateboardMap (GitHub Action FTPS) da impostare quando c'è il repository GitHub.
 
 ## Regole (come SkateboardMap)
