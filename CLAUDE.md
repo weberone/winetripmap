@@ -9,12 +9,19 @@ Progetto separato da SkateboardMap: lavora solo in questa cartella e nel core co
 
 ## Hosting
 - Infomaniak, stesso hosting di skateboardmap.com ("Hosting Web 1"), sito PHP creato il 2026-11-13 con certificato SSL gratuito.
-- Per ora online c'è solo la pagina "in arrivo" (`site/index.html`).
+- La home è ancora la pagina "in arrivo" (`site/index.html`); la mappa è online in prova su `/mappa/` (noindex, non linkata).
 - Utente FTP dedicato `5r1oeu_winetrip`, limitato a `/sites/winetripmap.com` (vede solo questo sito; server `5r1oeu.ftp.infomaniak.com`). La password la conosce solo l'utente: va nei GitHub Secrets, mai in chat o nei file.
 - Repository GitHub privati: `weberone/winetripmap` (questa cartella) e `weberone/mapcore` (il core).
 - Deploy automatico a ogni push su main (`.github/workflows/deploy.yml`, come SkateboardMap): scarica il core con una deploy key in sola lettura, lo copia in `site/core/`, comprime il JS, toglie i commenti e carica solo `site/` via FTPS.
 - Secrets del repository winetripmap: `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, `MAPCORE_DEPLOY_KEY`.
 - Una modifica al solo core non va online da sola: serve un push su winetripmap (o rilanciare il workflow a mano).
+
+## Mappa (`site/mappa/`, `site/js/app.js`, `site/css/app.css`)
+- Stessa esperienza di SkateboardMap (posizione, raggio, radar che scopre i pin, Cerca in questa zona, più vicine, elenco, scheda, pannello del telefono), con il modulo mappa del core (MapLibre + OpenFreeMap, colori passati con `palette`).
+- Solo cantine (`craft=winery`), in tutto il mondo. Enoteche e degustazioni tolte per scelta dell'utente: eventualmente dopo.
+- Dati: `node tools/osm-cantine.mjs` scarica da Overpass (server pubblici spesso pieni: riprova da solo) e scrive `site/data/cantine.json` (tutti i punti, leggeri) e `site/data/det/<lat10>_<lng10>.json` (dettagli, caricati con la scheda).
+- Ricerca luoghi: `site/api/geocode.php` (Nominatim con memoria, prima in Italia poi nel mondo); in locale senza PHP l'app chiama Nominatim direttamente.
+- Prova in locale: `python3 -m http.server 8642` dentro `site/` → http://127.0.0.1:8642/mappa/
 
 ## Regole (come SkateboardMap)
 - Zero spesa: niente servizi a pagamento per mappe, immagini o geocoding.
