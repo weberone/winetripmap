@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>WineTripMap · mappa delle cantine</title>
+<meta name="description" content="WineTripMap: la mappa delle cantine, delle degustazioni e delle enoteche.">
+<meta name="robots" content="noindex"><!-- in prova: da togliere quando la mappa sostituisce la pagina "in arrivo" -->
+<meta name="theme-color" content="#1a0f12">
+<!-- il CSS di MapLibre prima del nostro: valgono le nostre regole per fumetti e pulsanti -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header class="bar">
+  <a class="logo" href="/">Wine<b>Trip</b>Map</a>
+  <form class="search" role="search" onsubmit="return false">
+    <input id="q" type="search" placeholder="Cerca cantina o comune" autocomplete="off" aria-label="Cerca cantina o comune">
+    <ul id="results" class="results" hidden></ul>
+  </form>
+</header>
+<nav class="filters" aria-label="Cosa mostrare">
+  <button type="button" class="chip on" data-t="c" aria-pressed="true"><i class="dot t-c"></i>Cantine <span></span></button>
+  <button type="button" class="chip on" data-t="d" aria-pressed="true"><i class="dot t-d"></i>Degustazioni <span></span></button>
+  <button type="button" class="chip on" data-t="e" aria-pressed="true"><i class="dot t-e"></i>Enoteche <span></span></button>
+</nav>
+<main id="map" aria-label="Mappa"></main>
+<div class="zoom">
+  <button type="button" id="zin" aria-label="Avvicina">+</button>
+  <button type="button" id="zout" aria-label="Allontana">−</button>
+  <button type="button" id="me" aria-label="Dove sono">◎</button>
+</div>
+<p id="status" class="status" role="status">Carico le cantine…</p>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+<script src="/core/js/map/map-gl.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
