@@ -9,16 +9,17 @@
   :root{--bg:#1a0f12;--ink:#f6efe9;--wine:#9b1b30;--muted:#c9b8b0}
   *{box-sizing:border-box;margin:0}
   body{min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 50% 30%,#3a141d,var(--bg) 70%);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:24px 16px;text-align:center}
-  .logo{font-weight:800;font-size:clamp(34px,8vw,64px);letter-spacing:-.02em}
-  .logo b{color:#e0435b}
-  .dot{display:inline-block;width:.32em;height:.32em;border-radius:50%;background:var(--wine);box-shadow:0 0 0 .08em #e0435b;margin:0 .08em .18em}
+  .logo{font-weight:800;font-size:clamp(38px,9vw,72px);line-height:1;letter-spacing:-.03em;white-space:nowrap}
+  .logo b{color:#e0435b;font-weight:800}
+  .wi{position:relative}
+  .wpin{position:absolute;left:50%;top:-.2em;width:.4em;height:.53em;transform:translateX(-50%);fill:#e0435b;overflow:visible}
   p{color:var(--muted);margin-top:14px;font-size:clamp(16px,3.6vw,20px)}
   .soon{display:inline-block;margin-top:28px;padding:8px 18px;border-radius:99px;border:1px solid #e0435b;color:#ffd7dd;font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:13px}
 </style>
 </head>
 <body>
 <main>
-  <h1 class="logo">Wine<b>Trip</b><span class="dot"></span>Map</h1>
+  <h1 class="logo" aria-label="WineTripMap">wine<b>tr<span class="wi">ı<svg class="wpin" viewBox="0 0 12 16" aria-hidden="true"><path d="M6 15.5S1 10.3 1 6a5 5 0 0 1 10 0c0 4.3-5 9.5-5 9.5z"/><circle cx="6" cy="6" r="1.9" fill="#1a0f12"/></svg></span>p</b>map</h1>
   <p>La mappa delle cantine e dei percorsi del vino.<br><span lang="en">The map of wineries and wine routes.</span></p>
   <span class="soon">In arrivo · Coming soon</span>
 </main>

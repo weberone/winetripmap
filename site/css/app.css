@@ -30,9 +30,12 @@ button,a,input,select{-webkit-tap-highlight-color:transparent;touch-action:manip
 header.top{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding-block:8px;min-width:0;z-index:5;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   border-bottom:1px solid var(--line);background:var(--surface)}
-.logo{display:flex;align-items:center;gap:7px;flex:none;text-decoration:none;color:var(--ink);font:700 20px/1 var(--f-display);letter-spacing:-.01em}
-.logo b{color:var(--accent);font-weight:700}
-.logo .lpin{width:20px;height:27px;flex:none}
+.logo{display:flex;align-items:center;flex:none;text-decoration:none;color:var(--ink);font-size:21px;line-height:1}
+/* logo: scritta minuscola, il puntino della i di trip è il pin */
+.wm{font:800 1em/1 var(--f-body);letter-spacing:-.03em;white-space:nowrap}
+.wm b{color:var(--accent);font-weight:800}
+.wm .wi{position:relative}
+.wm .wpin{position:absolute;left:50%;top:-.2em;width:.4em;height:.53em;transform:translateX(-50%);fill:var(--accent);overflow:visible}
 .hstat{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0}
 .status{min-width:0;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .info{flex:none;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center;padding:0}
@@ -89,8 +92,7 @@ aside.panel{grid-row:3;background:var(--surface);border-top:1px solid var(--line
 /* ---------- mappa ---------- */
 main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 #map{position:absolute;inset:0}
-.map-logo{position:absolute;inset:0;display:grid;place-items:center;font:700 clamp(26px,6vw,44px)/1 var(--f-display);color:var(--ink);opacity:.35;pointer-events:none}
-.map-logo b{color:var(--accent)}
+.map-logo{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(28px,6.5vw,48px);color:var(--ink);opacity:.35;pointer-events:none}
 .mapbtn{position:absolute;top:12px;right:12px;z-index:2;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
   background:var(--surface);color:var(--ink);border:1.5px solid var(--line);box-shadow:0 3px 10px rgb(0 0 0 / .25);padding:0}
 .mapbtn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
@@ -241,8 +243,7 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
   aside.panel{border-top:0;border-right:1px solid var(--line);overflow-y:auto}
   .app.map-only aside.panel{overflow-y:auto}
   .app.has-detail .controls,.app.has-detail .filters{display:none}
-  .logo{font-size:24px}
-  .logo .lpin{width:22px;height:30px}
+  .logo{font-size:25px}
   .status{font-size:14px}
   .legend{display:flex}
   .fab{display:none}
