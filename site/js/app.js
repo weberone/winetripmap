@@ -278,7 +278,6 @@ async function setMe(lat, lng, name, gps, msg) {
   const prev = state.center;
   state.me = { lat, lng, name, gps };
   state.center = { lat, lng };
-  store.set("me", gps ? null : state.me);
   $("worldAsk").hidden = true;
   $("locmsg").textContent = msg || "";
   $("searchHere").hidden = true; updatePreview();
@@ -558,8 +557,11 @@ async function start() {
   setSheet(false);
   setRadius(state.radiusKm);
   loadData().catch(() => {});
-  const saved = store.get("me"), last = store.get("lastgps");
-  const startAt = saved || last;
+  // si parte dalla tua posizione (se il permesso c'è già), altrimenti dal mondo: mai dall'ultimo luogo cercato
+  store.set("me", null); // le versioni di prova lo ricordavano
+  let perm = "prompt";
+  try { perm = (await navigator.permissions.query({ name: "geolocation" })).state; } catch (e) {}
+  const last = store.get("lastgps"), startAt = perm === "granted" ? last : null;
   await M.create($("map"), { lib: "maplibre", style: STYLE, styleLight: STYLE, dark: dark(), palette: PALETTE,
     center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 30, lng: 10 },
     bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : WORLD, padding: 12 });
@@ -579,14 +581,11 @@ async function start() {
   if (shared) {
     await loadData().catch(() => {});
     const x = state.byId.get(shared);
-    if (x) { state.center = { lat: x.lat, lng: x.lng }; if (saved) state.me = saved; fitToRadius(); drawMe(); await loadArea(); renderList(); openDetail(x.id, false); return; }
+    if (x) { state.center = { lat: x.lat, lng: x.lng }; fitToRadius(); drawMe(); await loadArea(); renderList(); openDetail(x.id, false); return; }
   }
-  if (saved) await setMe(saved.lat, saved.lng, saved.name, false, saved.name ? `Luogo: ${saved.name}` : "");
-  // posizione: se il permesso c'è già si usa subito, altrimenti si chiede (o si invita a cercare un luogo)
-  let perm = "prompt";
-  try { perm = (await navigator.permissions.query({ name: "geolocation" })).state; } catch (e) {}
-  if (perm === "granted") { if (!(await applyPosition(await getPosition(false), true)) && !saved) askWhere(); }
-  else if (!saved) { askWhere(); if (perm === "prompt" && last) restartGeo(); }
+  // posizione: se il permesso c'è già si usa subito, altrimenti l'invito "Dove vuoi andare?" (cerca un luogo o usa la posizione)
+  if (perm === "granted") { if (!(await applyPosition(await getPosition(false), true))) askWhere(); }
+  else askWhere();
 }
 function askWhere() { $("worldAsk").hidden = false; setStatus("Dove vuoi andare?"); renderList(); }
 
