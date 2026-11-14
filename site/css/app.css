@@ -4,8 +4,8 @@
   --bg:#efe9e4; --surface:#fbf7f2; --ink:#2a1a1d; --muted:#7d6e6a; --line:#e2d6cf;
   --accent:#8e1b33; --accent-ink:#ffffff; --rose:#d0506a; --gold:#b8860b; --me:#2563eb;
   --f-display:Georgia,"Times New Roman",serif;
-  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --f-mono:ui-monospace,Menlo,Consolas,monospace;
+  --f-body:"Work Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
   --radar-fg:#2a1a1d;
   color-scheme:light;
 }
@@ -203,8 +203,10 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 .pin-nolabels .plabel{display:none}
 .me-dot{width:16px;height:16px;border-radius:50%;background:#4dabf7;border:2.5px solid #fff;box-shadow:0 0 0 6px rgba(77,171,247,.25),0 1px 4px rgba(0,0,0,.5)}
 .rv-hide{opacity:0!important;pointer-events:none}
-.rv-pop{transform-origin:50% 100%;animation:rvPop .5s cubic-bezier(.2,.8,.3,1.35)}
-@keyframes rvPop{0%{opacity:0;scale:.35;filter:drop-shadow(0 0 0 var(--accent))}45%{opacity:1;filter:drop-shadow(0 0 7px var(--accent))}100%{scale:1;filter:drop-shadow(0 0 0 transparent)}}
+/* comparsa del pin: breve caduta dall'alto sul punto. Si anima l'immagine interna, non il marker:
+   il marker ha già la transform con cui MapLibre lo posiziona, e scalarlo lo faceva arrivare di lato */
+.rv-pop .pin,.rv-pop .plabel{animation:rvDrop .26s cubic-bezier(.3,.7,.4,1.15)}
+@keyframes rvDrop{0%{opacity:0;translate:0 -16px}55%{opacity:1}100%{translate:0 0}}
 /* fumetto sopra il pin: nome, comune, distanza; un tocco apre la scheda */
 .sk-pop .maplibregl-popup-content{padding:0;border-radius:12px;background:var(--surface);color:var(--ink);box-shadow:0 6px 20px rgb(0 0 0 / .45);overflow:hidden}
 .sk-pop .maplibregl-popup-tip{border-top-color:var(--surface)!important}
@@ -254,3 +256,34 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
   .worldask{top:16px}
   .maplibregl-ctrl-bottom-right{bottom:0}
 }
+
+/* ---------- barra dei pulsanti come SkateboardMap ----------
+   In basso, un unico blocco centrato sul radar (grande, 58px): a sinistra Cerca, a destra posizione e km (passo 50px).
+   Zoom + − e chiaro/scuro in un'unica colonna in alto a destra. Stessa disposizione su computer e telefono. */
+.app .mapbtn.search,.app .mapbtn.me,.app .kmbtn{top:auto!important;right:auto!important;bottom:36px}
+.app .mapbtn.search{left:calc(50% - 81px)!important}
+.app .mapbtn.me{left:calc(50% + 39px)!important}
+.app .kmbtn,.app .kmpick{left:calc(50% + 89px)!important;right:auto!important}
+.app .kmpick{top:auto!important;bottom:86px} /* la scelta dei km sopra il pulsante */
+@keyframes kmIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+#previewBtn{top:auto!important;right:auto!important;left:50%!important;bottom:28px;transform:translateX(-50%);width:58px;height:58px}
+#previewBtn svg{width:24px;height:24px}
+#previewBtn:active{transform:translateX(-50%) scale(.95)}
+.zoombtns{top:12px;bottom:auto!important;right:12px;gap:0;border-radius:10px;overflow:hidden;background:var(--surface);
+  border:1.5px solid var(--line);box-shadow:0 3px 10px rgb(0 0 0 / .25)}
+.zoombtns button{width:40px;height:40px;border:0;border-radius:0;box-shadow:none;background:none;font:500 24px/1 var(--f-body)}
+.zoombtns button + button{border-top:1px solid var(--line)}
+.zoombtns button:active{background:var(--line)}
+.zoombtns .mtbtn{order:3;border-top:1px solid var(--line)}
+.zoombtns #zoomIn{border-top:0}
+.mtbtn::before{width:16px;height:16px}
+/* "Cerca in questa zona" e scritta del radar sopra la barra */
+.here{bottom:100px}
+.nores{bottom:104px}
+/* telefono a pannello chiuso: la barra sta sopra l'onda del pannello */
+.app.mob.map-only .mapbtn.search,.app.mob.map-only .mapbtn.me,.app.mob.map-only .kmbtn{bottom:calc(68px + env(safe-area-inset-bottom,0px))}
+.app.mob.map-only #previewBtn{bottom:calc(60px + env(safe-area-inset-bottom,0px))}
+.app.mob.map-only .kmpick{bottom:calc(118px + env(safe-area-inset-bottom,0px))}
+.app.mob.map-only .here{bottom:calc(132px + env(safe-area-inset-bottom,0px))}
+.app.mob.map-only .nores{bottom:calc(136px + env(safe-area-inset-bottom,0px))}
+.app.mob .zoombtns{top:12px;bottom:auto!important}
