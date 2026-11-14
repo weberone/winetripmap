@@ -199,6 +199,9 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 #map{transition:opacity .3s}
 #map.g-wait{opacity:0}
 .pinwrap{position:relative}
+/* MapLibre e Mapbox posizionano il marker con position:absolute + transform: se diventa relative, i pin si impilano
+   uno sotto l'altro (ognuno spostato in basso di quelli prima) e finiscono fuori posto */
+.maplibregl-marker.pinwrap,.mapboxgl-marker.pinwrap{position:absolute}
 .pinwrap .pin{display:block;filter:drop-shadow(0 2px 3px rgb(0 0 0 / .3))}
 .plabel{position:absolute;top:100%;transform:translateX(-50%);margin-top:1px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 11px/1.2 var(--f-body);pointer-events:none}
 :root[data-mapscheme="light"] .plabel{color:#2a1a1d;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 4px #fff}
@@ -227,9 +230,9 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 .modal .card{position:relative;width:100%;max-width:480px;max-height:calc(100dvh - 90px);overflow:auto;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:18px 18px 14px;box-shadow:0 12px 40px rgb(0 0 0 / .4)}
 .modal h3{margin:0 0 12px;font:700 22px var(--f-display)}
 .modal .x{position:absolute;top:10px;right:10px}
-.search{display:flex;gap:6px}
-.search input{flex:1;min-width:0;font:500 16px var(--f-body);padding:8px 10px;border-radius:9px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);outline:none}
-.search input:focus{border-color:var(--accent)}
+form.search{display:flex;gap:6px}
+form.search input{flex:1;min-width:0;font:500 16px var(--f-body);padding:8px 10px;border-radius:9px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);outline:none}
+form.search input:focus{border-color:var(--accent)}
 .results{list-style:none;margin:10px 0 0;padding:0}
 .results:empty{display:none}
 .results li{display:flex;align-items:center;gap:8px;padding:9px 8px;border-radius:8px;cursor:pointer}

@@ -421,6 +421,8 @@ async function openDetail(id, fly = true) {
   if (!wasOpen) pushLayer("detail");
   drawMarkers();
   if (fly) { tipFly = Date.now(); M.flyTo({ lat: x.lat, lng: x.lng }, 14); }
+  // telefono: sopra la scheda resta una striscia di mappa; a pannello salito (0,3 s) la cantina va al centro, da vicino
+  else if (isMobile()) setTimeout(() => { if (state.sel === id && state.mapsReady) { tipFly = Date.now(); M.flyTo({ lat: x.lat, lng: x.lng }, 13); } }, 360);
   $("searchHere").hidden = true; updatePreview();
   const d = await loadDetails(x);
   if (state.sel !== id) return; // nel frattempo ne hai aperta un'altra
@@ -651,7 +653,7 @@ function load(url, css) {
     e.src = url; e.onload = res; e.onerror = () => { delete loaded[url]; rej(new Error("load " + url)); }; document.head.append(e);
   });
 }
-const MODULE = { google: "/core/js/map/map-google.js", gl: "/core/js/map/map-gl.js" };
+const MODULE = { google: "/core/js/map/map-google.js?v=3", gl: "/core/js/map/map-gl.js?v=3" };
 async function useModule(m) { if (window.SkateMapKind !== m) { delete loaded[MODULE[m]]; await load(MODULE[m]); window.SkateMapKind = m; } }
 async function counter(have, skip) {
   try { const r = await fetch(`/api/counter.php?have=${have.join(",")}&skip=${skip.join(",")}`, { cache: "no-store" }); if (r.ok) return (await r.json()).use; } catch (e) {}
