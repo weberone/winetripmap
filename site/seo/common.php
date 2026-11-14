@@ -98,7 +98,7 @@ function dist(float $k): string { return $k < 1 ? round($k * 1000) . ' m' : numb
 const SEO_CACHE_TTL = 12 * 3600;
 function seo_cache(): void {
   if ($_SERVER['REQUEST_METHOD'] !== 'GET') return;
-  $h = md5((string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) . '|' . seo_lang() . '|' . @filemtime(DATA . '/seo/index.json'));
+  $h = md5((string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) . '|' . seo_lang() . '|' . @file_get_contents(DATA . '/seo/v.txt') . '|' . @filemtime(__DIR__ . '/i18n.php'));
   $key = sys_get_temp_dir() . '/wtm-seo/' . substr($h, 0, 2) . '/' . $h . '.gz';
   if (is_file($key) && filemtime($key) > time() - SEO_CACHE_TTL) {
     header('Content-Type: text/html; charset=utf-8'); header('Cache-Control: public, max-age=3600'); header('X-Cache: hit'); header('Vary: Accept-Encoding');

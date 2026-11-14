@@ -32,6 +32,7 @@ export function seoDati() {
   writeFileSync(join(dir, 'index.json'), JSON.stringify(index));
   for (const [cc, P] of Object.entries(per)) writeFileSync(join(dir, cc.toLowerCase() + '.json'), JSON.stringify(P));
   writeFileSync(join(dir, 'w.json'), JSON.stringify(wmap));
+  writeFileSync(join(dir, 'v.txt'), new Date().toISOString()); // versione dei dati: le copie delle pagine (seo/common.php) si rifanno
   console.log(`pagine SEO: ${Object.keys(index).length} stati, ${Object.values(per).reduce((a, p) => a + Object.keys(p.r).length, 0)} regioni, ${Object.values(per).reduce((a, p) => a + Object.keys(p.ci).length, 0)} comuni, ${Object.keys(wmap).length} cantine → ${dir}`);
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
