@@ -1,6 +1,7 @@
 <?php
-// GET api/geocode.php?q=...&lang=it[&cc=it] → { name, full, lat, lng } oppure { error: "not_found" } (404)
+// GET api/geocode.php?q=...&lang=it[&cc=it] → { name, full, lat, lng, rank } oppure { error: "not_found" } (404)
 // cc: cerca solo in quel paese (l'app prova prima l'Italia: "Alba" è Alba in Piemonte, non Alba in Francia)
+// rank: place_rank di Nominatim (fino a 25 è un luogo: regione, città, paese, frazione; oltre è una via, un locale, un negozio)
 // Ricerca di un luogo con Nominatim di OpenStreetMap: gratuita. Regole di Nominatim (come in SkateboardMap):
 // al massimo una richiesta al secondo (lock condiviso), user agent riconoscibile, solo all'invio, risultati tenuti 30 giorni.
 header('Content-Type: application/json; charset=utf-8');
@@ -10,7 +11,7 @@ $q = trim(mb_substr((string)($_GET['q'] ?? ''), 0, 120));
 if (mb_strlen($q) < 2) out(['error' => 'q'], 400);
 $lang = preg_match('/^[a-z]{2}$/', (string)($_GET['lang'] ?? '')) ? $_GET['lang'] : 'it';
 $cc = preg_match('/^[a-z]{2}$/', (string)($_GET['cc'] ?? '')) ? $_GET['cc'] : '';
-$f = sys_get_temp_dir() . '/wtm-geo-' . md5(mb_strtolower($q) . "|$lang|$cc");
+$f = sys_get_temp_dir() . '/wtm-geo2-' . md5(mb_strtolower($q) . "|$lang|$cc");
 if (is_file($f) && filemtime($f) > time() - 30 * 86400) {
   $r = json_decode((string)file_get_contents($f), true);
 } else {
@@ -24,7 +25,7 @@ if (is_file($f) && filemtime($f) > time() - 30 * 86400) {
   ftruncate($lock, 0); rewind($lock); fwrite($lock, (string)microtime(true)); flock($lock, LOCK_UN); fclose($lock);
   if ($code !== 200) out(['error' => 'lookup'], 502);
   $x = (json_decode((string)$res, true) ?: [])[0] ?? null;
-  $r = $x ? ['name' => $x['name'] ?: $q, 'full' => $x['display_name'] ?? '', 'lat' => (float)$x['lat'], 'lng' => (float)$x['lon']] : ['error' => 'not_found'];
+  $r = $x ? ['name' => $x['name'] ?: $q, 'full' => $x['display_name'] ?? '', 'lat' => (float)$x['lat'], 'lng' => (float)$x['lon'], 'rank' => (int)($x['place_rank'] ?? 30)] : ['error' => 'not_found'];
   @file_put_contents($f, json_encode($r));
 }
 header('Cache-Control: public, max-age=86400');

@@ -456,13 +456,16 @@ async function geocode(q) {
   const msg = (m) => { $("searchMsg").textContent = m; };
   const go = (lat, lng, name, full) => { closeSearch(); state.userMoved = true; setMe(lat, lng, name || q, false, `Luogo: ${full || name || q}`); };
   msg(`Cerco “${q}”…`);
-  // prima in Italia ("Alba" è quella delle Langhe), poi nel resto del mondo
-  for (const cc of ["it", ""]) {
-    const p = await lookup(q, cc);
-    if (p === "down") return msg("La ricerca non risponde, riprova tra poco.");
-    if (p) return go(p.lat, p.lng, p.name, p.full);
-  }
-  msg(`Non trovo “${q}”.`);
+  // prima in Italia ("Alba" è quella delle Langhe), poi nel resto del mondo. Dall'Italia vale subito solo un luogo
+  // (città, paese, frazione: rank fino a 25), non un locale col nome uguale ("New York" è un bar a Roma, non la città)
+  const isPlace = (p) => (p.rank ?? 30) <= 25;
+  const it = await lookup(q, "it");
+  if (it === "down") return msg("La ricerca non risponde, riprova tra poco.");
+  if (it && isPlace(it)) return go(it.lat, it.lng, it.name, it.full);
+  const w = await lookup(q, "");
+  if (w && w !== "down" && (isPlace(w) || !it)) return go(w.lat, w.lng, w.name, w.full);
+  if (it) return go(it.lat, it.lng, it.name, it.full);
+  msg(w === "down" ? "La ricerca non risponde, riprova tra poco." : `Non trovo “${q}”.`);
 }
 // un luogo dal nostro server (con memoria); se non risponde (o in prova locale senza PHP) da Nominatim direttamente.
 // Restituisce il luogo, null se non esiste, "down" se nessuno risponde.
@@ -477,7 +480,7 @@ async function lookup(q, cc) {
     const r = await fetch("https://nominatim.openstreetmap.org/search?" + new URLSearchParams(Object.assign({ q, format: "jsonv2", limit: "1", "accept-language": "it" }, cc ? { countrycodes: cc } : {})));
     if (!r.ok) return "down";
     const x = (await r.json())[0];
-    return x ? { lat: +x.lat, lng: +x.lon, name: x.name, full: x.display_name } : null;
+    return x ? { lat: +x.lat, lng: +x.lon, name: x.name, full: x.display_name, rank: +x.place_rank } : null;
   } catch (e) { return "down"; }
 }
 
