@@ -10,7 +10,7 @@ function page_start(string $title, string $right = '', string $logoHref = '/mapp
     . '<title>' . h($title) . ' · WineTripMap</title><meta name="robots" content="noindex">'
     // tema prima di disegnare (niente lampo): quello scelto nella mappa, altrimenti quello del sistema
     . '<script>try{const t=JSON.parse(localStorage.getItem("wtm.theme"));const d=document.documentElement;d.dataset.scheme=t==="light"||t==="dark"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}catch(e){}</script>'
-    . '<meta name="theme-color" content="#8e1b33"><link rel="stylesheet" href="/fonts/fonts.css"><link rel="stylesheet" href="/css/pages.css?v=1">'
+    . '<meta name="theme-color" content="#8e1b33"><link rel="stylesheet" href="/fonts/fonts.css"><link rel="stylesheet" href="/css/pages.css?v=2">'
     . implode('', $extraHead) . '</head><body>'
     . '<header class="topbar"><a class="logo" href="' . h($logoHref) . '" aria-label="WineTripMap">' . WTM_WORDMARK . '</a><div class="topbar-r">' . $right . '</div></header>';
 }

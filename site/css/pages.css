@@ -32,7 +32,7 @@ h1,h2,h3{line-height:1.2}
 .pill{display:inline-block;min-width:20px;padding:0 6px;border-radius:99px;background:var(--accent);color:var(--accent-ink);font-size:12px;text-align:center;font-weight:700}
 .navlink.on .pill{background:var(--accent-ink);color:var(--accent)}
 .anav{display:none;font:600 15px var(--f-body);color:var(--accent-ink);background:var(--accent);border:0;border-radius:99px;padding:8px 14px;max-width:60vw}
-@media (max-width:760px){.topbar .navlink{display:none}.anav{display:block}}
+@media (max-width:760px){.topbar:has(.anav) .navlink{display:none}.anav{display:block}}
 
 .w{max-width:760px;margin:0 auto;padding:0 16px 48px}
 .w.wide{max-width:1200px}
