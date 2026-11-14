@@ -705,7 +705,7 @@ function showGlobe() {
   // la Terra intera, non tagliata: diametro del globo ≈ 512·2^zoom/π px, qui l'80% del lato corto della mappa
   const r = $("map").getBoundingClientRect(), side = Math.min(r.width, r.height - (isMobile() ? 140 : 0));
   if (M.setView && side > 0) M.setView({ lat: 25, lng: 12 }, Math.log2(side * 0.8 * Math.PI / 512));
-  if (!noMotion()) M.spin(true);
+  if (!noMotion()) M.spin(true, 1); // piano: un giro ogni 6 minuti
   const stop = () => M.spin(false);
   ["pointerdown", "wheel", "touchstart"].forEach((ev) => $("map").addEventListener(ev, stop, { passive: true, once: true }));
 }
@@ -725,7 +725,7 @@ function load(url, css) {
     e.src = url; e.onload = res; e.onerror = () => { delete loaded[url]; rej(new Error("load " + url)); }; document.head.append(e);
   });
 }
-const MODULE = { google: "/core/js/map/map-google.js?v=3", gl: "/core/js/map/map-gl.js?v=4" };
+const MODULE = { google: "/core/js/map/map-google.js?v=3", gl: "/core/js/map/map-gl.js?v=5" };
 async function useModule(m) { if (window.SkateMapKind !== m) { delete loaded[MODULE[m]]; await load(MODULE[m]); window.SkateMapKind = m; } }
 async function counter(have, skip) {
   try { const r = await fetch(`/api/counter.php?have=${have.join(",")}&skip=${skip.join(",")}`, { cache: "no-store" }); if (r.ok) return (await r.json()).use; } catch (e) {}

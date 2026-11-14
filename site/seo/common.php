@@ -146,7 +146,7 @@ function seo_head(string $title, string $desc, string $path, array $jsonld = [],
 <meta name="theme-color" content="#8e1b33">
 <script>try{const t=JSON.parse(localStorage.getItem("wtm.theme"));if(t==="light"||t==="dark")document.documentElement.dataset.scheme=t}catch(e){}</script>
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/seo/seo.css?v=1">
+<link rel="stylesheet" href="/seo/seo.css?v=2">
 <?php foreach ($jsonld as $j): ?><script type="application/ld+json"><?= json_encode($j, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?></script>
 <?php endforeach; ?>
 </head>

@@ -3,7 +3,7 @@
 :root{
   --bg:#efe9e4; --surface:#fbf7f2; --ink:#2a1a1d; --muted:#7d6e6a; --line:#e2d6cf;
   --accent:#8e1b33; --accent-ink:#ffffff; --rose:#d0506a; --gold:#b8860b; --me:#2563eb;
-  --f-display:Georgia,"Times New Roman",serif;
+  --f-display:"Work Sans",system-ui,-apple-system,"Segoe UI",sans-serif; /* titoli: il carattere del logo */
   --f-body:"Work Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
   --radar-fg:#2a1a1d;
@@ -88,7 +88,7 @@ aside.panel{grid-row:3;background:var(--surface);border-top:1px solid var(--line
 /* scheda */
 .detail{padding:0 16px 20px}
 .dhead{position:sticky;top:0;z-index:1;display:flex;align-items:flex-start;gap:8px;padding:14px 0 10px;background:var(--surface)}
-.dhead h2{margin:0;flex:1;font:700 22px/1.2 var(--f-display);overflow-wrap:anywhere}
+.dhead h2{margin:0;flex:1;font:800 22px/1.2 var(--f-display);letter-spacing:-.02em;overflow-wrap:anywhere}
 .dhead .x{flex:none}
 .dkind{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-bottom:10px}
 .dline{margin:6px 0;font-size:15px;line-height:1.45}
@@ -163,7 +163,7 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 
 /* invito iniziale */
 .worldask{position:absolute;left:12px;right:12px;top:66px;z-index:6;padding:14px 16px;border-radius:12px;background:var(--accent);color:var(--accent-ink);max-width:420px;margin:0 auto;box-shadow:0 8px 24px rgb(0 0 0 / .3)}
-.worldask b{display:block;font:700 18px/1.2 var(--f-display);margin-bottom:4px}
+.worldask b{display:block;font:800 18px/1.2 var(--f-display);letter-spacing:-.02em;margin-bottom:4px}
 .worldask p{margin:0 0 10px;font-size:14px;line-height:1.4}
 .wa-btns{display:flex;gap:6px;flex-wrap:wrap}
 .worldask .btn{background:transparent;color:var(--accent-ink);border-color:var(--accent-ink)}
@@ -237,7 +237,7 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 /* ---------- finestra di ricerca ---------- */
 .modal{position:fixed;inset:0;z-index:50;display:grid;place-items:start center;padding:calc(60px + env(safe-area-inset-top,0px)) 16px 16px;background:rgb(0 0 0 / .45)}
 .modal .card{position:relative;width:100%;max-width:480px;max-height:calc(100dvh - 90px);overflow:auto;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:18px 18px 14px;box-shadow:0 12px 40px rgb(0 0 0 / .4)}
-.modal h3{margin:0 0 12px;font:700 22px var(--f-display)}
+.modal h3{margin:0 0 12px;font:800 22px var(--f-display);letter-spacing:-.02em}
 .modal .x{position:absolute;top:10px;right:10px}
 form.search{display:flex;gap:6px}
 form.search input{flex:1;min-width:0;font:500 16px var(--f-body);padding:8px 10px;border-radius:9px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);outline:none}
