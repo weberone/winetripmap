@@ -84,6 +84,20 @@ if ($("favs")) {
     } catch (e) { $("favs").innerHTML = `<li class="err">Non riesco a caricare le preferite.</li>`; }
   };
   load();
+  // trip: si aprono nella mappa (?trip=id)
+  const loadTrips = async () => {
+    try {
+      const d = await api("", undefined, "/api/trip.php");
+      $("trips").innerHTML = d.items.length ? d.items.map((x) => `<li><a href="/mappa/?trip=${x.id}"><b>${esc(x.name)}</b><small>${x.n === 1 ? "1 tappa" : x.n + " tappe"}</small></a>
+        <button class="btn small" data-trip="${x.id}">Elimina</button></li>`).join("")
+        : `<li class="muted">Ancora nessuno: nella mappa apri una cantina e tocca «Aggiungi al trip».</li>`;
+      $("trips").querySelectorAll("button[data-trip]").forEach((b) => b.onclick = async () => {
+        if (!confirm("Eliminare questo trip?")) return;
+        b.disabled = true; await api("", { id: +b.dataset.trip, del: true }, "/api/trip.php").catch(() => {}); loadTrips();
+      });
+    } catch (e) { $("trips").innerHTML = `<li class="err">Non riesco a caricare i trip.</li>`; }
+  };
+  loadTrips();
   if ($("resend")) $("resend").onclick = async () => {
     $("resend").disabled = true;
     try { const d = await api("resend", {}); $("resendMsg").textContent = d.ok ? "Mandato." : "La posta del sito non è ancora attiva."; }

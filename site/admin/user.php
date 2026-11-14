@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_ok()) {
   if ($act === 'admin_on') { admin_set($id, true); $flash = 'Ora è un amministratore.'; }
   elseif ($act === 'admin_off' && $id !== (int)$me['id']) { admin_set($id, false); $flash = 'Non è più un amministratore.'; }
   elseif ($act === 'delete' && $id !== (int)$me['id'] && ($_POST['confirm'] ?? '') === $u['email']) {
-    foreach (['user_tokens', 'favorites', 'feedback'] as $t) db()->prepare("DELETE FROM $t WHERE user_id = ?")->execute([$id]);
+    foreach (['user_tokens', 'favorites', 'trips', 'feedback'] as $t) db()->prepare("DELETE FROM $t WHERE user_id = ?")->execute([$id]);
     db()->prepare('UPDATE app_opens SET user_id = NULL WHERE user_id = ?')->execute([$id]);
     db()->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
     admin_set($id, false);

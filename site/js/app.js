@@ -148,6 +148,7 @@ function drawMarkers() {
   if (!state.mapsReady) return;
   const v = visible(), sel = state.sel && state.byId.get(state.sel);
   if (sel && !v.includes(sel)) v.push(sel); // la cantina aperta resta sulla mappa anche fuori dal raggio
+  for (const s of state.trip.stops) { const x = state.byId.get(s.id); if (x && !v.includes(x)) v.push(x); } // e le tappe del trip
   M.setSpots(v.map((x) => ({ id: x.id, lat: x.lat, lng: x.lng, selected: x.id === state.sel, icon: markerIcon(x.id === state.sel, x.wc, x.hv), label: x.c || "" })), clusterIcon);
   drawMe();
 }
@@ -175,7 +176,7 @@ addEventListener("popstate", () => {
   if (ignorePop > 0) { ignorePop--; return; }
   const n = layers.pop(); if (!n) return;
   fromHistory = true;
-  try { if (n === "sheet") setSheet(false); else if (n === "detail") closeDetail(); else if (n === "search") closeSearch(); }
+  try { if (n === "sheet") setSheet(false); else if (n === "detail") closeDetail(); else if (n === "search") closeSearch(); else if (n === "trip") closeTrip(); }
   finally { fromHistory = false; }
 });
 function setSheet(open) {
@@ -442,12 +443,14 @@ async function openDetail(id, fly = true) {
       ${tel ? `<a class="btn" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">${esc(t("call"))}</a>` : ""}
       ${d.w ? `<a class="btn" href="${esc(d.w)}" target="_blank" rel="noopener nofollow">${esc(t("site_btn"))}</a>` : ""}
       <button class="btn fav" id="dFav" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg><span>${esc(t("save"))}</span></button>
+      <button class="btn trip" id="dTrip" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="6" r="2.4"/><path d="M8.4 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.6"/></svg><span>${esc(t("add_trip"))}</span></button>
       <button class="btn" id="dShare" type="button">${esc(t("share"))}</button>
     </div>
     <p class="dsrc">${esc(t("osm"))} · <a href="${osmUrl(x)}" target="_blank" rel="noopener">${esc(t("fix"))}</a></p>`;
   $("dClose").onclick = () => closeDetail();
   $("dShare").onclick = () => share(title(x), placeUrl(x));
   $("dFav").onclick = () => toggleFav(x); syncFav(x.id);
+  $("dTrip").onclick = () => toggleTrip(x); syncTripBtn();
   const more = $("wMore"); if (more) more.onclick = () => { $("detail").querySelectorAll(".wines li[hidden]").forEach((li) => { li.hidden = false; }); more.remove(); };
 }
 // i vini letti dal sito della cantina; i primi 12, poi "Tutti i vini".
@@ -611,7 +614,10 @@ function bind() {
   $("results").onclick = (e) => { const li = e.target.closest("li[data-i]"); if (li) pick(+li.dataset.i); };
   document.querySelectorAll("[data-close]").forEach((b) => b.onclick = closeSearch);
   $("searchModal").onclick = (e) => { if (e.target === $("searchModal")) closeSearch(); };
-  addEventListener("keydown", (e) => { if (e.key === "Escape") { closeSearch(); toggleKm(false); } });
+  addEventListener("keydown", (e) => { if (e.key === "Escape") { closeSearch(); closeTrip(); toggleKm(false); } });
+  $("tripBtn").onclick = showTrip;
+  $("tripClose").onclick = closeTrip;
+  $("tripModal").onclick = (e) => { if (e.target === $("tripModal")) closeTrip(); };
   matchMedia(MOB_MQ).addEventListener("change", () => setSheet(!mapOnly() && isMobile()));
   $("footYear").textContent = new Date().getFullYear();
   // lingua: le 12 di SkateboardMap; la scelta si ricorda e la pagina si ricarica (anche ?lang= nell'indirizzo)
@@ -630,6 +636,7 @@ async function loadMe(mapKind) {
     if (!r.ok) return;
     const d = await r.json(); // in locale senza PHP non è JSON: si resta senza account
     state.user = d.user || null;
+    if (!$("tripModal").hidden) { renderTrip(); loadMyTrips(); }
     const b = $("acctBtn");
     b.classList.toggle("on", !!state.user);
     b.title = b.ariaLabel = t(state.user ? "account" : "login");
@@ -658,6 +665,157 @@ async function toggleFav(x) {
   } catch (e) { on ? state.favs.delete(x.id) : state.favs.add(x.id); syncFav(x.id); setStatus(t("failed")); }
 }
 
+// ---------- trip: il tuo itinerario di cantine, con un nome, salvato nell'account (api/trip.php) ----------
+// Si costruisce anche senza account (bozza in questo browser, wtm.trip); per salvarlo serve l'accesso.
+// Sulla mappa: le tappe restano visibili con il loro numero e una linea le unisce in ordine.
+const TRIP_MAX = 60;
+state.trip = (() => { const d = store.get("trip"); return d && Array.isArray(d.stops) ? d : { id: null, name: "", stops: [], dirty: false }; })();
+const tripHas = (id) => state.trip.stops.some((s) => s.id === id);
+function tripChanged() {
+  state.trip.dirty = true; store.set("trip", state.trip);
+  drawTrip(); renderTrip(); syncTripBtn();
+}
+function tripKm(stops = state.trip.stops) { let k = 0; for (let i = 1; i < stops.length; i++) k += distKm(stops[i - 1], stops[i]); return k; }
+function drawTrip() {
+  const s = state.trip.stops, n = s.length;
+  $("tripBtn").classList.toggle("on", n > 0);
+  $("tripBtn").querySelector(".tn").textContent = n || "";
+  if (!state.mapsReady) return;
+  M.setRoute(s.map((x) => ({ lat: x.lat, lng: x.lng })));
+  M.setExtras(s.map((x, i) => ({ id: x.id, lat: x.lat, lng: x.lng, cls: "tripno", html: `<b>${i + 1}</b>` })));
+  drawMarkers();
+}
+function syncTripBtn() {
+  const b = $("dTrip"); if (!b || !state.sel) return;
+  const on = tripHas(state.sel);
+  b.setAttribute("aria-pressed", String(on));
+  b.querySelector("span").textContent = t(on ? "in_trip" : "add_trip");
+}
+function toggleTrip(x) {
+  if (tripHas(x.id)) state.trip.stops = state.trip.stops.filter((s) => s.id !== x.id);
+  else {
+    if (state.trip.stops.length >= TRIP_MAX) return setStatus(t("trip_full", { n: TRIP_MAX }));
+    state.trip.stops.push({ id: x.id, n: title(x), c: x.c || "", lat: x.lat, lng: x.lng });
+  }
+  tripChanged();
+  setStatus(t(tripHas(x.id) ? "trip_added" : "trip_removed", { n: state.trip.stops.length }));
+}
+// ordine più corto (la prima tappa resta la prima): il più vicino ogni volta, poi si sciolgono gli incroci (2-opt)
+function optimizeTrip() {
+  const s = state.trip.stops; if (s.length < 3) return;
+  const rest = s.slice(1), out = [s[0]];
+  while (rest.length) { const last = out[out.length - 1]; let bi = 0; rest.forEach((x, i) => { if (distKm(last, x) < distKm(last, rest[bi])) bi = i; }); out.push(rest.splice(bi, 1)[0]); }
+  for (let better = true, k = 0; better && k < 50; k++) {
+    better = false;
+    for (let i = 1; i < out.length - 1; i++) for (let j = i + 1; j < out.length; j++) {
+      const a = out[i - 1], b = out[i], c = out[j], d = out[j + 1];
+      const now = distKm(a, b) + (d ? distKm(c, d) : 0), alt = distKm(a, c) + (d ? distKm(b, d) : 0);
+      if (alt < now - 1e-9) { out.splice(i, j - i + 1, ...out.slice(i, j + 1).reverse()); better = true; }
+    }
+  }
+  const before = tripKm(); state.trip.stops = out; tripChanged();
+  setStatus(t("trip_sorted", { d: fmtKm(Math.max(0, before - tripKm())) }));
+}
+// navigatore: Google Maps con le tappe in ordine (partenza = dove sei; al massimo 10 tappe in un link)
+function tripDirections() {
+  const s = state.trip.stops.slice(0, 10), ll = (x) => `${x.lat},${x.lng}`;
+  if (!s.length) return "#";
+  const last = s[s.length - 1], mid = s.slice(0, -1);
+  return `https://www.google.com/maps/dir/?api=1&destination=${ll(last)}${mid.length ? "&waypoints=" + encodeURIComponent(mid.map(ll).join("|")) : ""}&travelmode=driving`;
+}
+function showTripOnMap() {
+  const s = state.trip.stops; if (!s.length || !state.mapsReady) return;
+  leaveGlobe(); $("worldAsk").hidden = true;
+  if (s.length === 1) { M.flyTo({ lat: s[0].lat, lng: s[0].lng }, 13); return; }
+  const lat = s.map((x) => x.lat), lng = s.map((x) => x.lng), m = 0.01;
+  M.fitBounds({ north: Math.max(...lat) + m, south: Math.min(...lat) - m, east: Math.max(...lng) + m, west: Math.min(...lng) - m }, isMobile() ? 40 : 70, null, 600);
+}
+let myTrips = null;
+async function tripApi(body, q = "") {
+  const r = await fetch("/api/trip.php" + q, body === undefined ? { credentials: "same-origin" }
+    : { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(d.error || "error"), { status: r.status });
+  return d;
+}
+async function loadMyTrips() {
+  if (!state.user) { myTrips = null; return renderTrip(); }
+  try { myTrips = (await tripApi()).items; } catch (e) { myTrips = []; }
+  renderTrip();
+}
+function renderTrip() {
+  const tr = state.trip, s = tr.stops, box = $("tripBody"); if (!box) return;
+  const loginUrl = "/account/?next=" + encodeURIComponent("/mappa/?trip=draft");
+  const legs = s.map((x, i) => i ? fmtKm(distKm(s[i - 1], x)) : "");
+  box.innerHTML = `
+    <div class="field"><input id="tripName" maxlength="80" value="${esc(tr.name)}" placeholder="${esc(t("trip_name_ph"))}" aria-label="${esc(t("trip_name"))}"></div>
+    ${s.length ? `<ol class="stops">${s.map((x, i) => `<li data-i="${i}">
+        <span class="no">${i + 1}</span>
+        <button class="sname" type="button" data-open="${esc(x.id)}"><b>${esc(x.n)}</b><small>${esc([x.c, legs[i] && t("leg", { d: legs[i] })].filter(Boolean).join(" · "))}</small></button>
+        <span class="ops"><button class="info" data-up="${i}" ${i ? "" : "disabled"} aria-label="${esc(t("move_up"))}">↑</button><button class="info" data-down="${i}" ${i < s.length - 1 ? "" : "disabled"} aria-label="${esc(t("move_down"))}">↓</button><button class="info" data-del="${i}" aria-label="${esc(t("remove"))}">✕</button></span>
+      </li>`).join("")}</ol>
+      <p class="tsum">${esc(I18N.n("stop", s.length, fmtN(s.length)))}${s.length > 1 ? ` · ${esc(t("trip_km", { d: fmtKm(tripKm()) }))}` : ""}</p>`
+    : `<p class="muted tempty">${esc(t("trip_empty"))}</p>`}
+    <div class="dbtns">
+      ${state.user ? `<button class="btn primary" id="tripSave" type="button"${s.length ? "" : " disabled"}>${esc(t(tr.id ? "trip_save" : "trip_save_new"))}</button>`
+        : `<a class="btn primary" href="${loginUrl}">${esc(t("trip_login"))}</a>`}
+      ${s.length > 2 ? `<button class="btn" id="tripSort" type="button">${esc(t("trip_sort"))}</button>` : ""}
+      ${s.length ? `<button class="btn" id="tripShow" type="button">${esc(t("trip_show"))}</button>
+        <a class="btn" href="${tripDirections()}" target="_blank" rel="noopener">${esc(t("trip_nav"))}</a>` : ""}
+      ${s.length || tr.id ? `<button class="btn" id="tripNew" type="button">${esc(t("trip_new"))}</button>` : ""}
+    </div>
+    ${s.length > 10 ? `<p class="muted small">${esc(t("trip_nav10"))}</p>` : ""}
+    <p class="tmsg" id="tripMsg" role="status"></p>
+    ${state.user ? `<h4>${esc(t("my_trips"))}</h4>${myTrips === null ? `<p class="muted">${esc(t("loading_short"))}</p>`
+      : myTrips.length ? `<ul class="mytrips">${myTrips.map((x) => `<li${x.id === tr.id ? ' class="cur"' : ""}><button class="sname" type="button" data-load="${x.id}"><b>${esc(x.name)}</b><small>${esc(I18N.n("stop", x.n, fmtN(x.n)))}</small></button><button class="info" data-rm="${x.id}" aria-label="${esc(t("trip_delete"))}">✕</button></li>`).join("")}</ul>`
+      : `<p class="muted">${esc(t("no_trips"))}</p>`}` : `<p class="muted">${esc(t("trip_why_login"))}</p>`}`;
+  const msg = (m) => { $("tripMsg").textContent = m; };
+  $("tripName").oninput = (e) => { tr.name = e.target.value; tr.dirty = true; store.set("trip", tr); };
+  box.querySelectorAll("[data-up],[data-down]").forEach((b) => b.onclick = () => {
+    const i = +(b.dataset.up ?? b.dataset.down), j = b.dataset.up != null ? i - 1 : i + 1;
+    [s[i], s[j]] = [s[j], s[i]]; tripChanged();
+  });
+  box.querySelectorAll("[data-del]").forEach((b) => b.onclick = () => { s.splice(+b.dataset.del, 1); tripChanged(); });
+  box.querySelectorAll("[data-open]").forEach((b) => b.onclick = () => { closeTrip(); openDetail(b.dataset.open); });
+  if ($("tripSort")) $("tripSort").onclick = optimizeTrip;
+  if ($("tripShow")) $("tripShow").onclick = () => { closeTrip(); showTripOnMap(); };
+  if ($("tripNew")) $("tripNew").onclick = () => {
+    if (tr.dirty && s.length && !confirm(t("trip_discard"))) return;
+    state.trip = { id: null, name: "", stops: [], dirty: false }; tripChanged(); state.trip.dirty = false; store.set("trip", state.trip);
+  };
+  if ($("tripSave")) $("tripSave").onclick = async () => {
+    tr.name = $("tripName").value.trim();
+    if (!tr.name) { msg(t("trip_need_name")); $("tripName").focus(); return; }
+    $("tripSave").disabled = true;
+    try {
+      const d = await tripApi({ id: tr.id || undefined, name: tr.name, stops: s });
+      tr.id = d.id; tr.dirty = false; store.set("trip", tr);
+      history.replaceState(history.state, "", "?trip=" + tr.id);
+      await loadMyTrips(); $("tripMsg").textContent = t("trip_saved", { n: tr.name });
+    } catch (e) { msg(t(e.status === 401 ? "trip_login" : "failed")); if ($("tripSave")) $("tripSave").disabled = false; }
+  };
+  box.querySelectorAll("[data-load]").forEach((b) => b.onclick = async () => {
+    if (tr.dirty && s.length && +b.dataset.load !== tr.id && !confirm(t("trip_discard"))) return;
+    await openTrip(+b.dataset.load); closeTrip(); showTripOnMap();
+  });
+  box.querySelectorAll("[data-rm]").forEach((b) => b.onclick = async () => {
+    if (!confirm(t("trip_delete_q"))) return;
+    try { await tripApi({ id: +b.dataset.rm, del: true }); if (+b.dataset.rm === tr.id) { tr.id = null; tr.dirty = true; store.set("trip", tr); } } catch (e) { msg(t("failed")); }
+    loadMyTrips();
+  });
+}
+async function openTrip(id) {
+  try {
+    const d = (await tripApi(undefined, "?id=" + id)).trip;
+    state.trip = { id: d.id, name: d.name, stops: d.stops, dirty: false }; store.set("trip", state.trip);
+    history.replaceState(history.state, "", "?trip=" + d.id);
+    drawTrip(); renderTrip(); syncTripBtn();
+    return true;
+  } catch (e) { setStatus(t(e.status === 401 ? "trip_login" : "trip_not_found")); return false; }
+}
+function showTrip() { $("tripModal").hidden = false; pushLayer("trip"); renderTrip(); loadMyTrips(); }
+function closeTrip() { if ($("tripModal").hidden) return; $("tripModal").hidden = true; popLayer("trip"); }
+
 // ---------- avvio ----------
 async function start() {
   applyScheme();
@@ -674,6 +832,8 @@ async function start() {
     bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : WORLD, padding: 12, language: I18N.lang });
   state.mapsReady = true; app.classList.add("mapready");
   loadMe(mapKind);
+  drawTrip();
+  M.on("extraclick", (id) => openDetail(id)); // numero di una tappa del trip
   M.setBottomPadding(mapPad(), 0);
   M.on("moveend", () => { syncMeBtn(); checkArea(); });
   M.on("movestart", () => clearTimeout(autoTimer));
@@ -684,6 +844,12 @@ async function start() {
     if (isMobile() && !mapOnly()) { setSheet(false); return; }
     if (state.sel && $("detail").hidden) { state.sel = null; drawMarkers(); }
   });
+  // un trip (?trip=12, dall'account) o la bozza dopo l'accesso (?trip=draft): le tappe sulla mappa
+  const tq = new URLSearchParams(location.search).get("trip");
+  if (tq) {
+    await loadData().catch(() => {}); drawTrip();
+    if ((tq === "draft" || await openTrip(+tq)) && state.trip.stops.length) { showTripOnMap(); if (tq === "draft") showTrip(); return; }
+  }
   // link di una cantina (?c=n123): si apre lei, con il raggio intorno
   const shared = new URLSearchParams(location.search).get("c");
   if (shared) {
@@ -725,7 +891,7 @@ function load(url, css) {
     e.src = url; e.onload = res; e.onerror = () => { delete loaded[url]; rej(new Error("load " + url)); }; document.head.append(e);
   });
 }
-const MODULE = { google: "/core/js/map/map-google.js?v=3", gl: "/core/js/map/map-gl.js?v=5" };
+const MODULE = { google: "/core/js/map/map-google.js?v=4", gl: "/core/js/map/map-gl.js?v=6" };
 async function useModule(m) { if (window.SkateMapKind !== m) { delete loaded[MODULE[m]]; await load(MODULE[m]); window.SkateMapKind = m; } }
 async function counter(have, skip) {
   try { const r = await fetch(`/api/counter.php?have=${have.join(",")}&skip=${skip.join(",")}`, { cache: "no-store" }); if (r.ok) return (await r.json()).use; } catch (e) {}

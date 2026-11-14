@@ -80,6 +80,16 @@ CREATE TABLE IF NOT EXISTS favorites (
   created_at TEXT NOT NULL,
   PRIMARY KEY (user_id, winery)
 );
+-- itinerari degli iscritti (api/trip.php): nome e tappe in ordine, JSON [{ id, n, c, lat, lng }]
+CREATE TABLE IF NOT EXISTS trips (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL,
+  name       TEXT NOT NULL,
+  stops      TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS trips_user ON trips (user_id, updated_at);
 -- consigli e malfunzionamenti mandati dagli iscritti (admin/feedback.php)
 CREATE TABLE IF NOT EXISTS feedback (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,

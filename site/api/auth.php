@@ -46,7 +46,9 @@ if ($a === 'export' && $method === 'GET') {
   $fav = db()->prepare('SELECT winery, name, town, lat, lng, created_at FROM favorites WHERE user_id = ? ORDER BY created_at'); $fav->execute([$u['id']]);
   $fb = db()->prepare('SELECT kind, message, created_at FROM feedback WHERE user_id = ? ORDER BY id'); $fb->execute([$u['id']]);
   header('Content-Disposition: attachment; filename="winetripmap-account.json"');
-  json_out(['account' => public_user($u) + ['last_login_at' => $u['last_login_at']], 'favorites' => $fav->fetchAll(), 'feedback' => $fb->fetchAll()]);
+  $tr = db()->prepare('SELECT name, stops, created_at, updated_at FROM trips WHERE user_id = ? ORDER BY created_at'); $tr->execute([$u['id']]);
+  $trips = array_map(fn($r) => ['stops' => json_decode($r['stops'], true)] + $r, $tr->fetchAll());
+  json_out(['account' => public_user($u) + ['last_login_at' => $u['last_login_at']], 'favorites' => $fav->fetchAll(), 'trips' => $trips, 'feedback' => $fb->fetchAll()]);
 }
 if ($method !== 'POST') json_out(['error' => 'method'], 405);
 
@@ -144,7 +146,7 @@ switch ($a) {
   case 'delete':
     $u = $need();
     if (($in['confirm'] ?? '') !== 'DELETE') json_out(['error' => 'confirm'], 400);
-    foreach (['user_tokens', 'favorites', 'feedback'] as $t) db()->prepare("DELETE FROM $t WHERE user_id = ?")->execute([$u['id']]);
+    foreach (['user_tokens', 'favorites', 'trips', 'feedback'] as $t) db()->prepare("DELETE FROM $t WHERE user_id = ?")->execute([$u['id']]);
     db()->prepare('UPDATE app_opens SET user_id = NULL WHERE user_id = ?')->execute([$u['id']]);
     db()->prepare('DELETE FROM users WHERE id = ?')->execute([$u['id']]);
     admin_set((int)$u['id'], false);

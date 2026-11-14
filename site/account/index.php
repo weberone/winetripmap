@@ -70,6 +70,10 @@ $cfg = ['next' => $next, 'google' => $gid ?: null, 'verify' => $verify, 'reset' 
       <div class="flash err">Email da confermare: apri il link che ti abbiamo mandato. <button class="linkbtn" id="resend">Mandalo di nuovo</button> <span id="resendMsg"></span></div>
     <?php endif; ?>
 
+    <section class="card"><h2>I tuoi trip</h2>
+      <ul class="favs" id="trips"><li class="muted">Carico…</li></ul>
+    </section>
+
     <section class="card"><h2>Cantine preferite</h2>
       <ul class="favs" id="favs"><li class="muted">Carico…</li></ul>
     </section>
@@ -107,5 +111,5 @@ $cfg = ['next' => $next, 'google' => $gid ?: null, 'verify' => $verify, 'reset' 
 <?php endif; ?>
 </main>
 <script>window.WTM_ACCOUNT = <?= json_encode($cfg, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
-<script src="/account/account.js?v=1"></script>
+<script src="/account/account.js?v=2"></script>
 </body></html>

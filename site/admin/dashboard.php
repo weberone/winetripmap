@@ -14,6 +14,7 @@ $vis30 = (int)one('SELECT COUNT(DISTINCT vid) FROM app_opens WHERE day >= ?', [$
 $users = (int)one('SELECT COUNT(*) FROM users');
 $users7 = (int)one('SELECT COUNT(*) FROM users WHERE created_at > ?', [ago_days(7)]);
 $favs = (int)one('SELECT COUNT(*) FROM favorites');
+$trips = (int)one('SELECT COUNT(*) FROM trips');
 $fbNew = (int)one("SELECT COUNT(*) FROM feedback WHERE status = 'new'");
 
 $opens = day_series(30); $vis = day_series(30); $signups = day_series(30);
@@ -39,6 +40,7 @@ admin_header('Dashboard', 'dash');
   <div class="kpi"><span>Visitatori in 30 giorni</span><b><?= num($vis30) ?></b><small>browser diversi</small></div>
   <a class="kpi" href="users.php"><span>Iscritti</span><b><?= num($users) ?></b><small><?= num($users7) ?> negli ultimi 7 giorni</small></a>
   <div class="kpi"><span>Cantine salvate</span><b><?= num($favs) ?></b><small>preferite degli iscritti</small></div>
+  <div class="kpi"><span>Trip salvati</span><b><?= num($trips) ?></b><small>itinerari degli iscritti</small></div>
   <a class="kpi" href="feedback.php"><span>Feedback da leggere</span><b><?= num($fbNew) ?></b><small>consigli e malfunzionamenti</small></a>
 </section>
 <?= chart('Aperture della mappa al giorno', $opens) ?>
