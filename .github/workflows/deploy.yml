@@ -83,3 +83,4 @@ jobs:
             **/*.log
             uploads/**
             counter/**
+            private/**

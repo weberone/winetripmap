@@ -33,7 +33,8 @@ const state = {
   radiusKm: RADII.includes(store.get("radius")) ? store.get("radius") : 20,
   showPreview: store.get("preview") !== false, // radar: cerca da solo quando sposti la mappa
   wc: "", // filtro per colore del vino principale ("" = tutte)
-  all: [], byId: new Map(), sel: null, mapsReady: false, areaOk: false, loading: false, userMoved: false
+  all: [], byId: new Map(), sel: null, mapsReady: false, areaOk: false, loading: false, userMoved: false,
+  user: null, favs: new Set()      // account (api/auth.php) e cantine preferite (api/fav.php)
 };
 
 // ---------- utilità ----------
@@ -438,11 +439,13 @@ async function openDetail(id, fly = true) {
       <a class="btn primary" href="${directionsUrl(x)}" target="_blank" rel="noopener">Indicazioni</a>
       ${tel ? `<a class="btn" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">Chiama</a>` : ""}
       ${d.w ? `<a class="btn" href="${esc(d.w)}" target="_blank" rel="noopener nofollow">Sito</a>` : ""}
+      <button class="btn fav" id="dFav" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg><span>Salva</span></button>
       <button class="btn" id="dShare" type="button">Condividi</button>
     </div>
     <p class="dsrc">Dati da OpenStreetMap · <a href="${osmUrl(x)}" target="_blank" rel="noopener">correggi o completa</a></p>`;
   $("dClose").onclick = () => closeDetail();
   $("dShare").onclick = () => share(title(x), placeUrl(x));
+  $("dFav").onclick = () => toggleFav(x); syncFav(x.id);
   const more = $("wMore"); if (more) more.onclick = () => { $("detail").querySelectorAll(".wines li[hidden]").forEach((li) => { li.hidden = false; }); more.remove(); };
 }
 // i vini letti dal sito della cantina: pallino del colore e nome; i primi 12, poi "Tutti i vini"
@@ -604,6 +607,45 @@ function bind() {
   $("footYear").textContent = new Date().getFullYear();
 }
 
+// ---------- account (come SkateboardMap): chi sei, cantine preferite ----------
+// a=me&map=1: l'apertura della mappa conta nella dashboard dell'admin (da dove arriva, dispositivo, mappa usata)
+async function loadMe(mapKind) {
+  try {
+    const q = new URLSearchParams({ a: "me", map: "1", m: mapKind || "", ref: document.referrer.slice(0, 300),
+      utm: (new URLSearchParams(location.search).get("utm_source") || "").slice(0, 40) });
+    try { q.set("tz", Intl.DateTimeFormat().resolvedOptions().timeZone || ""); } catch (e) {}
+    const r = await fetch("/api/auth.php?" + q, { credentials: "same-origin" });
+    if (!r.ok) return;
+    const d = await r.json(); // in locale senza PHP non è JSON: si resta senza account
+    state.user = d.user || null;
+    const b = $("acctBtn");
+    b.classList.toggle("on", !!state.user);
+    b.title = b.ariaLabel = state.user ? "Il tuo account" : "Accedi o registrati";
+    b.querySelector(".ini").textContent = state.user ? (state.user.name || state.user.email || "?").trim().charAt(0).toUpperCase() : "";
+    if (state.user) {
+      const f = await fetch("/api/fav.php", { credentials: "same-origin" }).then((x) => x.json());
+      state.favs = new Set((f.items || []).map((x) => x.id));
+      if (state.sel) syncFav(state.sel);
+    }
+  } catch (e) {}
+}
+function syncFav(id) {
+  const b = $("dFav"); if (!b) return;
+  const on = state.favs.has(id);
+  b.setAttribute("aria-pressed", String(on)); b.querySelector("span").textContent = on ? "Salvata" : "Salva";
+}
+async function toggleFav(x) {
+  if (!state.user) { location.href = "/account/?next=" + encodeURIComponent("/mappa/?c=" + x.id); return; }
+  const on = !state.favs.has(x.id);
+  on ? state.favs.add(x.id) : state.favs.delete(x.id); syncFav(x.id);
+  try {
+    const r = await fetch("/api/fav.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: x.id, on, name: x.n || "", town: x.c || "", lat: x.lat, lng: x.lng }) });
+    if (!r.ok) throw new Error(r.status);
+    setStatus(on ? "Salvata tra le preferite" : "Tolta dalle preferite");
+  } catch (e) { on ? state.favs.delete(x.id) : state.favs.add(x.id); syncFav(x.id); setStatus("Non riuscito, riprova"); }
+}
+
 // ---------- avvio ----------
 async function start() {
   applyScheme();
@@ -616,9 +658,10 @@ async function start() {
   let perm = "prompt";
   try { perm = (await navigator.permissions.query({ name: "geolocation" })).state; } catch (e) {}
   const last = store.get("lastgps"), startAt = perm === "granted" ? last : null;
-  await createMap({ dark: dark(), center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 30, lng: 10 },
+  const mapKind = await createMap({ dark: dark(), center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 30, lng: 10 },
     bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : WORLD, padding: 12, language: "it" });
   state.mapsReady = true; app.classList.add("mapready");
+  loadMe(mapKind);
   M.setBottomPadding(mapPad(), 0);
   M.on("moveend", () => { syncMeBtn(); checkArea(); });
   M.on("movestart", () => clearTimeout(autoTimer));
