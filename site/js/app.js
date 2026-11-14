@@ -69,15 +69,13 @@ const WINE = {
   o: { name: "Rosato", fill: () => "#e27591" },
   s: { name: "Bollicine", fill: () => "#b38b2e" },
 };
-// goccia con un calice bianco (per le bollicine un flûte con le bolle); la punta (ax, in basso) è il punto esatto.
-// Senza vini noti: goccia chiara col bordo e il calice bordeaux.
+// goccia piena (bordeaux; col colore del vino principale quando è noto) con dentro, in bianco, il logo del sito:
+// il pin a forma di calice del puntino della i (site/mappa/index.html). La punta (ax, in basso) è il punto esatto.
+const LOGO_GLASS = "M1 5.5A5 5 0 0 1 11 5.5C11 8.9 8.4 11.3 6.6 12V14.3H8.6C9.1 14.3 9.4 14.6 9.4 14.95S9.1 15.6 8.6 15.6H3.4C2.9 15.6 2.6 15.3 2.6 14.95S2.9 14.3 3.4 14.3H5.4V12C3.6 11.3 1 8.9 1 5.5Z";
 function pinSvg(w = 28, wc = "") {
-  const h = Math.round(w * 38 / 28), k = WINE[wc];
-  const fill = k ? k.fill() : "#fff", ink = k ? "#fff" : pinColor(), edge = k ? "#fff" : pinColor();
-  const glass = wc === "s"
-    ? `<path d="M11.6 6.5h4.8l-.5 7.2c-.2 1.5-.9 2.4-1.9 2.6V19h2v1.6h-5.6V19h2v-2.7c-1-.2-1.7-1.1-1.9-2.6z" fill="${ink}"/><circle cx="18.8" cy="9" r="1.1" fill="${ink}"/><circle cx="19.6" cy="12.4" r=".8" fill="${ink}"/><circle cx="8.6" cy="10.6" r=".9" fill="${ink}"/>`
-    : `<path d="M9.5 8h9c0 3.6-1.7 6.3-4.5 6.8V19h2.6v1.6H11.4V19H14v-4.2C11.2 14.3 9.5 11.6 9.5 8z" fill="${ink}"/>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 28 38"><path d="M14 37C14 37 2 23.5 2 14a12 12 0 0 1 24 0c0 9.5-12 23-12 23z" fill="${fill}" stroke="${edge}" stroke-width="2"/>${glass}</svg>`;
+  const h = Math.round(w * 38 / 28), fill = (WINE[wc] || WINE.r).fill();
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 28 38"><path d="M14 37C14 37 2 23.5 2 14a12 12 0 0 1 24 0c0 9.5-12 23-12 23z" fill="${fill}" stroke="#fff" stroke-width="1.6"/>`
+    + `<g transform="translate(8.3 6.4) scale(.95)"><path d="${LOGO_GLASS}" fill="#fff"/><circle cx="6" cy="5.5" r="1.75" fill="${fill}"/></g></svg>`;
 }
 function markerIcon(sel, wc) { const w = sel ? 36 : 28; return { svg: pinSvg(w, wc), w, h: Math.round(w * 38 / 28), ax: w / 2 }; }
 // gruppo di cantine vicine: cerchio bordeaux con il numero
@@ -448,14 +446,21 @@ async function openDetail(id, fly = true) {
   $("dFav").onclick = () => toggleFav(x); syncFav(x.id);
   const more = $("wMore"); if (more) more.onclick = () => { $("detail").querySelectorAll(".wines li[hidden]").forEach((li) => { li.hidden = false; }); more.remove(); };
 }
-// i vini letti dal sito della cantina: pallino del colore e nome; i primi 12, poi "Tutti i vini"
+// i vini letti dal sito della cantina; i primi 12, poi "Tutti i vini".
+// Con le foto delle bottiglie (prese dal sito della cantina, caricate da lì: non le copiamo) una griglia di bottiglie,
+// dove manca la foto una sagoma nel colore del vino; senza nessuna foto l'elenco con il pallino del colore.
+const BOTTLE = (c) => `<svg class="wsil" viewBox="0 0 20 56" aria-hidden="true"><path d="M8 2h4v12c0 2.5 4 4 4 9v29a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V23c0-5 4-6.5 4-9z" fill="${c ? WINE[c].fill() : "none"}" stroke="${c ? WINE[c].fill() : "currentColor"}" stroke-width="1.4"/></svg>`;
 function wineList(d) {
   if (!d.v || !d.v.length) return "";
   const src = d.vu ? d.vu.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "") : "";
-  return `<div class="dline"><small>Vini (${d.v.length})</small><ul class="wines">${d.v.map(([n, c], i) =>
-    `<li${i >= 12 ? " hidden" : ""}><span class="wdot${c ? " w" + c : ""}" title="${c ? WINE[c].name : ""}"></span>${esc(n)}</li>`).join("")}</ul>
+  const pics = d.v.some((w) => w[2]);
+  const item = ([n, c, img], i) => pics
+    ? `<li${i >= 12 ? " hidden" : ""}><span class="wpic">${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createRange().createContextualFragment(this.dataset.f))" data-f="${esc(BOTTLE(c))}">` : BOTTLE(c)}</span>
+        <span class="wname"><span class="wdot${c ? " w" + c : ""}" title="${c ? WINE[c].name : ""}"></span>${esc(n)}</span></li>`
+    : `<li${i >= 12 ? " hidden" : ""}><span class="wdot${c ? " w" + c : ""}" title="${c ? WINE[c].name : ""}"></span>${esc(n)}</li>`;
+  return `<div class="dline"><small>Vini (${d.v.length})</small><ul class="wines${pics ? " wgrid" : ""}">${d.v.map(item).join("")}</ul>
     ${d.v.length > 12 ? `<button type="button" class="linkbtn" id="wMore">Tutti i vini</button>` : ""}
-    <p class="wsrc">Dal sito della cantina${src ? `: <a href="${esc(d.vu)}" target="_blank" rel="noopener nofollow">${esc(src.length > 40 ? src.slice(0, 40) + "…" : src)}</a>` : ""}. Annate e disponibilità sul sito.</p></div>`;
+    <p class="wsrc">Dal sito della cantina${src ? `: <a href="${esc(d.vu)}" target="_blank" rel="noopener nofollow">${esc(src.length > 40 ? src.slice(0, 40) + "…" : src)}</a>` : ""}${pics ? ", foto comprese" : ""}. Annate e disponibilità sul sito.</p></div>`;
 }
 function closeDetail(silent) {
   if ($("detail").hidden && !state.sel) return;
