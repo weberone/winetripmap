@@ -20,7 +20,8 @@ Progetto separato da SkateboardMap: lavora solo in questa cartella e nel core co
 - Stessa esperienza di SkateboardMap (posizione, raggio, radar che scopre i pin, Cerca in questa zona, più vicine, elenco, scheda, pannello del telefono), con il modulo mappa del core (MapLibre + OpenFreeMap, colori passati con `palette`).
 - Solo cantine (`craft=winery`), in tutto il mondo. Enoteche e degustazioni tolte per scelta dell'utente: eventualmente dopo.
 - Dati: `node tools/osm-cantine.mjs` scarica da Overpass (server pubblici spesso pieni: riprova da solo) e scrive `site/data/cantine.json` (tutti i punti, leggeri) e `site/data/det/<lat10>_<lng10>.json` (dettagli, caricati con la scheda).
-- Ricerca luoghi: `site/api/geocode.php` (Nominatim con memoria, prima in Italia poi nel mondo); in locale senza PHP l'app chiama Nominatim direttamente.
+- Vini: `node tools/vini-dai-siti.mjs crawl` legge i siti delle cantine (robots.txt rispettato, WineTripMapBot, pochi pagine per sito; riprende da dove era, cache in `tools/.cache/vini/`, non nel repo) e `node tools/vini-dai-siti.mjs build` scrive `tools/data/vini.json` e lo applica ai dati del sito: sesto campo in `cantine.json` = colore del vino principale (r rosso, b bianco, o rosato, s bollicine) per il colore del pin e il filtro; `v`/`vu` in `det/` = lista dei vini nella scheda. Regole di riconoscimento e scarti in `tools/vini-colori.mjs`. `osm-cantine.mjs` riapplica i vini dopo ogni nuovo scarico. Pin senza vini noti: chiaro col bordo bordeaux. Serve `npm install` dentro `tools/` (cheerio).
+- Ricerca luoghi: `site/api/geocode.php` (Nominatim con memoria, prima in Italia poi nel mondo; dall'Italia vale subito solo un luogo vero, rank ≤ 25, non un locale con lo stesso nome); in locale senza PHP l'app chiama Nominatim direttamente.
 - Prova in locale: `python3 -m http.server 8642` dentro `site/` → http://127.0.0.1:8642/mappa/
 
 ## Regole (come SkateboardMap)

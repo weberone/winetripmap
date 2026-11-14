@@ -21,6 +21,7 @@ const state = {
   center: null,                   // centro dell'ultima ricerca (cerchio del raggio)
   radiusKm: RADII.includes(store.get("radius")) ? store.get("radius") : 20,
   showPreview: store.get("preview") !== false, // radar: cerca da solo quando sposti la mappa
+  wc: "", // filtro per colore del vino principale ("" = tutte)
   all: [], byId: new Map(), sel: null, mapsReady: false, areaOk: false, loading: false, userMoved: false
 };
 
@@ -49,12 +50,24 @@ function setStatus(msg) { $("status").textContent = msg; }
 // ---------- segnaposto ----------
 const dark = () => document.documentElement.dataset.scheme === "dark";
 const pinColor = () => dark() ? "#c23a55" : "#8e1b33";
-// goccia con un calice bianco; la punta (ax, in basso) è il punto esatto
-function pinSvg(w = 28) {
-  const h = Math.round(w * 38 / 28);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 28 38"><path d="M14 37C14 37 2 23.5 2 14a12 12 0 0 1 24 0c0 9.5-12 23-12 23z" fill="${pinColor()}" stroke="#fff" stroke-width="2"/><path d="M9.5 8h9c0 3.6-1.7 6.3-4.5 6.8V19h2.6v1.6H11.4V19H14v-4.2C11.2 14.3 9.5 11.6 9.5 8z" fill="#fff"/></svg>`;
+// colore del vino principale della cantina (letto dal suo sito: tools/vini-dai-siti.mjs): r rosso, b bianco, o rosato, s bollicine
+const WINE = {
+  r: { name: "Rosso", fill: () => pinColor() },
+  b: { name: "Bianco", fill: () => "#d6a51f" },
+  o: { name: "Rosato", fill: () => "#e27591" },
+  s: { name: "Bollicine", fill: () => "#b38b2e" },
+};
+// goccia con un calice bianco (per le bollicine un flûte con le bolle); la punta (ax, in basso) è il punto esatto.
+// Senza vini noti: goccia chiara col bordo e il calice bordeaux.
+function pinSvg(w = 28, wc = "") {
+  const h = Math.round(w * 38 / 28), k = WINE[wc];
+  const fill = k ? k.fill() : "#fff", ink = k ? "#fff" : pinColor(), edge = k ? "#fff" : pinColor();
+  const glass = wc === "s"
+    ? `<path d="M11.6 6.5h4.8l-.5 7.2c-.2 1.5-.9 2.4-1.9 2.6V19h2v1.6h-5.6V19h2v-2.7c-1-.2-1.7-1.1-1.9-2.6z" fill="${ink}"/><circle cx="18.8" cy="9" r="1.1" fill="${ink}"/><circle cx="19.6" cy="12.4" r=".8" fill="${ink}"/><circle cx="8.6" cy="10.6" r=".9" fill="${ink}"/>`
+    : `<path d="M9.5 8h9c0 3.6-1.7 6.3-4.5 6.8V19h2.6v1.6H11.4V19H14v-4.2C11.2 14.3 9.5 11.6 9.5 8z" fill="${ink}"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 28 38"><path d="M14 37C14 37 2 23.5 2 14a12 12 0 0 1 24 0c0 9.5-12 23-12 23z" fill="${fill}" stroke="${edge}" stroke-width="2"/>${glass}</svg>`;
 }
-function markerIcon(sel) { const w = sel ? 36 : 28; return { svg: pinSvg(w), w, h: Math.round(w * 38 / 28), ax: w / 2 }; }
+function markerIcon(sel, wc) { const w = sel ? 36 : 28; return { svg: pinSvg(w, wc), w, h: Math.round(w * 38 / 28), ax: w / 2 }; }
 // gruppo di cantine vicine: cerchio bordeaux con il numero
 function clusterIcon(n) {
   const d = n < 10 ? 36 : n < 50 ? 42 : n < 500 ? 48 : 54, r = d / 2;
@@ -67,7 +80,7 @@ const title = (x) => x.n || "Cantina" + (x.c ? " a " + x.c : "");
 let dataP = null;
 function loadData() {
   if (!dataP) dataP = fetch("/data/cantine.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((d) => {
-    state.all = d.items.map(([id, lat, lng, n, c]) => ({ id, lat, lng, n, c }));
+    state.all = d.items.map(([id, lat, lng, n, c, wc]) => ({ id, lat, lng, n, c, wc: wc || "" }));
     state.byId = new Map(state.all.map((x) => [x.id, x]));
     return d;
   });
@@ -82,27 +95,37 @@ function loadDetails(x) {
   return detCache.get(k).then((d) => d[x.id] || {});
 }
 // cantine nel raggio della ricerca, dalla più vicina a te
-function visible() {
+function inRadius() {
   if (!state.center) return [];
   const from = state.me || state.center, b = boundsAround(state.center, state.radiusKm * 1000 * 1.01);
   return state.all.filter((x) => x.lat <= b.north && x.lat >= b.south && x.lng <= b.east && x.lng >= b.west)
     .map((x) => Object.assign(x, { kmC: distKm(state.center, x), km: distKm(from, x) }))
     .filter((x) => x.kmC <= state.radiusKm).sort((a, b) => a.km - b.km);
 }
+const visible = () => { const v = inRadius(); return state.wc ? v.filter((x) => x.wc === state.wc) : v; };
+// filtro per colore: Tutte, Rossi, Bianchi, Rosati, Bollicine, col numero di cantine nel raggio
+function renderChips(all) {
+  const n = { r: 0, b: 0, o: 0, s: 0 }; for (const x of all) if (x.wc) n[x.wc]++;
+  const chip = (k, label) => `<button type="button" class="chip" data-wc="${k}" aria-pressed="${state.wc === k}">${k ? `<span class="wdot w${k}"></span>` : ""}${label}${k ? ` <span class="cn">${fmtN(n[k])}</span>` : ""}</button>`;
+  const box = $("wineChips"); if (!box) return; // pagina vecchia ancora in memoria del browser: niente filtri
+  box.innerHTML = chip("", "Tutte") + chip("r", "Rossi") + chip("b", "Bianchi") + chip("o", "Rosati") + chip("s", "Bollicine");
+}
 
 // ---------- elenco, pin, cerchio ----------
 function renderList() {
   const v = visible();
+  renderChips(inRadius());
   $("count").textContent = fmtN(v.length);
   $("countLbl").textContent = v.length === 1 ? "cantina trovata" : "cantine trovate";
   $("countMob").innerHTML = state.areaOk ? `<span class="cm-n">${fmtN(v.length)}</span> ${cantine(v.length)} entro ${state.radiusKm} km` : "";
   if (state.areaOk && !state.loading) setStatus(`${fmtN(v.length)} ${cantine(v.length)} entro ${state.radiusKm} km`);
   radarLabel();
   if (!v.length) {
-    $("list").innerHTML = state.areaOk ? `<div class="empty">Nessuna cantina in questo raggio. Prova un raggio più grande o “Trova le più vicine” sulla mappa.</div>`
+    $("list").innerHTML = state.areaOk && state.wc && inRadius().length ? `<div class="empty">Nessuna cantina con ${{ r: "rossi", b: "bianchi", o: "rosati", s: "bollicine" }[state.wc]} come vino principale in questo raggio. Tocca “Tutte” per vederle tutte.</div>`
+      : state.areaOk ? `<div class="empty">Nessuna cantina in questo raggio. Prova un raggio più grande o “Trova le più vicine” sulla mappa.</div>`
       : `<div class="empty">Cerca un luogo o usa la tua posizione per vedere le cantine intorno.</div>`;
   } else {
-    $("list").innerHTML = v.slice(0, 300).map((x) => `<button class="item" data-id="${esc(x.id)}"><span class="mk">${pinSvg(20)}</span>
+    $("list").innerHTML = v.slice(0, 300).map((x) => `<button class="item" data-id="${esc(x.id)}"><span class="mk">${pinSvg(20, x.wc)}</span>
         <span style="min-width:0"><div class="name">${esc(title(x))}</div>${x.c && x.n ? `<div class="meta">${esc(x.c)}</div>` : ""}</span>
         <span class="km">${fmtKm(x.km)}</span></button>`).join("");
   }
@@ -112,7 +135,7 @@ function drawMarkers() {
   if (!state.mapsReady) return;
   const v = visible(), sel = state.sel && state.byId.get(state.sel);
   if (sel && !v.includes(sel)) v.push(sel); // la cantina aperta resta sulla mappa anche fuori dal raggio
-  M.setSpots(v.map((x) => ({ id: x.id, lat: x.lat, lng: x.lng, selected: x.id === state.sel, icon: markerIcon(x.id === state.sel), label: x.c || "" })), clusterIcon);
+  M.setSpots(v.map((x) => ({ id: x.id, lat: x.lat, lng: x.lng, selected: x.id === state.sel, icon: markerIcon(x.id === state.sel, x.wc), label: x.c || "" })), clusterIcon);
   drawMe();
 }
 function drawMe() {
@@ -397,6 +420,7 @@ async function openDetail(id, fly = true) {
     ${d.o ? `<p class="dline"><small>Orari</small>${esc(d.o)}</p>` : ""}
     ${tel ? `<p class="dline"><small>Telefono</small><a href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">${esc(tel)}</a></p>` : ""}
     ${host ? `<p class="dline"><small>Sito</small><a href="${esc(d.w)}" target="_blank" rel="noopener nofollow">${esc(host)}</a></p>` : ""}
+    ${wineList(d)}
     <div class="dbtns">
       <a class="btn primary" href="${directionsUrl(x)}" target="_blank" rel="noopener">Indicazioni</a>
       ${tel ? `<a class="btn" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">Chiama</a>` : ""}
@@ -406,6 +430,16 @@ async function openDetail(id, fly = true) {
     <p class="dsrc">Dati da OpenStreetMap · <a href="${osmUrl(x)}" target="_blank" rel="noopener">correggi o completa</a></p>`;
   $("dClose").onclick = () => closeDetail();
   $("dShare").onclick = () => share(title(x), placeUrl(x));
+  const more = $("wMore"); if (more) more.onclick = () => { $("detail").querySelectorAll(".wines li[hidden]").forEach((li) => { li.hidden = false; }); more.remove(); };
+}
+// i vini letti dal sito della cantina: pallino del colore e nome; i primi 12, poi "Tutti i vini"
+function wineList(d) {
+  if (!d.v || !d.v.length) return "";
+  const src = d.vu ? d.vu.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "") : "";
+  return `<div class="dline"><small>Vini (${d.v.length})</small><ul class="wines">${d.v.map(([n, c], i) =>
+    `<li${i >= 12 ? " hidden" : ""}><span class="wdot${c ? " w" + c : ""}" title="${c ? WINE[c].name : ""}"></span>${esc(n)}</li>`).join("")}</ul>
+    ${d.v.length > 12 ? `<button type="button" class="linkbtn" id="wMore">Tutti i vini</button>` : ""}
+    <p class="wsrc">Dal sito della cantina${src ? `: <a href="${esc(d.vu)}" target="_blank" rel="noopener nofollow">${esc(src.length > 40 ? src.slice(0, 40) + "…" : src)}</a>` : ""}. Annate e disponibilità sul sito.</p></div>`;
 }
 function closeDetail(silent) {
   if ($("detail").hidden && !state.sel) return;
@@ -520,6 +554,10 @@ function bind() {
     checkArea();
   };
   $("kmBtn").onclick = () => toggleKm();
+  if ($("wineChips")) $("wineChips").onclick = (e) => {
+    const b = e.target.closest("[data-wc]"); if (!b) return;
+    state.wc = b.dataset.wc; renderList();
+  };
   document.querySelectorAll("[data-km]").forEach((b) => b.onclick = () => { toggleKm(false); setRadius(+b.dataset.km); });
   $("radius").onchange = () => setRadius(+$("radius").value);
   $("list").onclick = (e) => { const b = e.target.closest(".item"); if (b) openDetail(b.dataset.id); };

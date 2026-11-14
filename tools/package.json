@@ -1,0 +1,9 @@
+{
+  "name": "winetripmap-tools",
+  "private": true,
+  "type": "module",
+  "description": "Script per costruire i dati della mappa (non vanno online)",
+  "dependencies": {
+    "cheerio": "^1.0.0"
+  }
+}
