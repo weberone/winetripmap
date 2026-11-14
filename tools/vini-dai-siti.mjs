@@ -62,13 +62,15 @@ const NOT_PAGE = /wine-?club|blog|news|notizie|tasting|degustazion|visit|tour|ev
 const PRODUCT_PATH = /\/(prodotto|product|products|vino|vini|wine|wines|wein|weine|vin|vins|vinos?|shop|negozio|catalogo|etichetta|label|collections\/[^/]+\/products)\/[^/?#]+/i;
 const sameSite = (a, b) => a.replace(/^www\./, '') === b.replace(/^www\./, '');
 
+// testo di un elemento con uno spazio tra i figli (titolo e sottotitolo di una scheda non si incollano)
+function textOf($, el) { const parts = []; const walk = (n) => { if (n.type === 'text') parts.push(n.data); else if (n.children && !/^(script|style|noscript|svg)$/i.test(n.name || '')) n.children.forEach(walk); }; walk(el); return parts.join(' ').replace(/\s+/g, ' ').trim(); }
 function linksOf($, base) {
   const out = [];
   $('a[href]').each((_, a) => {
     let u; try { u = new URL($(a).attr('href'), base); } catch { return; }
     if (!/^https?:$/.test(u.protocol)) return;
     u.hash = '';
-    out.push({ u, text: $(a).text().replace(/\s+/g, ' ').trim(), title: ($(a).attr('title') || '').trim() });
+    out.push({ u, text: textOf($, a), title: ($(a).attr('title') || '').trim() });
   });
   return out;
 }
@@ -93,7 +95,7 @@ function fromJsonLd($) {
 function fromWinePage($, pageUrl) {
   const found = [];
   $('.woocommerce-loop-product__title, .product-title, .product_title, .product-name, .product-item-name, .wine-title, .wine-name, .card__heading, .product-card__title').each((_, el) => {
-    const n = $(el).text().replace(/\s+/g, ' ').trim(); if (n) found.push({ n, d: '' });
+    const n = textOf($, el); if (n) found.push({ n, d: '' });
   });
   const base = new URL(pageUrl);
   const basePath = base.pathname.replace(/\/$/, '');
@@ -174,7 +176,7 @@ function pickWines(raw) {
     if (isNotWine(n)) continue;
     const c = classify(n) || classify(text);
     if (!c && !looksLikeWine(text)) continue;
-    const k = n.toLowerCase();
+    const k = n.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '');
     if (!out.has(k)) out.set(k, { n, c: c || '' });
     else if (!out.get(k).c && c) out.get(k).c = c;
   }
@@ -228,7 +230,9 @@ if (cmd === 'crawl') {
     for (const w of wines) if (!w.c && byName.get(w.n.toLowerCase())) w.c = byName.get(w.n.toLowerCase());
     if (!wines.length) continue;
     const c = mainColor(wines.map((w) => w.c));
-    vini[r.id] = { c, v: wines.map((w) => (w.c ? [w.n, w.c] : [w.n])), u: r.pages[1] || r.pages[0] || r.site };
+    // pagina da mostrare: una pagina vera dei vini, mai l'indirizzo tecnico del negozio (products.json, wp-json)
+    const human = r.pages.filter((p) => !/products\.json|wp-json/.test(p));
+    vini[r.id] = { c, v: wines.map((w) => (w.c ? [w.n, w.c] : [w.n])), u: human[1] || human[0] || r.site };
     n++;
   }
   mkdirSync(dirname(outFile), { recursive: true });
