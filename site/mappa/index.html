@@ -13,17 +13,17 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 </script>
 <meta name="theme-color" content="#8e1b33">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/app.css?v=9">
+<link rel="stylesheet" href="/css/app.css?v=10">
 </head>
 <body>
 <div class="app map-only">
-  <h1 class="sr-only">WineTripMap: le cantine vicino a te, in tutto il mondo</h1>
+  <h1 class="sr-only" data-i18n="h1">WineTripMap: le cantine vicino a te, in tutto il mondo</h1>
   <header class="top">
-    <a class="logo" href="./" aria-label="WineTripMap, torna all'inizio"><span class="wm">wine<b>tr<span class="wi">ı<svg class="wpin" viewBox="0 0 12 16" aria-hidden="true"><path d="M1 5.5A5 5 0 0 1 11 5.5C11 8.9 8.4 11.3 6.6 12V14.3H8.6C9.1 14.3 9.4 14.6 9.4 14.95S9.1 15.6 8.6 15.6H3.4C2.9 15.6 2.6 15.3 2.6 14.95S2.9 14.3 3.4 14.3H5.4V12C3.6 11.3 1 8.9 1 5.5Z"/><circle cx="6" cy="5.5" r="1.75" fill="#fff"/></svg></span>p</b>map</span></a>
+    <a class="logo" href="./" aria-label="WineTripMap, torna all'inizio" data-i18n-aria="home"><span class="wm">wine<b>tr<span class="wi">ı<svg class="wpin" viewBox="0 0 12 16" aria-hidden="true"><path d="M1 5.5A5 5 0 0 1 11 5.5C11 8.9 8.4 11.3 6.6 12V14.3H8.6C9.1 14.3 9.4 14.6 9.4 14.95S9.1 15.6 8.6 15.6H3.4C2.9 15.6 2.6 15.3 2.6 14.95S2.9 14.3 3.4 14.3H5.4V12C3.6 11.3 1 8.9 1 5.5Z"/><circle cx="6" cy="5.5" r="1.75" fill="#fff"/></svg></span>p</b>map</span></a>
     <div class="hstat">
-      <span class="status" id="status" role="status">Avvio…</span>
-      <a class="info acct" id="acctBtn" href="/account/" aria-label="Accedi o registrati" title="Accedi o registrati"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="2.1"/><path d="M4.8 20c.9-3.6 3.7-5.6 7.2-5.6s6.3 2 7.2 5.6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg><b class="ini"></b></a>
-      <button class="info" id="shareHdr" aria-label="Condividi" title="Condividi"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <span class="status" id="status" role="status" data-i18n="starting">Avvio…</span>
+      <a class="info acct" id="acctBtn" href="/account/" aria-label="Accedi o registrati" title="Accedi o registrati" data-i18n-aria="login" data-i18n-title="login"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="2.1"/><path d="M4.8 20c.9-3.6 3.7-5.6 7.2-5.6s6.3 2 7.2 5.6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg><b class="ini"></b></a>
+      <button class="info" id="shareHdr" aria-label="Condividi" title="Condividi" data-i18n-aria="share" data-i18n-title="share"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
   </header>
 
@@ -31,60 +31,60 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
     <div class="controls">
       <div class="locmsg" id="locmsg" role="status"></div>
       <div class="locrow">
-        <button class="btn" id="locBtn"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>La mia posizione</button>
-        <button class="btn" id="placeBtn"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>Cerca un luogo</button>
+        <button class="btn" id="locBtn"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span data-i18n="my_pos">La mia posizione</span></button>
+        <button class="btn" id="placeBtn"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg><span data-i18n="search_place">Cerca un luogo</span></button>
       </div>
       <div class="row">
         <span><strong id="count">0</strong> <span id="countLbl">cantine trovate</span></span>
-        <label class="radius-pick">Raggio
+        <label class="radius-pick"><span data-i18n="radius">Raggio</span>
           <select id="radius"><option value="5">5 km</option><option value="10">10 km</option><option value="20">20 km</option><option value="30">30 km</option><option value="50">50 km</option></select>
         </label>
       </div>
     </div>
-    <div class="filters"><div class="chips" id="wineChips" role="group" aria-label="Colore del vino principale"></div>
-      <p class="fnote">Colore del vino principale, dai siti delle cantine</p></div>
+    <div class="filters"><div class="chips" id="wineChips" role="group" aria-label="Colore del vino principale" data-i18n-aria="wine_filter"></div>
+      <p class="fnote" data-i18n="color_note">Colore del vino principale, dai siti delle cantine</p></div>
     <div class="list" id="list"></div>
     <div class="detail" id="detail" hidden></div>
-    <p class="appfoot">© <span id="footYear">2026</span> winetripmap.com · dati © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
+    <p class="appfoot"><label class="langpick"><span data-i18n="language">Lingua</span> <select id="langSel"></select></label><br>© <span id="footYear">2026</span> winetripmap.com · <span data-i18n="data">dati</span> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
   </aside>
 
   <main class="mapwrap">
     <div class="map-logo" aria-hidden="true"><span class="wm">wine<b>tr<span class="wi">ı<svg class="wpin" viewBox="0 0 12 16" aria-hidden="true"><path d="M1 5.5A5 5 0 0 1 11 5.5C11 8.9 8.4 11.3 6.6 12V14.3H8.6C9.1 14.3 9.4 14.6 9.4 14.95S9.1 15.6 8.6 15.6H3.4C2.9 15.6 2.6 15.3 2.6 14.95S2.9 14.3 3.4 14.3H5.4V12C3.6 11.3 1 8.9 1 5.5Z"/><circle cx="6" cy="5.5" r="1.75" fill="#fff"/></svg></span>p</b>map</span></div>
-    <div id="map" aria-label="Mappa delle cantine"></div>
+    <div id="map" aria-label="Mappa delle cantine" data-i18n-aria="map_aria"></div>
     <!-- primo accesso senza posizione: invito a dire dove si è -->
-    <div class="worldask" id="worldAsk" hidden><b>Dove vuoi andare?</b><p>Cerca un luogo o usa la tua posizione: ti mostriamo subito le cantine intorno.</p><div class="wa-btns"><button type="button" class="btn primary" id="worldAskGps">Usa la mia posizione</button><button type="button" class="btn" id="worldAskBtn">Cerca un luogo</button></div></div>
-    <button class="btn here" id="searchHere" hidden><svg class="radar" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="8.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="4.4" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".6"/><g class="sweep"><path d="M10 10 L10 1.8 A8.2 8.2 0 0 1 16.4 5z" fill="currentColor" opacity=".35"/><path d="M10 10 L10 1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></g><circle cx="10" cy="10" r="1.4" fill="currentColor"/></svg><span>Cerca in questa zona</span></button>
+    <div class="worldask" id="worldAsk" hidden><b data-i18n="where_go">Dove vuoi andare?</b><p data-i18n="ask_text">Cerca un luogo o usa la tua posizione: ti mostriamo subito le cantine intorno.</p><div class="wa-btns"><button type="button" class="btn primary" id="worldAskGps" data-i18n="use_my_pos">Usa la mia posizione</button><button type="button" class="btn" id="worldAskBtn" data-i18n="search_place">Cerca un luogo</button></div></div>
+    <button class="btn here" id="searchHere" hidden><svg class="radar" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="8.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="4.4" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".6"/><g class="sweep"><path d="M10 10 L10 1.8 A8.2 8.2 0 0 1 16.4 5z" fill="currentColor" opacity=".35"/><path d="M10 10 L10 1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></g><circle cx="10" cy="10" r="1.4" fill="currentColor"/></svg><span data-i18n="search_here">Cerca in questa zona</span></button>
     <div class="crosshair" aria-hidden="true"></div>
-    <div class="nores" id="noRes" hidden>Nessuna cantina qui</div>
-    <button type="button" class="nearbtn" id="nearBtn" hidden><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 1.5v3.5M12 19v3.5M1.5 12H5M19 12h3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Trova le più vicine</span></button>
-    <button class="mapbtn idle" id="previewBtn" aria-pressed="true" aria-label="Radar: cerca da solo quando sposti la mappa" title="Radar">
+    <div class="nores" id="noRes" hidden data-i18n="no_res_here">Nessuna cantina qui</div>
+    <button type="button" class="nearbtn" id="nearBtn" hidden><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 1.5v3.5M12 19v3.5M1.5 12H5M19 12h3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span data-i18n="find_nearest">Trova le più vicine</span></button>
+    <button class="mapbtn idle" id="previewBtn" aria-pressed="true" aria-label="Radar: cerca da solo quando sposti la mappa" title="Radar" data-i18n-aria="radar_aria" data-i18n-title="radar">
       <svg class="radar" viewBox="0 0 20 20" width="30" height="30" aria-hidden="true"><circle cx="10" cy="10" r="8.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="4.4" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".6"/><g class="sweep"><path d="M10 10 L10 1.8 A8.2 8.2 0 0 1 16.4 5z" fill="currentColor" opacity=".35"/><path d="M10 10 L10 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g><circle cx="10" cy="10" r="1.3" fill="currentColor"/></svg>
     </button>
     <p class="countmob" id="countMob" aria-hidden="true"></p>
-    <button class="mapbtn search" id="searchBtn" aria-label="Cerca un luogo o una cantina" title="Cerca">
+    <button class="mapbtn search" id="searchBtn" aria-label="Cerca un luogo o una cantina" title="Cerca" data-i18n-aria="search_aria" data-i18n-title="search">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
     </button>
-    <div class="zoombtns"><button type="button" id="mapThemeBtn" class="mtbtn" aria-label="Mappa chiara o scura" title="Mappa chiara o scura"></button><button type="button" id="zoomIn" aria-label="Avvicina">+</button><button type="button" id="zoomOut" aria-label="Allontana">−</button></div>
-    <button class="mapbtn me" id="meBtn" aria-pressed="false" aria-label="Cerca intorno a me" title="Cerca intorno a me">
+    <div class="zoombtns"><button type="button" id="mapThemeBtn" class="mtbtn" aria-label="Mappa chiara o scura" title="Mappa chiara o scura" data-i18n-aria="theme" data-i18n-title="theme"></button><button type="button" id="zoomIn" aria-label="Avvicina" data-i18n-aria="zoom_in">+</button><button type="button" id="zoomOut" aria-label="Allontana" data-i18n-aria="zoom_out">−</button></div>
+    <button class="mapbtn me" id="meBtn" aria-pressed="false" aria-label="Cerca intorno a me" title="Cerca intorno a me" data-i18n-aria="search_around" data-i18n-title="search_around">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
-    <button class="mapbtn kmbtn" id="kmBtn" aria-expanded="false" aria-controls="kmPick" aria-label="Raggio di ricerca"><b id="kmVal">20</b><span>km</span></button>
-    <div class="kmpick" id="kmPick" role="group" aria-label="Raggio di ricerca">
+    <button class="mapbtn kmbtn" id="kmBtn" aria-expanded="false" aria-controls="kmPick" aria-label="Raggio di ricerca" data-i18n-aria="radius_aria"><b id="kmVal">20</b><span>km</span></button>
+    <div class="kmpick" id="kmPick" role="group" aria-label="Raggio di ricerca" data-i18n-aria="radius_aria">
       <button data-km="5">5</button><button data-km="10">10</button><button data-km="20">20</button><button data-km="30">30</button><button data-km="50">50</button>
       <span class="kmu">km</span>
     </div>
-    <button class="fab" id="menuBtn" aria-expanded="false" aria-label="Apri o chiudi elenco e filtri"><svg class="ico-list" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="5" cy="6.5" r="1.8" fill="currentColor"/><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="5" cy="17.5" r="1.8" fill="currentColor"/><path d="M10 6.5h10M10 12h10M10 17.5h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><svg class="ico-down" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button class="fab" id="menuBtn" aria-expanded="false" aria-label="Apri o chiudi elenco e filtri" data-i18n-aria="menu"><svg class="ico-list" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="5" cy="6.5" r="1.8" fill="currentColor"/><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="5" cy="17.5" r="1.8" fill="currentColor"/><path d="M10 6.5h10M10 12h10M10 17.5h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><svg class="ico-down" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </main>
 </div>
 
 <!-- ricerca: un luogo (Nominatim di OpenStreetMap, gratuito) oppure una cantina per nome -->
 <div class="modal" id="searchModal" hidden role="dialog" aria-modal="true" aria-labelledby="searchTitle">
   <div class="card">
-    <button class="x" data-close aria-label="Chiudi">✕</button>
-    <h3 id="searchTitle">Cerca</h3>
+    <button class="x" data-close aria-label="Chiudi" data-i18n-aria="close">✕</button>
+    <h3 id="searchTitle" data-i18n="search">Cerca</h3>
     <form id="searchForm" class="search">
-      <input id="q" type="search" placeholder="Città, regione o nome della cantina" autocomplete="off" enterkeyhint="search" aria-label="Città, regione o nome della cantina">
-      <button class="btn primary" type="submit">Cerca</button>
+      <input id="q" type="search" placeholder="Città, regione o nome della cantina" autocomplete="off" enterkeyhint="search" aria-label="Città, regione o nome della cantina" data-i18n-ph="search_ph" data-i18n-aria="search_ph">
+      <button class="btn primary" type="submit" data-i18n="search">Cerca</button>
     </form>
     <ul class="results" id="results"></ul>
     <p class="smsg" id="searchMsg" role="status"></p>
@@ -92,6 +92,7 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 </div>
 
 <!-- la mappa (Google, Mapbox o MapLibre + OpenFreeMap) la carica app.js: vedi createMap -->
-<script src="/js/app.js?v=9"></script>
+<script src="/js/i18n.js?v=1"></script>
+<script src="/js/app.js?v=10"></script>
 </body>
 </html>

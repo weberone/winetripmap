@@ -18,6 +18,9 @@ const MAPS = {
   googleMapIdDark: "",  // Map ID con stile scuro (vuoto = tema scuro standard di Google)
   mapboxToken: "",      // account.mapbox.com → Tokens: token pubblico "pk." limitato a winetripmap.com
 };
+// traduzioni (site/js/i18n.js, caricato prima): t("chiave", { valori }), nW(n) = "12 cantine" nella lingua della pagina
+const I18N = window.WTM_I18N, t = I18N.t, LOC = I18N.locale;
+const nW = (n) => I18N.n("w", n, fmtN(n));
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const store = {
@@ -43,12 +46,11 @@ function distKm(a, b) {
   const h = Math.sin(t(b.lat - a.lat) / 2) ** 2 + Math.cos(t(a.lat)) * Math.cos(t(b.lat)) * Math.sin(t(b.lng - a.lng) / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
-const fmtKm = (k) => k < 1 ? Math.round(k * 1000) + " m" : k >= 100 ? Math.round(k).toLocaleString("it-IT") + " km"
-  : k.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " km";
-const fmtN = (n) => Number(n || 0).toLocaleString("it-IT");
+const fmtKm = (k) => k < 1 ? Math.round(k * 1000) + " m" : k >= 100 ? Math.round(k).toLocaleString(LOC) + " km"
+  : k.toLocaleString(LOC, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " km";
+function fmtN(n) { return Number(n || 0).toLocaleString(LOC); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const norm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-const cantine = (n) => n === 1 ? "cantina" : "cantine";
 function offsetLatLng(c, m, deg) {
   const a = deg * Math.PI / 180;
   return { lat: c.lat + (m * Math.cos(a)) / 111320, lng: c.lng + (m * Math.sin(a)) / (111320 * Math.cos(c.lat * Math.PI / 180)) };
@@ -64,10 +66,10 @@ const dark = () => document.documentElement.dataset.scheme === "dark";
 const pinColor = () => dark() ? "#c23a55" : "#8e1b33";
 // colore del vino principale della cantina (letto dal suo sito: tools/vini-dai-siti.mjs): r rosso, b bianco, o rosato, s bollicine
 const WINE = {
-  r: { name: "Rosso", fill: () => pinColor() },
-  b: { name: "Bianco", fill: () => "#d6a51f" },
-  o: { name: "Rosato", fill: () => "#e27591" },
-  s: { name: "Bollicine", fill: () => "#b38b2e" },
+  r: { name: t("red"), fill: () => pinColor() },
+  b: { name: t("white"), fill: () => "#d6a51f" },
+  o: { name: t("rose"), fill: () => "#e27591" },
+  s: { name: t("spark"), fill: () => "#b38b2e" },
 };
 // goccia piena (bordeaux; col colore del vino principale quando è noto) con dentro, in bianco, il logo del sito:
 // il pin a forma di calice del puntino della i (site/mappa/index.html). La punta (ax, in basso) è il punto esatto.
@@ -81,10 +83,10 @@ function markerIcon(sel, wc) { const w = sel ? 36 : 28; return { svg: pinSvg(w, 
 // gruppo di cantine vicine: cerchio bordeaux con il numero
 function clusterIcon(n) {
   const d = n < 10 ? 36 : n < 50 ? 42 : n < 500 ? 48 : 54, r = d / 2;
-  const label = n < 1000 ? n : (Math.round(n / 100) / 10).toLocaleString("it-IT") + "k";
+  const label = n < 1000 ? n : (Math.round(n / 100) / 10).toLocaleString(LOC) + "k";
   return { w: d, h: d, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${d}" height="${d}" viewBox="0 0 ${d} ${d}"><circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="${pinColor()}" stroke="#fff" stroke-width="2"/><text x="${r}" y="${r + 4.5}" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="${n < 100 ? 14 : 12}" fill="#fff">${label}</text></svg>` };
 }
-const title = (x) => x.n || "Cantina" + (x.c ? " a " + x.c : "");
+const title = (x) => x.n || (x.c ? t("winery_in", { c: x.c }) : t("winery"));
 
 // ---------- dati ----------
 let dataP = null;
@@ -118,7 +120,7 @@ function renderChips(all) {
   const n = { r: 0, b: 0, o: 0, s: 0 }; for (const x of all) if (x.wc) n[x.wc]++;
   const chip = (k, label) => `<button type="button" class="chip" data-wc="${k}" aria-pressed="${state.wc === k}">${k ? `<span class="wdot w${k}"></span>` : ""}${label}${k ? ` <span class="cn">${fmtN(n[k])}</span>` : ""}</button>`;
   const box = $("wineChips"); if (!box) return; // pagina vecchia ancora in memoria del browser: niente filtri
-  box.innerHTML = chip("", "Tutte") + chip("r", "Rossi") + chip("b", "Bianchi") + chip("o", "Rosati") + chip("s", "Bollicine");
+  box.innerHTML = chip("", t("all")) + chip("r", t("reds")) + chip("b", t("whites")) + chip("o", t("roses")) + chip("s", t("sparkling"));
 }
 
 // ---------- elenco, pin, cerchio ----------
@@ -126,14 +128,14 @@ function renderList() {
   const v = visible();
   renderChips(inRadius());
   $("count").textContent = fmtN(v.length);
-  $("countLbl").textContent = v.length === 1 ? "cantina trovata" : "cantine trovate";
-  $("countMob").innerHTML = state.areaOk ? `<span class="cm-n">${fmtN(v.length)}</span> ${cantine(v.length)} entro ${state.radiusKm} km` : "";
-  if (state.areaOk && !state.loading) setStatus(`${fmtN(v.length)} ${cantine(v.length)} entro ${state.radiusKm} km`);
+  $("countLbl").textContent = I18N.n("found", v.length, "").trim();
+  $("countMob").innerHTML = state.areaOk ? esc(t("within", { n: nW(v.length), km: state.radiusKm })).replace(fmtN(v.length), `<span class="cm-n">${fmtN(v.length)}</span>`) : "";
+  if (state.areaOk && !state.loading) setStatus(t("within", { n: nW(v.length), km: state.radiusKm }));
   radarLabel();
   if (!v.length) {
-    $("list").innerHTML = state.areaOk && state.wc && inRadius().length ? `<div class="empty">Nessuna cantina con ${{ r: "rossi", b: "bianchi", o: "rosati", s: "bollicine" }[state.wc]} come vino principale in questo raggio. Tocca “Tutte” per vederle tutte.</div>`
-      : state.areaOk ? `<div class="empty">Nessuna cantina in questo raggio. Prova un raggio più grande o “Trova le più vicine” sulla mappa.</div>`
-      : `<div class="empty">Cerca un luogo o usa la tua posizione per vedere le cantine intorno.</div>`;
+    $("list").innerHTML = state.areaOk && state.wc && inRadius().length ? `<div class="empty">${esc(t("empty_color", { c: WINE[state.wc].name.toLowerCase(), all: t("all") }))}</div>`
+      : state.areaOk ? `<div class="empty">${esc(t("empty_radius"))}</div>`
+      : `<div class="empty">${esc(t("empty_start"))}</div>`;
   } else {
     $("list").innerHTML = v.slice(0, 300).map((x) => `<button class="item" data-id="${esc(x.id)}"><span class="mk">${pinSvg(20, x.wc)}</span>
         <span style="min-width:0"><div class="name">${esc(title(x))}</div>${x.c && x.n ? `<div class="meta">${esc(x.c)}</div>` : ""}</span>
@@ -281,7 +283,7 @@ function radarLabel() {
   const searching = radarHold || (!$("searchHere").hidden && state.showPreview);
   const empty = state.areaOk && !state.loading && !visible().length;
   const k = searching ? "radarSearching" : empty ? "noResHere" : state.showPreview ? "radarOn" : "radarOff";
-  el.textContent = { radarSearching: "Cerco…", noResHere: "Nessuna cantina qui", radarOn: "Radar attivo", radarOff: "Radar spento" }[k];
+  el.textContent = { radarSearching: t("searching"), noResHere: t("no_res_here"), radarOn: t("radar_on"), radarOff: t("radar_off") }[k];
   el.dataset.k = k;
   el.hidden = !state.center;
   const nb = $("nearBtn");
@@ -294,7 +296,7 @@ async function loadArea(minMs = 0) {
   const seq = ++areaSeq, t0 = performance.now();
   state.loading = true;
   if (state.mapsReady) M.setLink(null);
-  setStatus("Cerco…");
+  setStatus(t("searching"));
   try {
     await loadData();
     const rest = minMs - (performance.now() - t0); if (rest > 0) await sleep(rest); // i dati sono già qui: il radar fa almeno un mezzo giro
@@ -303,7 +305,7 @@ async function loadArea(minMs = 0) {
   } catch (e) {
     console.error(e);
     state.areaOk = false;
-    setStatus("Non riesco a caricare le cantine");
+    setStatus(t("load_fail"));
   } finally { if (seq === areaSeq) state.loading = false; }
 }
 // nuova posizione (GPS o luogo cercato): le distanze si misurano da qui
@@ -354,7 +356,7 @@ async function findNearest() {
   drawMe();
   await loadArea(); renderList();
   M.setLink(from, best, fmtKm(bk));
-  setStatus(`La più vicina è a ${fmtKm(bk)}`);
+  setStatus(t("nearest_at", { d: fmtKm(bk) }));
 }
 
 // ---------- posizione ----------
@@ -366,19 +368,19 @@ function getPosition(fresh = false) {
 async function applyPosition(r, silent) {
   if (r.p) {
     store.set("lastgps", { lat: r.p.coords.latitude, lng: r.p.coords.longitude });
-    await setMe(r.p.coords.latitude, r.p.coords.longitude, "La tua posizione", true, "");
+    await setMe(r.p.coords.latitude, r.p.coords.longitude, t("your_pos"), true, "");
     $("meBtn").setAttribute("aria-pressed", "true");
     return true;
   }
   if (silent) return false;
-  const why = !navigator.geolocation ? "il browser non la fornisce" : r.err.code === 1 ? "permesso negato" : r.err.code === 3 ? "il GPS non risponde" : "posizione non disponibile";
-  $("locmsg").textContent = `Niente posizione (${why}): cerca un luogo.`;
-  setStatus("Posizione non disponibile");
+  const why = t(!navigator.geolocation ? "why_browser" : r.err.code === 1 ? "why_denied" : r.err.code === 3 ? "why_gps" : "why_na");
+  $("locmsg").textContent = t("no_pos", { why });
+  setStatus(t("pos_na"));
   return false;
 }
 async function restartGeo() {
   state.userMoved = false;
-  $("meBtn").classList.add("busy"); setStatus("Cerco la tua posizione…");
+  $("meBtn").classList.add("busy"); setStatus(t("pos_seek"));
   let r = await getPosition(true);
   if (!r.p && r.err && r.err.code !== 1) r = await getPosition(false); // al chiuso il GPS è lento: la posizione più recente
   $("meBtn").classList.remove("busy");
@@ -397,7 +399,7 @@ function pinTip(id) {
   const x = state.byId.get(id); if (!x) return;
   const from = state.me || state.center;
   state.sel = id; drawMarkers();
-  M.showPopup({ lat: x.lat, lng: x.lng }, `<button class="pintip" type="button"><b>${esc(title(x))}</b>${x.c && x.n ? `<small>${esc(x.c)}</small>` : ""}${from ? `<small>a ${fmtKm(distKm(from, x))}</small>` : ""}<em>Apri la scheda</em></button>`,
+  M.showPopup({ lat: x.lat, lng: x.lng }, `<button class="pintip" type="button"><b>${esc(title(x))}</b>${x.c && x.n ? `<small>${esc(x.c)}</small>` : ""}${from ? `<small>${esc(t("away", { d: fmtKm(distKm(from, x)) }))}</small>` : ""}<em>${esc(t("open_card"))}</em></button>`,
     () => openDetail(id, false));
 }
 const directionsUrl = (x) => `https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}`;
@@ -409,9 +411,9 @@ async function openDetail(id, fly = true) {
   const wasOpen = !$("detail").hidden;
   state.sel = id;
   M.showPopup(null);
-  const head = `<div class="dhead"><h2>${esc(title(x))}</h2><button class="x" id="dClose" aria-label="Chiudi">✕</button></div>
-    <div class="dkind">Cantina${from ? ` · a ${fmtKm(distKm(from, x))}` : ""}</div>`;
-  $("detail").innerHTML = head + `<p class="dline"><small>Carico i dettagli…</small></p>`;
+  const head = `<div class="dhead"><h2>${esc(title(x))}</h2><button class="x" id="dClose" aria-label="${esc(t("close"))}">✕</button></div>
+    <div class="dkind">${esc(t("winery"))}${from ? ` · ${esc(t("away", { d: fmtKm(distKm(from, x)) }))}` : ""}</div>`;
+  $("detail").innerHTML = head + `<p class="dline"><small>${esc(t("loading"))}</small></p>`;
   $("detail").hidden = false; $("list").hidden = true;
   app.classList.add("has-detail");
   $("dClose").onclick = () => closeDetail();
@@ -428,19 +430,19 @@ async function openDetail(id, fly = true) {
   const tel = d.p ? d.p.split(/[;,]/)[0].trim() : "";
   const host = d.w ? d.w.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "") : "";
   $("detail").innerHTML = head + `
-    ${d.a || x.c ? `<p class="dline"><small>Indirizzo</small>${esc([d.a, x.c].filter(Boolean).join(", "))}</p>` : ""}
-    ${d.o ? `<p class="dline"><small>Orari</small>${esc(d.o)}</p>` : ""}
-    ${tel ? `<p class="dline"><small>Telefono</small><a href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">${esc(tel)}</a></p>` : ""}
-    ${host ? `<p class="dline"><small>Sito</small><a href="${esc(d.w)}" target="_blank" rel="noopener nofollow">${esc(host)}</a></p>` : ""}
+    ${d.a || x.c ? `<p class="dline"><small>${esc(t("address"))}</small>${esc([d.a, x.c].filter(Boolean).join(", "))}</p>` : ""}
+    ${d.o ? `<p class="dline"><small>${esc(t("hours"))}</small>${esc(d.o)}</p>` : ""}
+    ${tel ? `<p class="dline"><small>${esc(t("phone"))}</small><a href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">${esc(tel)}</a></p>` : ""}
+    ${host ? `<p class="dline"><small>${esc(t("site"))}</small><a href="${esc(d.w)}" target="_blank" rel="noopener nofollow">${esc(host)}</a></p>` : ""}
     ${wineList(d)}
     <div class="dbtns">
-      <a class="btn primary" href="${directionsUrl(x)}" target="_blank" rel="noopener">Indicazioni</a>
-      ${tel ? `<a class="btn" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">Chiama</a>` : ""}
-      ${d.w ? `<a class="btn" href="${esc(d.w)}" target="_blank" rel="noopener nofollow">Sito</a>` : ""}
-      <button class="btn fav" id="dFav" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg><span>Salva</span></button>
-      <button class="btn" id="dShare" type="button">Condividi</button>
+      <a class="btn primary" href="${directionsUrl(x)}" target="_blank" rel="noopener">${esc(t("directions"))}</a>
+      ${tel ? `<a class="btn" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">${esc(t("call"))}</a>` : ""}
+      ${d.w ? `<a class="btn" href="${esc(d.w)}" target="_blank" rel="noopener nofollow">${esc(t("site_btn"))}</a>` : ""}
+      <button class="btn fav" id="dFav" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg><span>${esc(t("save"))}</span></button>
+      <button class="btn" id="dShare" type="button">${esc(t("share"))}</button>
     </div>
-    <p class="dsrc">Dati da OpenStreetMap · <a href="${osmUrl(x)}" target="_blank" rel="noopener">correggi o completa</a></p>`;
+    <p class="dsrc">${esc(t("osm"))} · <a href="${osmUrl(x)}" target="_blank" rel="noopener">${esc(t("fix"))}</a></p>`;
   $("dClose").onclick = () => closeDetail();
   $("dShare").onclick = () => share(title(x), placeUrl(x));
   $("dFav").onclick = () => toggleFav(x); syncFav(x.id);
@@ -458,9 +460,9 @@ function wineList(d) {
     ? `<li${i >= 12 ? " hidden" : ""}><span class="wpic">${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createRange().createContextualFragment(this.dataset.f))" data-f="${esc(BOTTLE(c))}">` : BOTTLE(c)}</span>
         <span class="wname"><span class="wdot${c ? " w" + c : ""}" title="${c ? WINE[c].name : ""}"></span>${esc(n)}</span></li>`
     : `<li${i >= 12 ? " hidden" : ""}><span class="wdot${c ? " w" + c : ""}" title="${c ? WINE[c].name : ""}"></span>${esc(n)}</li>`;
-  return `<div class="dline"><small>Vini (${d.v.length})</small><ul class="wines${pics ? " wgrid" : ""}">${d.v.map(item).join("")}</ul>
-    ${d.v.length > 12 ? `<button type="button" class="linkbtn" id="wMore">Tutti i vini</button>` : ""}
-    <p class="wsrc">Dal sito della cantina${src ? `: <a href="${esc(d.vu)}" target="_blank" rel="noopener nofollow">${esc(src.length > 40 ? src.slice(0, 40) + "…" : src)}</a>` : ""}${pics ? ", foto comprese" : ""}. Annate e disponibilità sul sito.</p></div>`;
+  return `<div class="dline"><small>${esc(t("wines"))} (${d.v.length})</small><ul class="wines${pics ? " wgrid" : ""}">${d.v.map(item).join("")}</ul>
+    ${d.v.length > 12 ? `<button type="button" class="linkbtn" id="wMore">${esc(t("all_wines"))}</button>` : ""}
+    <p class="wsrc">${esc(t("from_site"))}${src ? `: <a href="${esc(d.vu)}" target="_blank" rel="noopener nofollow">${esc(src.length > 40 ? src.slice(0, 40) + "…" : src)}</a>` : ""}${pics ? esc(t("photos")) : ""}${esc(t("vintages"))}</p></div>`;
 }
 function closeDetail(silent) {
   if ($("detail").hidden && !state.sel) return;
@@ -474,7 +476,7 @@ function closeDetail(silent) {
 }
 async function share(text, url) {
   try { if (navigator.share) return await navigator.share({ title: "WineTripMap", text, url }); } catch (e) { return; }
-  try { await navigator.clipboard.writeText(url); setStatus("Link copiato"); } catch (e) { prompt("Copia il link", url); }
+  try { await navigator.clipboard.writeText(url); setStatus(t("link_copied")); } catch (e) { prompt(t("copy_link"), url); }
 }
 
 // ---------- ricerca: cantine per nome, comuni, luoghi (Nominatim) ----------
@@ -490,16 +492,16 @@ function suggest() {
   const tw = [...towns.values()].sort((a, b) => b.n - a.n).slice(0, 4).map((t) => ({ kind: "town", name: t.name, n: t.n, lat: t.lat / t.n, lng: t.lng / t.n }));
   const ws = state.all.filter((x) => x.n && norm(x.n).includes(s)).sort((a, b) => (norm(a.n).startsWith(s) ? 0 : 1) - (norm(b.n).startsWith(s) ? 0 : 1)).slice(0, 8).map((x) => ({ kind: "place", x }));
   hits = [{ kind: "geo", q: $("q").value.trim() }, ...tw, ...ws];
-  let html = `<li data-i="0">🔎 Cerca il luogo “${esc(hits[0].q)}”</li>`;
-  if (tw.length) html += `<li class="rhead">Comuni con cantine</li>` + tw.map((t, i) => `<li data-i="${i + 1}">${esc(t.name)}<small>${fmtN(t.n)}</small></li>`).join("");
-  if (ws.length) html += `<li class="rhead">Cantine</li>` + ws.map((w, i) => `<li data-i="${i + 1 + tw.length}">${esc(w.x.n)}<small>${esc(w.x.c || "")}</small></li>`).join("");
+  let html = `<li data-i="0">🔎 ${esc(t("find_place", { q: hits[0].q }))}</li>`;
+  if (tw.length) html += `<li class="rhead">${esc(t("towns"))}</li>` + tw.map((t, i) => `<li data-i="${i + 1}">${esc(t.name)}<small>${fmtN(t.n)}</small></li>`).join("");
+  if (ws.length) html += `<li class="rhead">${esc(t("wineries"))}</li>` + ws.map((w, i) => `<li data-i="${i + 1 + tw.length}">${esc(w.x.n)}<small>${esc(w.x.c || "")}</small></li>`).join("");
   $("results").innerHTML = html;
 }
 function pick(i) {
   const h = hits[i]; if (!h) return;
   if (h.kind === "geo") return geocode(h.q);
   closeSearch(); state.userMoved = true;
-  if (h.kind === "town") return setMe(h.lat, h.lng, h.name, false, `Luogo: ${h.name}`);
+  if (h.kind === "town") return setMe(h.lat, h.lng, h.name, false, t("place", { p: h.name }));
   // una cantina: il raggio intorno a lei (le distanze restano da te) e la sua scheda
   const x = h.x;
   state.center = { lat: x.lat, lng: x.lng };
@@ -509,30 +511,30 @@ function pick(i) {
 async function geocode(q) {
   if (q.length < 2) return;
   const msg = (m) => { $("searchMsg").textContent = m; };
-  const go = (lat, lng, name, full) => { closeSearch(); state.userMoved = true; setMe(lat, lng, name || q, false, `Luogo: ${full || name || q}`); };
-  msg(`Cerco “${q}”…`);
+  const go = (lat, lng, name, full) => { closeSearch(); state.userMoved = true; setMe(lat, lng, name || q, false, t("place", { p: full || name || q })); };
+  msg(t("searching_q", { q }));
   // prima in Italia ("Alba" è quella delle Langhe), poi nel resto del mondo. Dall'Italia vale subito solo un luogo
   // (città, paese, frazione: rank fino a 25), non un locale col nome uguale ("New York" è un bar a Roma, non la città)
   const isPlace = (p) => (p.rank ?? 30) <= 25;
   const it = await lookup(q, "it");
-  if (it === "down") return msg("La ricerca non risponde, riprova tra poco.");
+  if (it === "down") return msg(t("search_down"));
   if (it && isPlace(it)) return go(it.lat, it.lng, it.name, it.full);
   const w = await lookup(q, "");
   if (w && w !== "down" && (isPlace(w) || !it)) return go(w.lat, w.lng, w.name, w.full);
   if (it) return go(it.lat, it.lng, it.name, it.full);
-  msg(w === "down" ? "La ricerca non risponde, riprova tra poco." : `Non trovo “${q}”.`);
+  msg(w === "down" ? t("search_down") : t("not_found", { q }));
 }
 // un luogo dal nostro server (con memoria); se non risponde (o in prova locale senza PHP) da Nominatim direttamente.
 // Restituisce il luogo, null se non esiste, "down" se nessuno risponde.
 async function lookup(q, cc) {
   try {
-    const r = await fetch("/api/geocode.php?" + new URLSearchParams({ q, lang: "it", cc }));
+    const r = await fetch("/api/geocode.php?" + new URLSearchParams({ q, lang: I18N.lang, cc }));
     if (r.status === 404) return null;
     const d = r.ok ? await r.json() : null;
     if (d && !d.error) return d;
   } catch (e) {}
   try {
-    const r = await fetch("https://nominatim.openstreetmap.org/search?" + new URLSearchParams(Object.assign({ q, format: "jsonv2", limit: "1", "accept-language": "it" }, cc ? { countrycodes: cc } : {})));
+    const r = await fetch("https://nominatim.openstreetmap.org/search?" + new URLSearchParams(Object.assign({ q, format: "jsonv2", limit: "1", "accept-language": I18N.lang }, cc ? { countrycodes: cc } : {})));
     if (!r.ok) return "down";
     const x = (await r.json())[0];
     return x ? { lat: +x.lat, lng: +x.lon, name: x.name, full: x.display_name, rank: +x.place_rank } : null;
@@ -588,7 +590,7 @@ function bind() {
     store.set("theme", d.dataset.theme); applyScheme();
   };
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyScheme);
-  $("shareHdr").onclick = () => share("WineTripMap: le cantine vicino a te, in tutto il mondo", location.origin + location.pathname);
+  $("shareHdr").onclick = () => share(t("share_text"), location.origin + location.pathname);
   // Invio: il comune o la cantina con esattamente quel nome, altrimenti la ricerca del luogo
   $("searchForm").onsubmit = (e) => {
     e.preventDefault(); suggest();
@@ -610,6 +612,9 @@ function bind() {
   addEventListener("keydown", (e) => { if (e.key === "Escape") { closeSearch(); toggleKm(false); } });
   matchMedia(MOB_MQ).addEventListener("change", () => setSheet(!mapOnly() && isMobile()));
   $("footYear").textContent = new Date().getFullYear();
+  // lingua: le 12 di SkateboardMap; la scelta si ricorda e la pagina si ricarica (anche ?lang= nell'indirizzo)
+  $("langSel").innerHTML = I18N.langs.map((l) => `<option value="${l}"${l === I18N.lang ? " selected" : ""}>${I18N.names[l]}</option>`).join("");
+  $("langSel").onchange = () => { I18N.set($("langSel").value); const u = new URL(location.href); u.searchParams.delete("lang"); location.replace(u); };
 }
 
 // ---------- account (come SkateboardMap): chi sei, cantine preferite ----------
@@ -625,7 +630,7 @@ async function loadMe(mapKind) {
     state.user = d.user || null;
     const b = $("acctBtn");
     b.classList.toggle("on", !!state.user);
-    b.title = b.ariaLabel = state.user ? "Il tuo account" : "Accedi o registrati";
+    b.title = b.ariaLabel = t(state.user ? "account" : "login");
     b.querySelector(".ini").textContent = state.user ? (state.user.name || state.user.email || "?").trim().charAt(0).toUpperCase() : "";
     if (state.user) {
       const f = await fetch("/api/fav.php", { credentials: "same-origin" }).then((x) => x.json());
@@ -637,7 +642,7 @@ async function loadMe(mapKind) {
 function syncFav(id) {
   const b = $("dFav"); if (!b) return;
   const on = state.favs.has(id);
-  b.setAttribute("aria-pressed", String(on)); b.querySelector("span").textContent = on ? "Salvata" : "Salva";
+  b.setAttribute("aria-pressed", String(on)); b.querySelector("span").textContent = t(on ? "saved" : "save");
 }
 async function toggleFav(x) {
   if (!state.user) { location.href = "/account/?next=" + encodeURIComponent("/mappa/?c=" + x.id); return; }
@@ -647,8 +652,8 @@ async function toggleFav(x) {
     const r = await fetch("/api/fav.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: x.id, on, name: x.n || "", town: x.c || "", lat: x.lat, lng: x.lng }) });
     if (!r.ok) throw new Error(r.status);
-    setStatus(on ? "Salvata tra le preferite" : "Tolta dalle preferite");
-  } catch (e) { on ? state.favs.delete(x.id) : state.favs.add(x.id); syncFav(x.id); setStatus("Non riuscito, riprova"); }
+    setStatus(t(on ? "fav_saved" : "fav_removed"));
+  } catch (e) { on ? state.favs.delete(x.id) : state.favs.add(x.id); syncFav(x.id); setStatus(t("failed")); }
 }
 
 // ---------- avvio ----------
@@ -664,7 +669,7 @@ async function start() {
   try { perm = (await navigator.permissions.query({ name: "geolocation" })).state; } catch (e) {}
   const last = store.get("lastgps"), startAt = perm === "granted" ? last : null;
   const mapKind = await createMap({ dark: dark(), center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 30, lng: 10 },
-    bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : WORLD, padding: 12, language: "it" });
+    bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : WORLD, padding: 12, language: I18N.lang });
   state.mapsReady = true; app.classList.add("mapready");
   loadMe(mapKind);
   M.setBottomPadding(mapPad(), 0);
@@ -688,7 +693,7 @@ async function start() {
   if (perm === "granted") { if (!(await applyPosition(await getPosition(false), true))) askWhere(); }
   else askWhere();
 }
-function askWhere() { $("worldAsk").hidden = false; setStatus("Dove vuoi andare?"); renderList(); }
+function askWhere() { $("worldAsk").hidden = false; setStatus(t("where_go")); renderList(); }
 
 // ---------- quale mappa: Google → Mapbox → OpenFreeMap ----------
 // Il contatore del sito (api/counter.php) sceglie la prima con quota gratuita nel mese e la conta.
@@ -752,5 +757,5 @@ const PALETTE = {
     motorway: ["#4a2630", "#2b1a1e"], major: ["#3d232a", "#241a1c"], medium: ["#30212a", "#1e1719"], minor: ["#241c1c", "#181213"] }
 };
 
-start().catch((e) => { console.error(e); setStatus("La mappa non si è caricata, ricarica la pagina"); });
+start().catch((e) => { console.error(e); setStatus(t("map_fail")); });
 })();

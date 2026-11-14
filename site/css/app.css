@@ -331,3 +331,7 @@ form.search input:focus{border-color:var(--accent)}
 .app.mob .filters .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}
 .app.mob .filters .chips::-webkit-scrollbar{display:none}
 .app.mob .filters .chip{flex:none}
+
+/* lingua (in fondo al pannello) */
+.langpick{display:inline-flex;align-items:center;gap:6px;margin-bottom:4px}
+.langpick select{font:inherit;font-size:12px;padding:2px 4px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
