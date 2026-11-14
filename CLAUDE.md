@@ -17,7 +17,8 @@ Progetto separato da SkateboardMap: lavora solo in questa cartella e nel core co
 - Una modifica al solo core non va online da sola: serve un push su winetripmap (o rilanciare il workflow a mano).
 
 ## Mappa (`site/mappa/`, `site/js/app.js`, `site/css/app.css`)
-- Stessa esperienza di SkateboardMap (posizione, raggio, radar che scopre i pin, Cerca in questa zona, più vicine, elenco, scheda, pannello del telefono), con il modulo mappa del core (MapLibre + OpenFreeMap, colori passati con `palette`).
+- Stessa esperienza di SkateboardMap (posizione, raggio, radar che scopre i pin, Cerca in questa zona, più vicine, elenco, scheda, pannello del telefono), con i moduli mappa del core.
+- Mappe come SkateboardMap: prima Google finché la quota gratuita del mese regge, poi Mapbox, poi OpenFreeMap (MapLibre, colori passati con `palette`). Sceglie e conta `site/api/counter.php` (tetti Google 9.500 e Mapbox 47.500 al mese, file in `site/counter/`, escluso dal deploy); `createMap` in `app.js` carica il modulo e passa alla successiva se una non parte. Chiavi pubbliche in `MAPS` in cima ad `app.js`: vuote = mappa spenta.
 - Solo cantine (`craft=winery`), in tutto il mondo. Enoteche e degustazioni tolte per scelta dell'utente: eventualmente dopo.
 - Enoteche, wine bar, negozi e ristoranti segnati in OSM come cantine vengono tolti dal nome (`tools/non-cantine.mjs`, con liste TOGLI/TIENI corrette a mano), a ogni nuovo scarico.
 - Dati: `node tools/osm-cantine.mjs` scarica da Overpass (server pubblici spesso pieni: riprova da solo) e scrive `site/data/cantine.json` (tutti i punti, leggeri) e `site/data/det/<lat10>_<lng10>.json` (dettagli, caricati con la scheda).

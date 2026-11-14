@@ -1,12 +1,23 @@
 /* winetripmap.com — web app, stessa esperienza di SkateboardMap: posizione, raggio, radar che scopre i pin, elenco delle più vicine, scheda.
-   - Mappa: modulo comune core/js/map/map-gl.js (MapLibre + OpenFreeMap, gratuita), interfaccia window.SkateMap.
+   - Mappa come SkateboardMap: prima Google finché la quota gratuita del mese regge, poi Mapbox, poi OpenFreeMap (gratuita);
+     la scelta la fa /api/counter.php, i moduli sono nel core (core/js/map/map-google.js, map-gl.js), interfaccia window.SkateMap.
    - Cantine di tutto il mondo da OpenStreetMap (tools/osm-cantine.mjs):
      /data/cantine.json = tutti i punti (id, lat, lng, nome, comune), nel browser: raggio, ricerca e "più vicine" senza server;
      /data/det/<riquadro>.json = indirizzo, telefono, sito e orari, caricati solo all'apertura di una scheda.
    - Ricerca di un luogo: /api/geocode.php (Nominatim di OpenStreetMap, gratuito, con memoria), altrimenti Nominatim direttamente. */
 (() => {
 "use strict";
-const M = window.SkateMap; // nome storico dell'interfaccia del core
+// nome storico dell'interfaccia del core; il modulo (Google o GL) si carica all'avvio, quindi si legge sempre quello attuale
+const M = new Proxy({}, { get: (_, k) => window.SkateMap[k] });
+
+// ---------- mappe: chiavi PUBBLICHE, limitate in Google Cloud e in Mapbox al dominio winetripmap.com ----------
+// Vuote = quella mappa è spenta. Mai chiavi segrete qui (Mapbox "sk.").
+const MAPS = {
+  googleKey: "",        // Google Cloud → Credenziali: chiave limitata a winetripmap.com e alla sola "Maps JavaScript API"
+  googleMapId: "",      // Google Cloud → Gestione mappe → JavaScript, vettoriale (serve per i pin HTML)
+  googleMapIdDark: "",  // Map ID con stile scuro (vuoto = tema scuro standard di Google)
+  mapboxToken: "",      // account.mapbox.com → Tokens: token pubblico "pk." limitato a winetripmap.com
+};
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const store = {
@@ -603,9 +614,8 @@ async function start() {
   let perm = "prompt";
   try { perm = (await navigator.permissions.query({ name: "geolocation" })).state; } catch (e) {}
   const last = store.get("lastgps"), startAt = perm === "granted" ? last : null;
-  await M.create($("map"), { lib: "maplibre", style: STYLE, styleLight: STYLE, dark: dark(), palette: PALETTE,
-    center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 30, lng: 10 },
-    bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : WORLD, padding: 12 });
+  await createMap({ dark: dark(), center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 30, lng: 10 },
+    bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : WORLD, padding: 12, language: "it" });
   state.mapsReady = true; app.classList.add("mapready");
   M.setBottomPadding(mapPad(), 0);
   M.on("moveend", () => { syncMeBtn(); checkArea(); });
@@ -629,6 +639,55 @@ async function start() {
   else askWhere();
 }
 function askWhere() { $("worldAsk").hidden = false; setStatus("Dove vuoi andare?"); renderList(); }
+
+// ---------- quale mappa: Google → Mapbox → OpenFreeMap ----------
+// Il contatore del sito (api/counter.php) sceglie la prima con quota gratuita nel mese e la conta.
+// Se una non parte (chiave rifiutata, quota finita) si passa alla successiva; se si rompe dopo ("fatal"), si ricarica la pagina senza di lei.
+const loaded = {};
+function load(url, css) {
+  return loaded[url] ||= new Promise((res, rej) => {
+    const e = document.createElement(css ? "link" : "script");
+    if (css) { e.rel = "stylesheet"; e.href = url; document.head.prepend(e); return res(); }
+    e.src = url; e.onload = res; e.onerror = () => { delete loaded[url]; rej(new Error("load " + url)); }; document.head.append(e);
+  });
+}
+const MODULE = { google: "/core/js/map/map-google.js", gl: "/core/js/map/map-gl.js" };
+async function useModule(m) { if (window.SkateMapKind !== m) { delete loaded[MODULE[m]]; await load(MODULE[m]); window.SkateMapKind = m; } }
+async function counter(have, skip) {
+  try { const r = await fetch(`/api/counter.php?have=${have.join(",")}&skip=${skip.join(",")}`, { cache: "no-store" }); if (r.ok) return (await r.json()).use; } catch (e) {}
+  return "free"; // senza contatore (anche in locale) non si rischia: mappa gratuita
+}
+async function createMap(o) {
+  const have = [MAPS.googleKey && MAPS.googleMapId && "google", MAPS.mapboxToken && "mapbox"].filter(Boolean);
+  let skip = []; try { skip = JSON.parse(sessionStorage.getItem("wtm.mapskip")) || []; } catch (e) {}
+  for (;;) {
+    const use = have.some((p) => !skip.includes(p)) ? await counter(have, skip) : "free";
+    $("map").innerHTML = ""; $("map").className = "";
+    try {
+      if (use === "google") {
+        await useModule("google");
+        await M.create($("map"), { ...o, key: MAPS.googleKey, mapId: MAPS.googleMapId, mapIdDark: MAPS.googleMapIdDark });
+      } else if (use === "mapbox") {
+        await Promise.all([load("https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js"), load("https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css", true)]);
+        await useModule("gl");
+        await M.create($("map"), { ...o, lib: "mapbox", token: MAPS.mapboxToken });
+      } else {
+        await Promise.all([load("https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.js"), load("https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.css", true)]);
+        await useModule("gl");
+        await M.create($("map"), { ...o, lib: "maplibre", style: STYLE, styleLight: STYLE, palette: PALETTE });
+      }
+    } catch (e) {
+      if (use === "free") throw e;
+      skip.push(use); continue; // la prossima della lista
+    }
+    document.documentElement.dataset.map = use;
+    M.on("fatal", () => { // chiave revocata o quota finita a mappa già aperta: si riparte senza questa mappa
+      try { sessionStorage.setItem("wtm.mapskip", JSON.stringify([...skip, use])); } catch (e) {}
+      location.reload();
+    });
+    return use;
+  }
+}
 
 // ---------- colori della mappa (stesse chiavi della palette del core) ----------
 const STYLE = "https://tiles.openfreemap.org/styles/liberty"; // stessa base per chiaro e scuro: il core la ricolora

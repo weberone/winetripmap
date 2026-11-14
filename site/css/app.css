@@ -194,7 +194,10 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 .app.mob:not(.map-only) .zoombtns,.app.mob:not(.map-only) #previewBtn,.app.mob:not(.map-only) .kmbtn,.app.mob:not(.map-only) .kmpick,
 .app.mob:not(.map-only) .mapbtn.me,.app.mob:not(.map-only) .legend,.app.mob:not(.map-only) .mapbtn.search,.app.mob:not(.map-only) .here{display:none!important}
 
-/* ---------- elementi disegnati dal core (core/js/map/map-gl.js) ---------- */
+/* ---------- elementi disegnati dal core (core/js/map/: Google, Mapbox o MapLibre) ---------- */
+/* Google: la mappa resta nascosta finché le prime tessere non hanno lo stile del Map ID, poi compare */
+#map{transition:opacity .3s}
+#map.g-wait{opacity:0}
 .pinwrap{position:relative}
 .pinwrap .pin{display:block;filter:drop-shadow(0 2px 3px rgb(0 0 0 / .3))}
 .plabel{position:absolute;top:100%;transform:translateX(-50%);margin-top:1px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 11px/1.2 var(--f-body);pointer-events:none}
@@ -208,16 +211,16 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 .rv-pop .pin,.rv-pop .plabel{animation:rvDrop .26s cubic-bezier(.3,.7,.4,1.15)}
 @keyframes rvDrop{0%{opacity:0;translate:0 -16px}55%{opacity:1}100%{translate:0 0}}
 /* fumetto sopra il pin: nome, comune, distanza; un tocco apre la scheda */
-.sk-pop .maplibregl-popup-content{padding:0;border-radius:12px;background:var(--surface);color:var(--ink);box-shadow:0 6px 20px rgb(0 0 0 / .45);overflow:hidden}
-.sk-pop .maplibregl-popup-tip{border-top-color:var(--surface)!important}
+.sk-pop .mapboxgl-popup-content,.sk-pop .maplibregl-popup-content{padding:0;border-radius:12px;background:var(--surface);color:var(--ink);box-shadow:0 6px 20px rgb(0 0 0 / .45);overflow:hidden}
+.sk-pop .mapboxgl-popup-tip,.sk-pop .maplibregl-popup-tip{border-top-color:var(--surface)!important}
 .pintip{display:flex;flex-direction:column;gap:3px;padding:10px 12px 12px;width:210px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .pintip .tk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .pintip b{font-size:15px;line-height:1.2;overflow-wrap:anywhere}
 .pintip small{font-size:12.5px;color:var(--muted)}
 .pintip em{margin-top:8px;padding:8px 10px;border-radius:9px;background:var(--accent);color:var(--accent-ink);text-align:center;font:700 13.5px var(--f-body);font-style:normal}
-.maplibregl-ctrl-attrib{background:color-mix(in srgb,var(--surface) 85%,transparent)!important;color:var(--muted)}
-.maplibregl-ctrl-attrib a{color:var(--muted)}
-.maplibregl-ctrl-bottom-right{bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+.mapboxgl-ctrl-attrib,.maplibregl-ctrl-attrib{background:color-mix(in srgb,var(--surface) 85%,transparent)!important;color:var(--muted)}
+.mapboxgl-ctrl-attrib a,.maplibregl-ctrl-attrib a{color:var(--muted)}
+.mapboxgl-ctrl-bottom-right,.maplibregl-ctrl-bottom-right{bottom:calc(20px + env(safe-area-inset-bottom,0px))}
 
 /* ---------- finestra di ricerca ---------- */
 .modal{position:fixed;inset:0;z-index:50;display:grid;place-items:start center;padding:calc(60px + env(safe-area-inset-top,0px)) 16px 16px;background:rgb(0 0 0 / .45)}
@@ -254,7 +257,7 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
   .nores{display:none}
   .app:has(#nearBtn:not([hidden])) .nores{display:block}
   .worldask{top:16px}
-  .maplibregl-ctrl-bottom-right{bottom:0}
+  .mapboxgl-ctrl-bottom-right,.maplibregl-ctrl-bottom-right{bottom:0}
 }
 
 /* ---------- barra dei pulsanti come SkateboardMap ----------
