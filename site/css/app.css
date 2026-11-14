@@ -31,11 +31,11 @@ header.top{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding-bloc
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   border-bottom:1px solid var(--line);background:var(--surface)}
 .logo{display:flex;align-items:center;flex:none;text-decoration:none;color:var(--ink);font-size:21px;line-height:1}
-/* logo: scritta minuscola, il puntino della i di trip è il pin */
+/* logo: scritta minuscola, il puntino della i di trip è un pin a forma di calice (la punta diventa gambo e base) */
 .wm{font:800 1em/1 var(--f-body);letter-spacing:-.03em;white-space:nowrap}
 .wm b{color:var(--accent);font-weight:800}
 .wm .wi{position:relative}
-.wm .wpin{position:absolute;left:50%;top:-.2em;width:.4em;height:.53em;transform:translateX(-50%);fill:var(--accent);overflow:visible}
+.wm .wpin{position:absolute;left:50%;top:-.24em;width:.42em;height:.56em;transform:translateX(-50%);fill:var(--accent);overflow:visible}
 .hstat{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0}
 .status{min-width:0;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .info{flex:none;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center;padding:0}
