@@ -9,6 +9,7 @@ import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyVini } from './vini-applica.mjs';
+import { nonCantina } from './non-cantine.mjs';
 
 const dataDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'site', 'data');
 const SERVERS = [
@@ -44,6 +45,7 @@ export const cell = (lat, lng) => `${Math.floor(lat / 10)}_${Math.floor(lng / 10
 
 const els = await download();
 const seen = new Set(), items = [], det = {};
+let tolte = 0;
 for (const e of els) {
   const t = e.tags || {};
   const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
@@ -51,6 +53,7 @@ for (const e of els) {
   const id = e.type[0] + e.id;
   if (seen.has(id)) continue; seen.add(id);
   const name = t.name || t['name:it'] || t['name:en'] || t.brand || '';
+  if (nonCantina(id, name)) { tolte++; continue; } // enoteche, wine bar, negozi: vedi tools/non-cantine.mjs
   const town = t['addr:city'] || t['addr:town'] || t['addr:village'] || t['addr:place'] || '';
   items.push([id, round(lat), round(lng), name, town]);
   const d = {
@@ -68,4 +71,4 @@ rmSync(join(dataDir, 'det'), { recursive: true, force: true });
 mkdirSync(join(dataDir, 'det'));
 for (const [k, v] of Object.entries(det)) writeFileSync(join(dataDir, 'det', k + '.json'), JSON.stringify(v));
 applyVini(dataDir); // i vini letti dai siti (tools/data/vini.json) restano dopo ogni nuovo scarico
-console.log(`${items.length} cantine nel mondo, dettagli in ${Object.keys(det).length} riquadri → ${dataDir}`);
+console.log(`${items.length} cantine nel mondo (${tolte} enoteche e locali tolti), dettagli in ${Object.keys(det).length} riquadri → ${dataDir}`);
