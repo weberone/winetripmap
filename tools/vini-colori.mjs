@@ -126,7 +126,8 @@ export function cleanName(n) {
       if (t.slice(i, i + L).join(' ').toLowerCase() === t.slice(i + L, i + 2 * L).join(' ').toLowerCase()) { t.splice(i + L, L); s = t.join(' '); L = 0; break; }
   }
   // TUTTO MAIUSCOLO → iniziali maiuscole (DOC, DOCG, IGT… restano)
-  if (s === s.toUpperCase() && /[A-Z]{4}/.test(s)) s = s.toLowerCase().replace(/(^|[\s'’(\-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()).replace(/\b(Docg|Doc|Igt|Igp|Dop|Aoc|Aop|Ava|Qba)\b/g, (m) => m.toUpperCase());
+  if (s === s.toUpperCase() && /[A-Z]{4}/.test(s)) s = s.toLowerCase().replace(/(^|[\s'’(\-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()).replace(/\b(Docg|Doc|Igt|Igp|Dop|Aoc|Aop|Ava|Qba)\b/g, (m) => m.toUpperCase())
+    .replace(/\b(?:\p{L}\.){2,4}/gu, (m) => m.toUpperCase()); // sigle con i punti: I.G.P., D.O.C.G.
   return s;
 }
 // il colore della cantina: quello con più vini; a pari merito l'ordine rosso, bianco, bollicine, rosato

@@ -1,0 +1,23 @@
+# Un solo indirizzo per i motori di ricerca: senza www
+RewriteEngine On
+RewriteCond %{HTTP_HOST} ^www\.winetripmap\.com$ [NC]
+RewriteRule ^ https://winetripmap.com%{REQUEST_URI} [R=301,L]
+
+# elenco dei file pubblicati dalla GitHub Action: non leggibile dal web
+<Files ".ftp-deploy-sync-state.json">
+  Require all denied
+</Files>
+
+# Pagine per i motori di ricerca, generate dal server (vedi seo/common.php); inglese senza prefisso, le altre lingue con /it/, /es/…
+RewriteRule ^winery/([nwr][0-9]+)(-[a-z0-9-]*)?/?$ seo/winery.php?id=$1 [L,QSA]
+RewriteRule ^wineries/?$ seo/places.php [L,QSA]
+RewriteRule ^wineries/([a-z0-9-]+)/?$ seo/places.php?country=$1 [L,QSA]
+RewriteRule ^wineries/([a-z0-9-]+)/([a-z0-9-]+)/?$ seo/places.php?country=$1&region=$2 [L,QSA]
+RewriteRule ^wineries/([a-z0-9-]+)/([a-z0-9-]+)/([a-z0-9-]+)/?$ seo/places.php?country=$1&region=$2&city=$3 [L,QSA]
+RewriteRule ^(it|es|pt|fr|de|ru|ja|zh|pl|ko|id)/winery/([nwr][0-9]+)(-[a-z0-9-]*)?/?$ seo/winery.php?id=$2&lang=$1 [L,QSA]
+RewriteRule ^(it|es|pt|fr|de|ru|ja|zh|pl|ko|id)/wineries/?$ seo/places.php?lang=$1 [L,QSA]
+RewriteRule ^(it|es|pt|fr|de|ru|ja|zh|pl|ko|id)/wineries/([a-z0-9-]+)/?$ seo/places.php?country=$2&lang=$1 [L,QSA]
+RewriteRule ^(it|es|pt|fr|de|ru|ja|zh|pl|ko|id)/wineries/([a-z0-9-]+)/([a-z0-9-]+)/?$ seo/places.php?country=$2&region=$3&lang=$1 [L,QSA]
+RewriteRule ^(it|es|pt|fr|de|ru|ja|zh|pl|ko|id)/wineries/([a-z0-9-]+)/([a-z0-9-]+)/([a-z0-9-]+)/?$ seo/places.php?country=$2&region=$3&city=$4&lang=$1 [L,QSA]
+RewriteRule ^sitemap\.xml$ seo/sitemap.php [L]
+RewriteRule ^sitemap-((?:pages|wineries)(?:-(?:it|es|pt|fr|de|ru|ja|zh|pl|ko|id))?)\.xml$ seo/sitemap.php?part=$1 [L]
