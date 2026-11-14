@@ -705,7 +705,7 @@ function showGlobe() {
   // la Terra intera, non tagliata: diametro del globo ≈ 512·2^zoom/π px, qui l'80% del lato corto della mappa
   const r = $("map").getBoundingClientRect(), side = Math.min(r.width, r.height - (isMobile() ? 140 : 0));
   if (M.setView && side > 0) M.setView({ lat: 25, lng: 12 }, Math.log2(side * 0.8 * Math.PI / 512));
-  if (!noMotion()) M.spin(true, 1.2); // piano: un giro ogni 5 minuti
+  if (!noMotion()) M.spin(true, 1.8); // piano: un giro in poco più di 3 minuti
   const stop = () => M.spin(false);
   ["pointerdown", "wheel", "touchstart"].forEach((ev) => $("map").addEventListener(ev, stop, { passive: true, once: true }));
 }
