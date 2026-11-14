@@ -8,7 +8,7 @@
 //   /sitemap.xml                             → seo/sitemap.php
 // Nelle 12 lingue di SkateboardMap: l'inglese senza prefisso, le altre con /it/, /es/… davanti (testi in seo/i18n.php).
 // Ogni pagina dichiara le sue versioni nelle altre lingue (hreflang). Regole degli indirizzi in /.htaccess.
-// Dati: site/data/seo/ (tools/seo-dati.mjs, da OpenStreetMap e GeoNames) e site/data/det/ (dettagli e vini delle cantine).
+// Dati: site/data/seo/ (tools/seo-dati.mjs, da OpenStreetMap e GeoNames) e site/data/det5/ (dettagli e vini delle cantine).
 require_once dirname(__DIR__) . '/api/page.php'; // logo (WTM_WORDMARK) e h()
 
 const SITE = 'https://winetripmap.com';
@@ -78,9 +78,9 @@ function seo_country(string $cc): ?array {
 }
 // stato dal suo slug (italy → IT)
 function cc_by_slug(string $s): ?string { foreach (seo_index() as $cc => $c) if ($c['s'] === $s) return $cc; return null; }
-// dettagli di una cantina (indirizzo, telefono, sito, orari, vini): stesso riquadro di 10° della mappa (site/js/app.js, cell)
+// dettagli di una cantina (indirizzo, telefono, sito, orari, vini): stesso riquadro di 2,5° della mappa (site/js/app.js, cell)
 function winery_det(string $id, float $lat, float $lng): array {
-  $f = DATA . '/det/' . floor($lat / 10) . '_' . floor($lng / 10) . '.json';
+  $f = DATA . '/det5/' . floor($lat / 2.5) . '_' . floor($lng / 2.5) . '.json';
   static $cache = [];
   $cache[$f] ??= json_decode((string)@file_get_contents($f), true) ?: [];
   return $cache[$f][$id] ?? [];

@@ -1,7 +1,7 @@
 // Scarica da OpenStreetMap (Overpass, gratuito) tutte le cantine del mondo (craft=winery) e le salva per la mappa:
 // - site/data/cantine.json: tutti i punti, leggeri → { updated, source, items: [[id, lat, lng, nome, comune], …] }
 //   (mappa, radar, ricerca e "Trova le più vicine" lavorano solo su questo file)
-// - site/data/det/<lat10>_<lng10>.json: indirizzo, telefono, sito e orari, divisi in riquadri di 10° × 10°,
+// - site/data/det5/<lat÷2,5>_<lng÷2,5>.json: indirizzo, telefono, sito e orari, divisi in riquadri di 2,5° × 2,5° (cartella det5, nome storico),
 //   caricati solo quando si apre la scheda di una cantina → { id: { a, p, w, o } }
 // usage: node tools/osm-cantine.mjs
 // Dati © OpenStreetMap contributors, licenza ODbL: l'attribuzione resta visibile sulla mappa.
@@ -41,7 +41,7 @@ async function download() {
 
 const web = (t) => { const w = t.website || t['contact:website'] || t.url; if (!w) return undefined; return /^https?:\/\//i.test(w) ? w : 'https://' + w; };
 const round = (x) => Math.round(x * 1e5) / 1e5; // ~1 m, file più leggero
-export const cell = (lat, lng) => `${Math.floor(lat / 10)}_${Math.floor(lng / 10)}`; // stesso calcolo in site/js/app.js
+export const cell = (lat, lng) => `${Math.floor(lat / 2.5)}_${Math.floor(lng / 2.5)}`; // stesso calcolo in site/js/app.js
 
 const els = await download();
 const seen = new Set(), items = [], det = {};
@@ -67,8 +67,8 @@ for (const e of els) {
 items.sort((a, b) => a[0].localeCompare(b[0])); // ordine stabile: diff piccoli quando si aggiornano i dati
 mkdirSync(dataDir, { recursive: true });
 writeFileSync(join(dataDir, 'cantine.json'), JSON.stringify({ updated: new Date().toISOString().slice(0, 10), source: '© OpenStreetMap contributors (ODbL)', items }));
-rmSync(join(dataDir, 'det'), { recursive: true, force: true });
-mkdirSync(join(dataDir, 'det'));
-for (const [k, v] of Object.entries(det)) writeFileSync(join(dataDir, 'det', k + '.json'), JSON.stringify(v));
+rmSync(join(dataDir, 'det5'), { recursive: true, force: true });
+mkdirSync(join(dataDir, 'det5'));
+for (const [k, v] of Object.entries(det)) writeFileSync(join(dataDir, 'det5', k + '.json'), JSON.stringify(v));
 applyVini(dataDir); // i vini letti dai siti (tools/data/vini.json) restano dopo ogni nuovo scarico
 console.log(`${items.length} cantine nel mondo (${tolte} enoteche e locali tolti), dettagli in ${Object.keys(det).length} riquadri → ${dataDir}`);

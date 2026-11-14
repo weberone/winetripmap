@@ -3,7 +3,7 @@
      la scelta la fa /api/counter.php, i moduli sono nel core (core/js/map/map-google.js, map-gl.js), interfaccia window.SkateMap.
    - Cantine di tutto il mondo da OpenStreetMap (tools/osm-cantine.mjs):
      /data/cantine.json = tutti i punti (id, lat, lng, nome, comune), nel browser: raggio, ricerca e "più vicine" senza server;
-     /data/det/<riquadro>.json = indirizzo, telefono, sito e orari, caricati solo all'apertura di una scheda.
+     /data/det5/<riquadro di 2,5°>.json = indirizzo, telefono, sito e orari, caricati solo all'apertura di una scheda.
    - Ricerca di un luogo: /api/geocode.php (Nominatim di OpenStreetMap, gratuito, con memoria), altrimenti Nominatim direttamente. */
 (() => {
 "use strict";
@@ -99,11 +99,11 @@ function loadData() {
   return dataP;
 }
 // dettagli (indirizzo, telefono, sito, orari) del riquadro di 10° della cantina: stesso calcolo di tools/osm-cantine.mjs
-const cell = (x) => `${Math.floor(x.lat / 10)}_${Math.floor(x.lng / 10)}`;
+const cell = (x) => `${Math.floor(x.lat / 2.5)}_${Math.floor(x.lng / 2.5)}`;
 const detCache = new Map();
 function loadDetails(x) {
   const k = cell(x);
-  if (!detCache.has(k)) detCache.set(k, fetch(`/data/det/${k}.json`).then((r) => r.ok ? r.json() : {}).catch(() => ({})));
+  if (!detCache.has(k)) detCache.set(k, fetch(`/data/det5/${k}.json`).then((r) => r.ok ? r.json() : {}).catch(() => ({})));
   return detCache.get(k).then((d) => d[x.id] || {});
 }
 // cantine nel raggio della ricerca, dalla più vicina a te

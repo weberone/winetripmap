@@ -258,8 +258,8 @@ function pickWines(raw, trust = false) {
 // ---------- elenco delle cantine con un sito ----------
 function sites() {
   const list = [];
-  for (const f of readdirSync(join(siteData, 'det'))) {
-    const d = JSON.parse(readFileSync(join(siteData, 'det', f), 'utf8'));
+  for (const f of readdirSync(join(siteData, 'det5'))) {
+    const d = JSON.parse(readFileSync(join(siteData, 'det5', f), 'utf8'));
     for (const [id, v] of Object.entries(d)) if (v.w) list.push([id, v.w]);
   }
   return list;
