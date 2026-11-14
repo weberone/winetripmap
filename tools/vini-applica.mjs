@@ -10,7 +10,8 @@ export function applyVini(siteData, vini) {
   const cf = join(siteData, 'cantine.json');
   const all = JSON.parse(readFileSync(cf, 'utf8'));
   let colored = 0;
-  all.items = all.items.map((it) => { const x = it.slice(0, 5); const c = vini[x[0]]?.c; if (c) { x.push(c); colored++; } return x; });
+  // sesto campo: colore del vino principale (o ""); settimo: 1 = la cantina ha la lista dei vini (logo nero nel pin)
+  all.items = all.items.map((it) => { const x = it.slice(0, 5); const w = vini[x[0]], c = w?.c; if (c) colored++; if (w?.v?.length) x.push(c || '', 1); else if (c) x.push(c); return x; });
   writeFileSync(cf, JSON.stringify(all));
   let listed = 0;
   for (const f of readdirSync(join(siteData, 'det5'))) {
