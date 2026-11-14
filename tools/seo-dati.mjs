@@ -11,6 +11,9 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 export function seoDati() {
   const L = JSON.parse(readFileSync(join(here, 'data', 'luoghi.json'), 'utf8'));
+  // nomi nelle lingue delle pagine (tools/nomi.mjs, Wikidata): t = { lingua: nome } solo dove è diverso da quello di GeoNames
+  const N = existsSync(join(here, 'data', 'nomi.json')) ? JSON.parse(readFileSync(join(here, 'data', 'nomi.json'), 'utf8')) : {};
+  const tr = (gid, n) => { const t = {}; for (const [l, m] of Object.entries(N)) if (l !== 'en' && m[gid] && m[gid] !== n) t[l] = m[gid]; return Object.keys(t).length ? { t } : {}; };
   const items = JSON.parse(readFileSync(join(here, '..', 'site', 'data', 'cantine.json'), 'utf8')).items;
   const dir = join(here, '..', 'site', 'data', 'seo');
   rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true });
@@ -21,8 +24,8 @@ export function seoDati() {
     const C = index[cc] ||= { n: L.countries[cc].n, s: L.countries[cc].s, k: 0, r: {} };
     C.k++; (C.r[rk] ||= { n: L.regions[rk].n, s: L.regions[rk].s, k: 0 }).k++;
     const P = per[cc] ||= { r: {}, ci: {}, w: [] };
-    (P.r[rk] ||= { n: L.regions[rk].n, s: L.regions[rk].s, k: 0 }).k++;
-    (P.ci[ck] ||= { n: city.n, s: city.s, r: rk, k: 0, lat: city.lat, lng: city.lng }).k++;
+    (P.r[rk] ||= { n: L.regions[rk].n, s: L.regions[rk].s, k: 0, ...tr(L.regions[rk].g, L.regions[rk].n) }).k++;
+    (P.ci[ck] ||= { n: city.n, s: city.s, r: rk, k: 0, lat: city.lat, lng: city.lng, ...tr(ck, city.n) }).k++;
     P.w.push([id, n || '', wc || '', +ck, lat, lng]);
     wmap[id] = cc.toLowerCase();
   }

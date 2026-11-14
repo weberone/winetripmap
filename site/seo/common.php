@@ -62,6 +62,10 @@ function slugify(string $s): string {
   $s = strtolower((string)@iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s));
   return trim(preg_replace('/[^a-z0-9]+/', '-', $s), '-');
 }
+// nome di una regione o di un comune nella lingua della pagina (Wikidata, tools/nomi.mjs); altrimenti quello di GeoNames
+function tn(array $x): string { return $x['t'][seo_lang()] ?? $x['n']; }
+// "Cantine in Piemonte": per stati e regioni alcune lingue vogliono un'altra preposizione che per i comuni ("a Barbaresco")
+function in_area(string $what, string $where): string { $T = seo_texts(); $p = $T[seo_lang()]['in_area'] ?? $T[seo_lang()]['in'] ?? $T['en']['in']; return str_replace(['{what}', '{where}'], [$what, $where], $p); }
 function sep(): string { return in_array(seo_lang(), ['ja', 'zh'], true) ? '、' : ', '; }
 
 // ---------- dati ----------

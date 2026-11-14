@@ -22,8 +22,8 @@ const countries = {};
 for (const l of readFileSync(join(gn, 'countryInfo.txt'), 'utf8').split('\n')) {
   if (!l || l[0] === '#') continue; const f = l.split('\t'); countries[f[0]] = f[4];
 }
-const admin1 = {};
-for (const l of readFileSync(join(gn, 'admin1CodesASCII.txt'), 'utf8').split('\n')) { const f = l.split('\t'); if (f[1]) admin1[f[0]] = f[1]; }
+const admin1 = {}, admin1g = {};
+for (const l of readFileSync(join(gn, 'admin1CodesASCII.txt'), 'utf8').split('\n')) { const f = l.split('\t'); if (f[1]) { admin1[f[0]] = f[1]; admin1g[f[0]] = +f[3]; } }
 const places = []; // [id, name, lat, lng, fcode, cc, a1, a2, a3, a4, pop]
 for (const l of readFileSync(join(gn, 'cities500.txt'), 'utf8').split('\n')) {
   const f = l.split('\t'); if (f.length < 15) continue;
@@ -76,7 +76,7 @@ for (const [id, lat, lng, , town] of cantine) {
   if (!res.cities[ck]) {
     const rk = seat.cc + '.' + seat.a1;
     res.cities[ck] = { n: seat.n, cc: seat.cc, r: rk, lat: +seat.lat.toFixed(4), lng: +seat.lng.toFixed(4) };
-    res.regions[rk] ||= { n: admin1[rk] || seat.a1 || seat.cc, cc: seat.cc };
+    res.regions[rk] ||= { n: admin1[rk] || seat.a1 || seat.cc, cc: seat.cc, g: admin1g[rk] || 0 };
     res.countries[seat.cc] ||= { n: countries[seat.cc] || seat.cc };
   }
   res.w[id] = ck;

@@ -32,7 +32,7 @@ return [
 'it' => [
   'lang_name' => 'Italiano', 'wineries' => 'Cantine', 'winery' => 'Cantina', 'open_map' => 'Apri la mappa', 'open_on_map' => 'Apri sulla mappa', 'directions' => 'Indicazioni',
   'p_winery' => ['cantina', 'cantine'], 'p_city' => ['comune', 'comuni'], 'p_region' => ['regione', 'regioni'], 'p_country' => ['nazione', 'nazioni'], 'p_wine' => ['vino', 'vini'],
-  'in' => '{what} a {where}', 'details' => 'Dettagli', 'address' => 'Indirizzo', 'phone' => 'Telefono', 'website' => 'Sito web', 'hours' => 'Orari', 'coords' => 'Coordinate', 'source' => 'Fonte',
+  'in' => '{what} a {where}', 'in_area' => '{what} in {where}', 'details' => 'Dettagli', 'address' => 'Indirizzo', 'phone' => 'Telefono', 'website' => 'Sito web', 'hours' => 'Orari', 'coords' => 'Coordinate', 'source' => 'Fonte',
   'wines' => 'Vini', 'wines_src' => 'Dal sito della cantina: annate e disponibilità sul loro sito.', 'main_wine' => 'Vino principale: {v}',
   'c_r' => 'rosso', 'c_b' => 'bianco', 'c_o' => 'rosato', 'c_s' => 'bollicine',
   'nearby' => 'Altre cantine vicine', 'all_in' => 'Tutte le cantine a {where}', 'regions' => 'Regioni', 'towns' => 'Comuni', 'top_cities' => 'I comuni con più cantine',
@@ -110,7 +110,7 @@ return [
 'fr' => [
   'lang_name' => 'Français', 'wineries' => 'Domaines viticoles', 'winery' => 'Domaine viticole', 'open_map' => 'Ouvrir la carte', 'open_on_map' => 'Ouvrir sur la carte', 'directions' => 'Itinéraire',
   'p_winery' => ['domaine', 'domaines'], 'p_city' => ['commune', 'communes'], 'p_region' => ['région', 'régions'], 'p_country' => ['pays', 'pays'], 'p_wine' => ['vin', 'vins'],
-  'in' => '{what} à {where}', 'details' => 'Détails', 'address' => 'Adresse', 'phone' => 'Téléphone', 'website' => 'Site web', 'hours' => 'Horaires', 'coords' => 'Coordonnées', 'source' => 'Source',
+  'in' => '{what} à {where}', 'in_area' => '{what} – {where}', 'details' => 'Détails', 'address' => 'Adresse', 'phone' => 'Téléphone', 'website' => 'Site web', 'hours' => 'Horaires', 'coords' => 'Coordonnées', 'source' => 'Source',
   'wines' => 'Vins', 'wines_src' => 'D\'après le site du domaine : millésimes et disponibilité sur leur site.', 'main_wine' => 'Vin principal : {v}',
   'c_r' => 'rouge', 'c_b' => 'blanc', 'c_o' => 'rosé', 'c_s' => 'effervescent',
   'nearby' => 'Autres domaines à proximité', 'all_in' => 'Tous les domaines à {where}', 'regions' => 'Régions', 'towns' => 'Communes', 'top_cities' => 'Les communes avec le plus de domaines',
