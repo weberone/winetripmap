@@ -199,6 +199,7 @@ function mapPad() {
 }
 function fitToRadius(duration = 0) {
   if (!state.mapsReady || !state.center) return;
+  leaveGlobe();
   M.fitBounds(boundsAround(state.center, state.radiusKm * 1000), isMobile() ? 12 : 24, null, duration);
 }
 
@@ -694,7 +695,24 @@ async function start() {
   if (perm === "granted") { if (!(await applyPosition(await getPosition(false), true))) askWhere(); }
   else askWhere();
 }
-function askWhere() { $("worldAsk").hidden = false; setStatus(t("where_go")); renderList(); }
+function askWhere() { $("worldAsk").hidden = false; setStatus(t("where_go")); renderList(); showGlobe(); }
+// all'inizio, prima di posizione o ricerca: la Terra in 3D che gira piano (si ferma appena la tocchi); poi la mappa torna piana
+let globe = false;
+function showGlobe() {
+  if (globe || state.center) return;
+  globe = true;
+  M.setProjection("globe");
+  // la Terra intera, non tagliata: diametro del globo ≈ 512·2^zoom/π px, qui l'80% del lato corto della mappa
+  const r = $("map").getBoundingClientRect(), side = Math.min(r.width, r.height - (isMobile() ? 140 : 0));
+  if (M.setView && side > 0) M.setView({ lat: 25, lng: 12 }, Math.log2(side * 0.8 * Math.PI / 512));
+  if (!noMotion()) M.spin(true);
+  const stop = () => M.spin(false);
+  ["pointerdown", "wheel", "touchstart"].forEach((ev) => $("map").addEventListener(ev, stop, { passive: true, once: true }));
+}
+function leaveGlobe() {
+  if (!globe) return;
+  globe = false; M.spin(false); M.setProjection("mercator");
+}
 
 // ---------- quale mappa: Google → Mapbox → OpenFreeMap ----------
 // Il contatore del sito (api/counter.php) sceglie la prima con quota gratuita nel mese e la conta.
@@ -707,7 +725,7 @@ function load(url, css) {
     e.src = url; e.onload = res; e.onerror = () => { delete loaded[url]; rej(new Error("load " + url)); }; document.head.append(e);
   });
 }
-const MODULE = { google: "/core/js/map/map-google.js?v=3", gl: "/core/js/map/map-gl.js?v=3" };
+const MODULE = { google: "/core/js/map/map-google.js?v=3", gl: "/core/js/map/map-gl.js?v=4" };
 async function useModule(m) { if (window.SkateMapKind !== m) { delete loaded[MODULE[m]]; await load(MODULE[m]); window.SkateMapKind = m; } }
 async function counter(have, skip) {
   try { const r = await fetch(`/api/counter.php?have=${have.join(",")}&skip=${skip.join(",")}`, { cache: "no-store" }); if (r.ok) return (await r.json()).use; } catch (e) {}
