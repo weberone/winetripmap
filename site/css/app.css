@@ -404,3 +404,6 @@ form.search input:focus{border-color:var(--accent)}
 }
 /* telefono: i due pulsanti dell'invito stanno su una riga anche con la colonna + − accanto */
 @media (max-width:420px){ .worldask{padding:12px 12px} .worldask .wa-btns .btn{padding:6px 8px;font-size:clamp(11.5px,3.4vw,13.5px)} }
+/* telefono a pannello aperto: l'invito si nasconde (nel pannello ci sono già "La mia posizione" e "Cerca un luogo"),
+   così non copre l'onda con il pulsante per richiudere il pannello */
+.app.mob:not(.map-only) .worldask{display:none}
