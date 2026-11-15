@@ -411,6 +411,8 @@ function pinTip(id) {
   state.sel = id; drawMarkers();
   M.showPopup({ lat: x.lat, lng: x.lng }, `<button class="pintip" type="button"><b>${esc(title(x))}</b>${x.c && x.n ? `<small>${esc(x.c)}</small>` : ""}${from ? `<small>${esc(t("away", { d: fmtKm(distKm(from, x)) }))}</small>` : ""}<em>${esc(t("open_card"))}</em></button>`,
     () => openDetail(id, false));
+  // la mappa si sposta sul pin: pin e fumetto insieme al centro (il pin un po' sotto, il fumetto sopra)
+  tipFly = Date.now(); M.flyTo({ lat: x.lat, lng: x.lng }, null, 60);
 }
 const directionsUrl = (x) => `https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}`;
 const osmUrl = (x) => `https://www.openstreetmap.org/${{ n: "node", w: "way", r: "relation" }[x.id[0]]}/${x.id.slice(1)}`;
