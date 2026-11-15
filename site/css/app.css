@@ -162,7 +162,7 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 .countmob .cm-n{color:var(--accent)}
 
 /* invito iniziale */
-.worldask{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);z-index:6;padding:14px 16px;border-radius:12px;background:color-mix(in srgb,var(--accent) 75%,transparent);color:var(--accent-ink);max-width:420px;margin:0 auto;box-shadow:0 8px 24px rgb(0 0 0 / .3)}
+.worldask{position:absolute;left:12px;right:62px;top:12px;z-index:6;padding:14px 16px;border-radius:12px;background:color-mix(in srgb,var(--accent) 85%,transparent);color:var(--accent-ink);max-width:420px;margin:0 auto;box-shadow:0 8px 24px rgb(0 0 0 / .3)}
 .worldask b{display:block;font:800 18px/1.2 var(--f-display);letter-spacing:-.02em;margin-bottom:4px}
 .worldask p{margin:0 0 10px;font-size:14px;line-height:1.4}
 .wa-btns{display:flex;gap:6px;flex-wrap:wrap}
@@ -268,7 +268,7 @@ form.search input:focus{border-color:var(--accent)}
   .zoombtns,.app.map-only .zoombtns{bottom:34px}
   .nores{display:none}
   .app:has(#nearBtn:not([hidden])) .nores{display:block}
-  .worldask{top:50%} /* al centro della mappa, sopra il globo */
+  .worldask{top:12px} /* in alto, a sinistra della colonna + − (right 62px) */
   .mapboxgl-ctrl-bottom-right,.maplibregl-ctrl-bottom-right{bottom:0}
 }
 
@@ -401,3 +401,5 @@ form.search input:focus{border-color:var(--accent)}
   .lbnav.prev{left:8px} .lbnav.next{right:8px}
   .lightbox .x{top:calc(4px + env(safe-area-inset-top,0px));right:4px;z-index:2;background:rgb(0 0 0 / .45)}
 }
+/* telefono: i due pulsanti dell'invito stanno su una riga anche con la colonna + − accanto */
+@media (max-width:420px){ .worldask{padding:12px 12px} .worldask .wa-btns .btn{padding:6px 9px;font-size:13.5px} }
