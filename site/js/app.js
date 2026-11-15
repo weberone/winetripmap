@@ -131,6 +131,7 @@ function renderChips(all) {
 
 // ---------- elenco, pin, cerchio ----------
 function renderList() {
+  drawShape();
   const v = visible();
   renderChips(inRadius());
   $("count").textContent = fmtN(v.length);
@@ -608,9 +609,42 @@ function areaHits(s) {
     out.push(...AREE.filter((h) => h.ak === kind && score(h) < 2).sort((a, b) => score(a) - score(b) || b.k - a.k).slice(0, max).map((h) => ({ kind: "area", ...h })));
   return out;
 }
+// contorno di una zona del vino sulla mappa: le sue cantine (senza quelle isolate e lontane), raggruppate a gruppi vicini,
+// e intorno a ogni gruppo un poligono convesso con 2 km di margine. È la zona delle cantine, non il confine ufficiale.
+function zoneShape(idx) {
+  let p = idx.map((i) => state.all[i]).filter(Boolean);
+  if (!p.length) return null;
+  const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
+  const c = { lat: med(p.map((x) => x.lat)), lng: med(p.map((x) => x.lng)) };
+  const d = p.map((x) => distKm(c, x)), md = med(d);
+  p = p.filter((x, i) => d[i] <= Math.max(4 * md, 20));
+  const kx = 111.32 * Math.cos(c.lat * Math.PI / 180), ky = 110.57;
+  const xy = p.map((x) => [(x.lng - c.lng) * kx, (x.lat - c.lat) * ky]);
+  // gruppi: cantine a meno di 10 km una dall'altra
+  const par = xy.map((_, i) => i), f = (i) => (par[i] === i ? i : (par[i] = f(par[i])));
+  for (let i = 0; i < xy.length; i++) for (let j = i + 1; j < xy.length; j++) if (Math.hypot(xy[i][0] - xy[j][0], xy[i][1] - xy[j][1]) < 10) par[f(i)] = f(j);
+  const groups = {}; xy.forEach((q, i) => (groups[f(i)] ||= []).push(q));
+  const hull = (pts) => {
+    pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
+    for (const q of pts) { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+    for (const q of pts.slice().reverse()) { while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+    return lo.slice(0, -1).concat(up.slice(0, -1));
+  };
+  return Object.values(groups).map((g) => {
+    const ring = []; for (const [x, y] of g) for (let k = 0; k < 16; k++) { const a = k / 16 * 2 * Math.PI; ring.push([x + 2 * Math.cos(a), y + 2 * Math.sin(a)]); }
+    return hull(ring).map(([x, y]) => ({ lat: c.lat + y / ky, lng: c.lng + x / kx }));
+  });
+}
+let shownShape = null;
+function drawShape() {
+  const sh = (state.area && state.area.shape) || null;
+  if (sh === shownShape || !state.mapsReady || !M.setShape) return;
+  shownShape = sh; M.setShape(sh);
+}
 function setArea(h) {
   const idx = h.idx(), [w, so, e, n] = h.b;
-  state.area = { name: h.name, idx, mid: { lat: (so + n) / 2, lng: (w + e) / 2 } };
+  state.area = { name: h.name, idx, mid: { lat: (so + n) / 2, lng: (w + e) / 2 }, shape: h.ak === "z" ? zoneShape(idx) : null };
   state.center = null; state.areaOk = true;
   closeDetail(true); leaveGlobe();
   $("worldAsk").hidden = true; $("searchHere").hidden = true; $("noRes").hidden = true;
@@ -1083,7 +1117,7 @@ function load(url, css) {
     e.src = url; e.onload = res; e.onerror = () => { delete loaded[url]; rej(new Error("load " + url)); }; document.head.append(e);
   });
 }
-const MODULE = { google: "/core/js/map/map-google.js?v=4", gl: "/core/js/map/map-gl.js?v=6" };
+const MODULE = { google: "/core/js/map/map-google.js?v=5", gl: "/core/js/map/map-gl.js?v=7" };
 async function useModule(m) { if (window.SkateMapKind !== m) { delete loaded[MODULE[m]]; await load(MODULE[m]); window.SkateMapKind = m; } }
 async function counter(have, skip) {
   try { const r = await fetch(`/api/counter.php?have=${have.join(",")}&skip=${skip.join(",")}`, { cache: "no-store" }); if (r.ok) return (await r.json()).use; } catch (e) {}
