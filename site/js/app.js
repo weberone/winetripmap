@@ -176,7 +176,7 @@ addEventListener("popstate", () => {
   if (ignorePop > 0) { ignorePop--; return; }
   const n = layers.pop(); if (!n) return;
   fromHistory = true;
-  try { if (n === "sheet") setSheet(false); else if (n === "detail") closeDetail(); else if (n === "search") closeSearch(); else if (n === "trip") closeTrip(); }
+  try { if (n === "sheet") setSheet(false); else if (n === "detail") closeDetail(); else if (n === "search") closeSearch(); else if (n === "trip") closeTrip(); else if (n === "lightbox") closeLightbox(); }
   finally { fromHistory = false; }
 });
 function setSheet(open) {
@@ -433,6 +433,8 @@ async function openDetail(id, fly = true) {
   const tel = d.p ? d.p.split(/[;,]/)[0].trim() : "";
   const host = d.w ? d.w.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "") : "";
   $("detail").innerHTML = head + `
+    <div class="dmedia" id="dMedia" hidden></div>
+    ${d.ds ? `<p class="ddesc">${esc(d.ds)} <small>${esc(t("desc_src"))}</small></p>` : ""}
     ${d.a || x.c ? `<p class="dline"><small>${esc(t("address"))}</small>${esc([d.a, x.c].filter(Boolean).join(", "))}</p>` : ""}
     ${d.o ? `<p class="dline"><small>${esc(t("hours"))}</small>${esc(d.o)}</p>` : ""}
     ${tel ? `<p class="dline"><small>${esc(t("phone"))}</small><a href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">${esc(tel)}</a></p>` : ""}
@@ -452,7 +454,84 @@ async function openDetail(id, fly = true) {
   $("dFav").onclick = () => toggleFav(x); syncFav(x.id);
   $("dTrip").onclick = () => toggleTrip(x); syncTripBtn();
   const more = $("wMore"); if (more) more.onclick = () => { $("detail").querySelectorAll(".wines li[hidden]").forEach((li) => { li.hidden = false; }); more.remove(); };
+  // bottiglie: al clic la foto grande (con le frecce si passa alle altre)
+  $("detail").querySelectorAll(".wgrid li").forEach((li, i) => {
+    const img = li.querySelector(".wpic img"); if (!img) return;
+    li.querySelector(".wpic").classList.add("zoom");
+    li.querySelector(".wpic").onclick = () => {
+      const all = [...$("detail").querySelectorAll(".wgrid .wpic img")].map((im) => ({ src: im.src, cap: im.closest("li").querySelector(".wname").textContent.trim(), nr: true }));
+      openLightbox(all, all.findIndex((a) => a.src === img.src));
+    };
+  });
+  loadMedia(x);
 }
+
+// ---------- foto in cima alla scheda: Google (se c'è, dentro la quota gratuita), altrimenti la vista dal satellite ----------
+// Ogni chiamata a pagamento passa da api/counter.php, che si ferma prima della soglia gratuita del mese (il sito non paga mai).
+// Google Places: ricerca della cantina (nome + comune, vicino al punto) e una foto, con l'autore e "Google Maps" come chiede Google.
+// Mapbox Static Images: satellite-v9 come SkateboardMap, con "© Mapbox © Maxar". Senza chiavi in MAPS: nessuna immagine.
+async function allowApi(kind, n = 1) {
+  try { const r = await fetch(`/api/counter.php?api=${kind}&n=${n}`, { cache: "no-store" }); return r.ok && (await r.json()).ok === true; } catch (e) { return false; }
+}
+let gPlaces = null;
+async function placesLib() {
+  if (!MAPS.googleKey) return null;
+  if (!window.google || !google.maps || !google.maps.importLibrary) {
+    await load(`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(MAPS.googleKey)}&v=weekly&loading=async`);
+    for (let i = 0; i < 50 && !(window.google && google.maps && google.maps.importLibrary); i++) await sleep(100);
+  }
+  return gPlaces ||= google.maps.importLibrary("places");
+}
+async function googlePhoto(x) {
+  const key = "gp." + x.id, known = store.get(key);
+  if (known && known.none && Date.now() - known.at < 30 * 864e5) return null; // già cercata di recente: nessuna foto
+  const lib = await placesLib().catch(() => null); if (!lib || !(await allowApi("gtext"))) return null;
+  let p;
+  try {
+    const r = await lib.Place.searchByText({ textQuery: [title(x), x.c].filter(Boolean).join(" "), fields: ["photos", "location", "googleMapsURI"],
+      locationBias: { center: { lat: x.lat, lng: x.lng }, radius: 500 }, maxResultCount: 1 });
+    p = r.places && r.places[0];
+  } catch (e) { return null; }
+  const ph = p && p.location && distKm(x, { lat: p.location.lat(), lng: p.location.lng() }) < 1.5 && p.photos && p.photos[0];
+  if (!ph) { store.set(key, { none: 1, at: Date.now() }); return null; }
+  if (!(await allowApi("gphoto", 2))) return null; // conta doppio: anteprima e foto grande
+  const by = (ph.authorAttributions || []).map((a) => a.displayName).filter(Boolean).join(", ");
+  return { src: ph.getURI({ maxWidth: 800, maxHeight: 600 }), big: ph.getURI({ maxWidth: 1600, maxHeight: 1200 }),
+    credit: t("photo_by", { a: by || "Google" }), link: (ph.authorAttributions || [])[0]?.uri || p.googleMapsURI || "" };
+}
+async function satellite(x) {
+  if (!MAPS.mapboxToken || !(await allowApi("static"))) return null;
+  const u = (w, h) => `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${x.lng.toFixed(6)},${x.lat.toFixed(6)},16.5,0/${w}x${h}@2x?attribution=false&logo=false&access_token=${MAPS.mapboxToken}`;
+  return { src: u(640, 320), big: u(1200, 800), credit: "© Mapbox © Maxar", sat: true };
+}
+async function loadMedia(x) {
+  const m = (await googlePhoto(x)) || (await satellite(x));
+  const box = $("dMedia"); if (!m || !box || state.sel !== x.id) return;
+  box.innerHTML = `<button type="button" class="mimg${m.sat ? " sat" : ""}"><img src="${esc(m.src)}" alt="${esc(t(m.sat ? "sat_alt" : "photo_alt", { n: title(x) }))}"></button>
+    <small class="mcredit">${m.link ? `<a href="${esc(m.link)}" target="_blank" rel="noopener nofollow">${esc(m.credit)}</a>` : esc(m.credit)}</small>`;
+  box.querySelector("img").onerror = () => { box.hidden = true; };
+  box.querySelector(".mimg").onclick = () => openLightbox([{ src: m.big, cap: m.credit }], 0);
+  box.hidden = false;
+}
+
+// ---------- foto grande (bottiglie, foto della cantina) ----------
+let lb = { list: [], i: 0 };
+function openLightbox(list, i) {
+  if (!list.length) return;
+  lb = { list, i: Math.max(0, i) };
+  if ($("lightbox").hidden) { $("lightbox").hidden = false; pushLayer("lightbox"); }
+  showLightbox();
+}
+function showLightbox() {
+  const it = lb.list[lb.i], img = $("lbImg");
+  img.referrerPolicy = it.nr ? "no-referrer" : "";
+  img.src = it.src; img.alt = it.cap || "";
+  $("lbCap").textContent = it.cap || "";
+  $("lbPrev").hidden = $("lbNext").hidden = lb.list.length < 2;
+  $("lbCount").textContent = lb.list.length > 1 ? `${lb.i + 1} / ${lb.list.length}` : "";
+}
+function stepLightbox(d) { if (lb.list.length < 2) return; lb.i = (lb.i + d + lb.list.length) % lb.list.length; showLightbox(); }
+function closeLightbox() { if ($("lightbox").hidden) return; $("lightbox").hidden = true; $("lbImg").removeAttribute("src"); popLayer("lightbox"); }
 // i vini letti dal sito della cantina; i primi 12, poi "Tutti i vini".
 // Con le foto delle bottiglie (prese dal sito della cantina, caricate da lì: non le copiamo) una griglia di bottiglie,
 // dove manca la foto una sagoma nel colore del vino; senza nessuna foto l'elenco con il pallino del colore.
@@ -614,7 +693,15 @@ function bind() {
   $("results").onclick = (e) => { const li = e.target.closest("li[data-i]"); if (li) pick(+li.dataset.i); };
   document.querySelectorAll("[data-close]").forEach((b) => b.onclick = closeSearch);
   $("searchModal").onclick = (e) => { if (e.target === $("searchModal")) closeSearch(); };
-  addEventListener("keydown", (e) => { if (e.key === "Escape") { closeSearch(); closeTrip(); toggleKm(false); } });
+  addEventListener("keydown", (e) => {
+    if (!$("lightbox").hidden) { if (e.key === "Escape") closeLightbox(); else if (e.key === "ArrowLeft") stepLightbox(-1); else if (e.key === "ArrowRight") stepLightbox(1); return; }
+    if (e.key === "Escape") { closeSearch(); closeTrip(); toggleKm(false); }
+  });
+  $("lightbox").onclick = (e) => { if (e.target === $("lightbox") || e.target.id === "lbClose") closeLightbox(); };
+  $("lbPrev").onclick = (e) => { e.stopPropagation(); stepLightbox(-1); };
+  $("lbNext").onclick = (e) => { e.stopPropagation(); stepLightbox(1); };
+  { let x0 = null; $("lightbox").addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    $("lightbox").addEventListener("touchend", (e) => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) stepLightbox(dx < 0 ? 1 : -1); }, { passive: true }); }
   $("tripBtn").onclick = showTrip;
   $("tripClose").onclick = closeTrip;
   $("tripModal").onclick = (e) => { if (e.target === $("tripModal")) closeTrip(); };

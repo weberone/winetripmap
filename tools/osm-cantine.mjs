@@ -10,6 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyVini } from './vini-applica.mjs';
 import { nonCantina } from './non-cantine.mjs';
+import { applyDesc } from './descrizioni.mjs';
 
 const dataDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'site', 'data');
 const SERVERS = [
@@ -71,4 +72,5 @@ rmSync(join(dataDir, 'det5'), { recursive: true, force: true });
 mkdirSync(join(dataDir, 'det5'));
 for (const [k, v] of Object.entries(det)) writeFileSync(join(dataDir, 'det5', k + '.json'), JSON.stringify(v));
 applyVini(dataDir); // i vini letti dai siti (tools/data/vini.json) restano dopo ogni nuovo scarico
+applyDesc(); // e le descrizioni (tools/data/descrizioni.json)
 console.log(`${items.length} cantine nel mondo (${tolte} enoteche e locali tolti), dettagli in ${Object.keys(det).length} riquadri → ${dataDir}`);

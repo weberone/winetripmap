@@ -13,7 +13,7 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 </script>
 <meta name="theme-color" content="#8e1b33">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/app.css?v=12">
+<link rel="stylesheet" href="/css/app.css?v=13">
 </head>
 <body>
 <div class="app map-only">
@@ -92,6 +92,14 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
   </div>
 </div>
 
+<!-- foto grande: bottiglie e foto della cantina (app.js, openLightbox) -->
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true">
+  <button class="x" id="lbClose" aria-label="Chiudi" data-i18n-aria="close">✕</button>
+  <button class="lbnav prev" id="lbPrev" aria-label="Precedente" data-i18n-aria="prev">‹</button>
+  <figure><img id="lbImg" alt=""><figcaption><span id="lbCap"></span> <small id="lbCount"></small></figcaption></figure>
+  <button class="lbnav next" id="lbNext" aria-label="Successiva" data-i18n-aria="next">›</button>
+</div>
+
 <!-- trip: l'itinerario di cantine (app.js, "trip"), salvato nell'account con un nome -->
 <div class="modal" id="tripModal" hidden role="dialog" aria-modal="true" aria-labelledby="tripTitle">
   <div class="card">
@@ -102,7 +110,7 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 </div>
 
 <!-- la mappa (Google, Mapbox o MapLibre + OpenFreeMap) la carica app.js: vedi createMap -->
-<script src="/js/i18n.js?v=2"></script>
-<script src="/js/app.js?v=19"></script>
+<script src="/js/i18n.js?v=3"></script>
+<script src="/js/app.js?v=20"></script>
 </body>
 </html>
