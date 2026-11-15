@@ -37,6 +37,12 @@ function clean(s, title) {
   }
   return s;
 }
+// controllo in più al momento di applicarle: testi di menu ("Nuestra historia Nuestra historia"), eventi, segni di spunta
+function keep(s) {
+  if (/✓|✔|☑|^(event|termin|news|aktuell|eventtermine|novità|news)/i.test(s)) return false;
+  if (/\b(\p{L}+ \p{L}+) \1\b/iu.test(s)) return false; // due parole ripetute di seguito: voci di menu
+  return true;
+}
 export function descOf(html) {
   const $ = cheerio.load(html);
   const title = $('title').first().text().trim();
@@ -51,7 +57,7 @@ export function descOf(html) {
       walk(JSON.parse($(el).text()));
     } catch {}
   });
-  for (const c of cand) { const d = clean(c, title); if (d) return d; }
+  for (const c of cand) { const d = clean(c, title); if (d && keep(d)) return d; }
   return '';
 }
 
@@ -117,7 +123,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     console.log(`fine: ${done} siti, ${found} con la descrizione`);
   } else if (cmd === 'build') {
     const ds = {};
-    for (const f of readdirSync(cacheDir)) { const r = JSON.parse(readFileSync(join(cacheDir, f), 'utf8')); if (r.ds) ds[r.id] = r.ds; }
+    for (const f of readdirSync(cacheDir)) { const r = JSON.parse(readFileSync(join(cacheDir, f), 'utf8')); if (r.ds && keep(r.ds)) ds[r.id] = r.ds; }
     mkdirSync(dirname(outFile), { recursive: true }); writeFileSync(outFile, JSON.stringify(ds));
     applyDesc();
   }
