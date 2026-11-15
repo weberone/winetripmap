@@ -405,14 +405,29 @@ function syncMeBtn() {
 }
 
 // ---------- fumetto e scheda ----------
+// foto satellitare nel fumetto: 4 piastrelle (2×2) intorno alla cantina, ritagliate con la cantina al centro.
+// Piastrelle satellitari di Mapbox se c'è il token (750.000 al mese nel piano gratuito), altrimenti Esri World Imagery.
+const SAT_W = 210, SAT_H = 110, SAT_Z = 17;
+function satTip(x) {
+  const n = 2 ** SAT_Z, r = x.lat * Math.PI / 180;
+  const px = (x.lng + 180) / 360 * n * 256, py = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n * 256;
+  const tx = Math.floor((px - SAT_W / 2) / 256), ty = Math.floor((py - SAT_H / 2) / 256);
+  const url = (X, Y) => MAPS.mapboxToken ? `https://api.mapbox.com/v4/mapbox.satellite/${SAT_Z}/${X}/${Y}@2x.jpg90?access_token=${MAPS.mapboxToken}`
+    : `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${SAT_Z}/${Y}/${X}`;
+  let tiles = "";
+  for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) tiles += `<img src="${url(tx + dx, ty + dy)}" alt="" loading="eager" referrerpolicy="no-referrer" style="left:${dx * 256}px;top:${dy * 256}px">`;
+  const credit = MAPS.mapboxToken ? "© Mapbox © Maxar" : "Esri, Maxar, Earthstar Geographics";
+  return `<span class="ptsat" aria-hidden="true"><span class="pts-in" style="left:${Math.round(tx * 256 - (px - SAT_W / 2))}px;top:${Math.round(ty * 256 - (py - SAT_H / 2))}px">${tiles}</span><i class="pts-dot"></i><small>${esc(credit)}</small></span>`;
+}
 function pinTip(id) {
   const x = state.byId.get(id); if (!x) return;
   const from = state.me || state.center;
   state.sel = id; drawMarkers();
-  M.showPopup({ lat: x.lat, lng: x.lng }, `<button class="pintip" type="button"><b>${esc(title(x))}</b>${x.c && x.n ? `<small>${esc(x.c)}</small>` : ""}${from ? `<small>${esc(t("away", { d: fmtKm(distKm(from, x)) }))}</small>` : ""}<em>${esc(t("open_card"))}</em></button>`,
+  M.showPopup({ lat: x.lat, lng: x.lng }, `<button class="pintip" type="button">${satTip(x)}<b>${esc(title(x))}</b>${x.c && x.n ? `<small>${esc(x.c)}</small>` : ""}${from ? `<small>${esc(t("away", { d: fmtKm(distKm(from, x)) }))}</small>` : ""}<em>${esc(t("open_card"))}</em></button>`,
     () => openDetail(id, false));
   // la mappa si sposta sul pin: pin e fumetto insieme al centro (il pin un po' sotto, il fumetto sopra)
-  tipFly = Date.now(); M.flyTo({ lat: x.lat, lng: x.lng }, null, 60);
+  const tip = document.querySelector(".pintip");
+  tipFly = Date.now(); M.flyTo({ lat: x.lat, lng: x.lng }, null, Math.round(((tip ? tip.offsetHeight : 120) + 50) / 2));
 }
 const directionsUrl = (x) => `https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}`;
 const osmUrl = (x) => `https://www.openstreetmap.org/${{ n: "node", w: "way", r: "relation" }[x.id[0]]}/${x.id.slice(1)}`;
