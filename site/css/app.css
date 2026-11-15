@@ -385,3 +385,9 @@ form.search input:focus{border-color:var(--accent)}
 .lbnav{width:44px;height:44px;margin:auto;border-radius:50%;border:1.5px solid rgb(255 255 255 / .35);background:rgb(0 0 0 / .3);color:#fff;font-size:28px;line-height:1;cursor:pointer}
 .lbnav.prev{grid-column:1;grid-row:1} .lbnav.next{grid-column:3;grid-row:1}
 .lbnav[hidden]{visibility:hidden;display:block}
+
+/* telefono a pannello aperto: la riga sopra il pannello si interrompe sotto l'onda, così l'onda è attaccata al pannello */
+.app.mob:not(.map-only) aside.panel{border-top:0;background:
+  linear-gradient(var(--line),var(--line)) left top/calc(50% - 58px) 1px no-repeat,
+  linear-gradient(var(--line),var(--line)) right top/calc(50% - 58px) 1px no-repeat,var(--surface)}
+.results li em{font-style:normal;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

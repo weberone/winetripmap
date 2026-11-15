@@ -109,6 +109,11 @@ function loadDetails(x) {
 }
 // cantine nel raggio della ricerca, dalla più vicina a te
 function inRadius() {
+  if (state.area) { // area scelta nella ricerca (continente, stato, regione, zona del vino): tutte le sue cantine
+    // dalla più vicina a te; senza la tua posizione in ordine di nome (la distanza dal centro dell'area non dice nulla)
+    const A = state.area, me = state.me, list = A.idx.map((i) => state.all[i]).filter(Boolean).map((x) => Object.assign(x, { kmC: 0, km: me ? distKm(me, x) : NaN }));
+    return me ? list.sort((a, b) => a.km - b.km) : list.sort((a, b) => title(a).localeCompare(title(b), LOC));
+  }
   if (!state.center) return [];
   const from = state.me || state.center, b = boundsAround(state.center, state.radiusKm * 1000 * 1.01);
   return state.all.filter((x) => x.lat <= b.north && x.lat >= b.south && x.lng <= b.east && x.lng >= b.west)
@@ -130,8 +135,9 @@ function renderList() {
   renderChips(inRadius());
   $("count").textContent = fmtN(v.length);
   $("countLbl").textContent = I18N.n("found", v.length, "").trim();
-  $("countMob").innerHTML = state.areaOk ? esc(t("within", { n: nW(v.length), km: state.radiusKm })).replace(fmtN(v.length), `<span class="cm-n">${fmtN(v.length)}</span>`) : "";
-  if (state.areaOk && !state.loading) setStatus(t("within", { n: nW(v.length), km: state.radiusKm }));
+  const within = state.area ? t("in_area", { n: nW(v.length), a: state.area.name }) : t("within", { n: nW(v.length), km: state.radiusKm });
+  $("countMob").innerHTML = state.areaOk ? esc(within).replace(fmtN(v.length), `<span class="cm-n">${fmtN(v.length)}</span>`) : "";
+  if (state.areaOk && !state.loading) setStatus(within);
   radarLabel();
   if (!v.length) {
     $("list").innerHTML = state.areaOk && state.wc && inRadius().length ? `<div class="empty">${esc(t("empty_color", { c: WINE[state.wc].name.toLowerCase(), all: t("all") }))}</div>`
@@ -140,7 +146,7 @@ function renderList() {
   } else {
     $("list").innerHTML = v.slice(0, 300).map((x) => `<button class="item" data-id="${esc(x.id)}"><span class="mk">${pinSvg(20, x.wc, x.hv)}</span>
         <span style="min-width:0"><div class="name">${esc(title(x))}</div>${x.c && x.n ? `<div class="meta">${esc(x.c)}</div>` : ""}</span>
-        <span class="km">${fmtKm(x.km)}</span></button>`).join("");
+        <span class="km">${isFinite(x.km) ? fmtKm(x.km) : ""}</span></button>`).join("");
   }
   drawMarkers();
 }
@@ -315,7 +321,7 @@ async function loadArea(minMs = 0) {
 async function setMe(lat, lng, name, gps, msg) {
   const prev = state.center;
   state.me = { lat, lng, name, gps };
-  state.center = { lat, lng };
+  state.area = null; state.center = { lat, lng };
   $("worldAsk").hidden = true;
   $("locmsg").textContent = msg || "";
   $("searchHere").hidden = true; updatePreview();
@@ -330,7 +336,7 @@ async function setMe(lat, lng, name, gps, msg) {
 async function searchAt(c, minMs) {
   clearTimeout(autoTimer);
   if (!state.mapsReady) return;
-  state.center = c;
+  state.area = null; state.center = c;
   $("searchHere").hidden = true;
   M.setCircle("preview", null);
   const rv = radarBegin();
@@ -350,7 +356,7 @@ async function findNearest() {
   for (const x of state.all) { const k = distKm(from, x); if (k < bk) { bk = k; best = x; } }
   if (!best) return;
   nb.hidden = true;
-  state.center = { lat: best.lat, lng: best.lng };
+  state.area = null; state.center = { lat: best.lat, lng: best.lng };
   tipFly = Date.now() + 600;
   const vb = boundsAround(state.center, state.radiusKm * 1000);
   vb.north = Math.max(vb.north, from.lat); vb.south = Math.min(vb.south, from.lat);
@@ -565,8 +571,46 @@ async function share(text, url) {
 
 // ---------- ricerca: cantine per nome, comuni, luoghi (Nominatim) ----------
 let hits = [], hi = -1;
-function openSearch() { $("searchModal").hidden = false; pushLayer("search"); $("searchMsg").textContent = ""; loadData().then(suggest, () => {}); setTimeout(() => $("q").focus(), 30); suggest(); }
+function openSearch() { $("searchModal").hidden = false; pushLayer("search"); $("searchMsg").textContent = ""; loadData().then(suggest, () => {}); loadAree().then(suggest, () => {}); setTimeout(() => $("q").focus(), 30); suggest(); }
 function closeSearch() { if ($("searchModal").hidden) return; $("searchModal").hidden = true; popLayer("search"); }
+// ---------- aree: continenti, stati, regioni, zone del vino (site/data/aree.json, tools/aree.mjs) ----------
+let areeP = null, AREE = null;
+function loadAree() {
+  return areeP ||= Promise.all([fetch("/data/aree.json").then((r) => r.json()), loadData()]).then(([a]) => {
+    if (a.n !== state.all.length) throw new Error("aree"); // dati di un altro giorno: gli indici non valgono
+    const CN = new Intl.DisplayNames([I18N.lang], { type: "region" }), EN = new Intl.DisplayNames(["en"], { type: "region" });
+    const nm = (x) => (x.t && x.t[I18N.lang]) || x.n;
+    const list = [];
+    for (const [k, v] of Object.entries(a.ct)) list.push({ ak: "ct", key: k, name: t("ct_" + k), alt: [], k: v.k, b: v.b, idx: () => v.c.flatMap((c) => a.c[c].r.flatMap((r) => a.r[r].i)) });
+    for (const [k, v] of Object.entries(a.c)) { let n = k; try { n = CN.of(k); } catch (e) {} let e = ""; try { e = EN.of(k); } catch (er) {}
+      list.push({ ak: "c", key: k, name: n, alt: [e], k: v.k, b: v.b, idx: () => v.r.flatMap((r) => a.r[r].i) }); }
+    for (const [k, v] of Object.entries(a.r)) { let cn = ""; try { cn = CN.of(k.split(".")[0]); } catch (e) {}
+      list.push({ ak: "r", key: k, name: nm(v), alt: [v.n], sub: cn, k: v.k, b: v.b, idx: () => v.i }); }
+    for (const v of a.z) list.push({ ak: "z", key: v.n, name: nm(v), alt: [v.n], k: v.k, b: v.b, idx: () => v.i });
+    for (const h of list) h.keys = [h.name, ...h.alt].filter(Boolean).map(norm);
+    return (AREE = list);
+  }).catch((e) => { areeP = null; return []; });
+}
+function areaHits(s) {
+  if (!AREE || s.length < 2) return [];
+  const score = (h) => h.keys.some((k) => k.startsWith(s)) ? 0 : h.keys.some((k) => k.includes(" " + s)) ? 1 : 2;
+  const out = [];
+  for (const [kind, max] of [["ct", 2], ["c", 3], ["r", 4], ["z", 5]])
+    out.push(...AREE.filter((h) => h.ak === kind && score(h) < 2).sort((a, b) => score(a) - score(b) || b.k - a.k).slice(0, max).map((h) => ({ kind: "area", ...h })));
+  return out;
+}
+function setArea(h) {
+  const idx = h.idx(), [w, so, e, n] = h.b;
+  state.area = { name: h.name, idx, mid: { lat: (so + n) / 2, lng: (w + e) / 2 } };
+  state.center = null; state.areaOk = true;
+  closeDetail(true); leaveGlobe();
+  $("worldAsk").hidden = true; $("searchHere").hidden = true; $("noRes").hidden = true;
+  $("locmsg").textContent = t("place", { p: h.name });
+  M.setCircle("radius", null); M.setCircle("preview", null);
+  M.fitBounds({ west: w, south: so, east: e, north: n }, isMobile() ? 24 : 48, null, noMotion() ? 0 : 900);
+  renderList();
+  if (isMobile() && mapOnly()) setSheet(false);
+}
 function suggest() {
   const s = norm($("q").value.trim());
   hits = []; hi = -1;
@@ -575,20 +619,27 @@ function suggest() {
   state.all.forEach((x) => { if (x.c && norm(x.c).startsWith(s)) { const t = towns.get(x.c) || { name: x.c, n: 0, lat: 0, lng: 0 }; t.n++; t.lat += x.lat; t.lng += x.lng; towns.set(x.c, t); } });
   const tw = [...towns.values()].sort((a, b) => b.n - a.n).slice(0, 4).map((t) => ({ kind: "town", name: t.name, n: t.n, lat: t.lat / t.n, lng: t.lng / t.n }));
   const ws = state.all.filter((x) => x.n && norm(x.n).includes(s)).sort((a, b) => (norm(a.n).startsWith(s) ? 0 : 1) - (norm(b.n).startsWith(s) ? 0 : 1)).slice(0, 8).map((x) => ({ kind: "place", x }));
-  hits = [{ kind: "geo", q: $("q").value.trim() }, ...tw, ...ws];
+  const ar = areaHits(s);
+  hits = [{ kind: "geo", q: $("q").value.trim() }, ...ar, ...tw, ...ws];
   let html = `<li data-i="0">🔎 ${esc(t("find_place", { q: hits[0].q }))}</li>`;
-  if (tw.length) html += `<li class="rhead">${esc(t("towns"))}</li>` + tw.map((t, i) => `<li data-i="${i + 1}">${esc(t.name)}<small>${fmtN(t.n)}</small></li>`).join("");
-  if (ws.length) html += `<li class="rhead">${esc(t("wineries"))}</li>` + ws.map((w, i) => `<li data-i="${i + 1 + tw.length}">${esc(w.x.n)}<small>${esc(w.x.c || "")}</small></li>`).join("");
+  let ai = 1;
+  for (const [kind, head] of [["ct", "continents"], ["c", "countries"], ["r", "regions"], ["z", "wine_zones"]]) {
+    const g = ar.filter((h) => h.ak === kind); if (!g.length) continue;
+    html += `<li class="rhead">${esc(t(head))}</li>` + g.map((h) => `<li data-i="${ai++}">${esc(h.name)}${h.sub ? `<em>${esc(h.sub)}</em>` : ""}<small>${fmtN(h.k)}</small></li>`).join("");
+  }
+  if (tw.length) html += `<li class="rhead">${esc(t("towns"))}</li>` + tw.map((t, i) => `<li data-i="${i + 1 + ar.length}">${esc(t.name)}<small>${fmtN(t.n)}</small></li>`).join("");
+  if (ws.length) html += `<li class="rhead">${esc(t("wineries"))}</li>` + ws.map((w, i) => `<li data-i="${i + 1 + ar.length + tw.length}">${esc(w.x.n)}<small>${esc(w.x.c || "")}</small></li>`).join("");
   $("results").innerHTML = html;
 }
 function pick(i) {
   const h = hits[i]; if (!h) return;
   if (h.kind === "geo") return geocode(h.q);
   closeSearch(); state.userMoved = true;
+  if (h.kind === "area") return setArea(h);
   if (h.kind === "town") return setMe(h.lat, h.lng, h.name, false, t("place", { p: h.name }));
   // una cantina: il raggio intorno a lei (le distanze restano da te) e la sua scheda
   const x = h.x;
-  state.center = { lat: x.lat, lng: x.lng };
+  state.area = null; state.center = { lat: x.lat, lng: x.lng };
   fitToRadius(); drawMe();
   loadArea().then(() => { renderList(); openDetail(x.id, false); });
 }
@@ -942,7 +993,7 @@ async function start() {
   if (shared) {
     await loadData().catch(() => {});
     const x = state.byId.get(shared);
-    if (x) { state.center = { lat: x.lat, lng: x.lng }; fitToRadius(); drawMe(); await loadArea(); renderList(); openDetail(x.id, false); return; }
+    if (x) { state.area = null; state.center = { lat: x.lat, lng: x.lng }; fitToRadius(); drawMe(); await loadArea(); renderList(); openDetail(x.id, false); return; }
   }
   // posizione: se il permesso c'è già si usa subito, altrimenti l'invito "Dove vuoi andare?" (cerca un luogo o usa la posizione)
   if (perm === "granted") { if (!(await applyPosition(await getPosition(false), true))) askWhere(); }

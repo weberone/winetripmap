@@ -7,6 +7,7 @@
 import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { aree } from './aree.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export function seoDati() {
@@ -33,6 +34,7 @@ export function seoDati() {
   for (const [cc, P] of Object.entries(per)) writeFileSync(join(dir, cc.toLowerCase() + '.json'), JSON.stringify(P));
   writeFileSync(join(dir, 'w.json'), JSON.stringify(wmap));
   writeFileSync(join(dir, 'v.txt'), new Date().toISOString()); // versione dei dati: le copie delle pagine (seo/common.php) si rifanno
+  aree(); // e le aree della ricerca nella mappa (continenti, stati, regioni, zone del vino)
   console.log(`pagine SEO: ${Object.keys(index).length} stati, ${Object.values(per).reduce((a, p) => a + Object.keys(p.r).length, 0)} regioni, ${Object.values(per).reduce((a, p) => a + Object.keys(p.ci).length, 0)} comuni, ${Object.keys(wmap).length} cantine → ${dir}`);
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
