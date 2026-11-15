@@ -838,7 +838,7 @@ async function start() {
   M.on("moveend", () => { syncMeBtn(); checkArea(); });
   M.on("movestart", () => clearTimeout(autoTimer));
   M.on("dragstart", () => { state.userMoved = true; toggleKm(false); $("meBtn").setAttribute("aria-pressed", "false"); });
-  M.on("pinclick", (id) => pinTip(id));
+  M.on("pinclick", (id) => ($("detail").hidden ? pinTip(id) : openDetail(id, false))); // scheda già aperta: si passa subito a quella del pin toccato
   M.on("click", () => {
     toggleKm(false);
     if (isMobile() && !mapOnly()) { setSheet(false); return; }
