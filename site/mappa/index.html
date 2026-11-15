@@ -13,7 +13,7 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 </script>
 <meta name="theme-color" content="#8e1b33">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/app.css?v=22">
+<link rel="stylesheet" href="/css/app.css?v=23">
 </head>
 <body>
 <div class="app map-only">
@@ -33,6 +33,7 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
       <div class="locrow">
         <button class="btn" id="locBtn"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span data-i18n="my_pos">La mia posizione</span></button>
         <button class="btn" id="placeBtn"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg><span data-i18n="search_place">Cerca un luogo</span></button>
+        <button class="btn browse" id="browseBtn" title="Esplora per continente, stato, regione e zona del vino" data-i18n-title="browse_long"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span data-i18n="browse_btn">Esplora per area</span></button>
       </div>
       <div class="row">
         <span><strong id="count">0</strong> <span id="countLbl">cantine trovate</span></span>
@@ -52,7 +53,7 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
     <div class="map-logo" aria-hidden="true"><span class="wm">wine<b>tr<span class="wi">ı<svg class="wpin" viewBox="0 0 12 16" aria-hidden="true"><path d="M1 5.5A5 5 0 0 1 11 5.5C11 8.9 8.4 11.3 6.6 12V14.3H8.6C9.1 14.3 9.4 14.6 9.4 14.95S9.1 15.6 8.6 15.6H3.4C2.9 15.6 2.6 15.3 2.6 14.95S2.9 14.3 3.4 14.3H5.4V12C3.6 11.3 1 8.9 1 5.5Z"/><circle cx="6" cy="5.5" r="1.75" fill="#fff"/></svg></span>p</b>map</span></div>
     <div id="map" aria-label="Mappa delle cantine" data-i18n-aria="map_aria"></div>
     <!-- primo accesso senza posizione: invito a dire dove si è -->
-    <div class="worldask" id="worldAsk" hidden><b data-i18n="where_go">Dove vuoi andare?</b><p data-i18n="ask_text">Cerca un luogo o usa la tua posizione: ti mostriamo subito le cantine intorno.</p><div class="wa-btns"><button type="button" class="btn primary" id="worldAskGps" data-i18n="use_my_pos">Usa la mia posizione</button><button type="button" class="btn" id="worldAskBtn" data-i18n="search_place">Cerca un luogo</button></div></div>
+    <div class="worldask" id="worldAsk" hidden><b data-i18n="where_go">Dove vuoi andare?</b><p data-i18n="ask_text">Cerca un luogo o usa la tua posizione: ti mostriamo subito le cantine intorno.</p><div class="wa-btns"><button type="button" class="btn primary" id="worldAskGps" data-i18n="use_my_pos">Usa la mia posizione</button><button type="button" class="btn" id="worldAskBtn" data-i18n="search_place">Cerca un luogo</button></div><button type="button" class="walink" id="worldAskBrowse" data-i18n="browse_or">oppure esplora per continente, stato, regione e zona del vino</button></div>
     <button class="btn here" id="searchHere" hidden><svg class="radar" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="8.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="4.4" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".6"/><g class="sweep"><path d="M10 10 L10 1.8 A8.2 8.2 0 0 1 16.4 5z" fill="currentColor" opacity=".35"/><path d="M10 10 L10 1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></g><circle cx="10" cy="10" r="1.4" fill="currentColor"/></svg><span data-i18n="search_here">Cerca in questa zona</span></button>
     <div class="crosshair" aria-hidden="true"></div>
     <div class="nores" id="noRes" hidden data-i18n="no_res_here">Nessuna cantina qui</div>
@@ -92,6 +93,17 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
   </div>
 </div>
 
+<!-- esplora: continente → stato → regione → zona del vino, a clic (app.js, openBrowse; dati da site/data/aree.json) -->
+<div class="modal" id="browseModal" hidden role="dialog" aria-modal="true" aria-labelledby="browseTitle">
+  <div class="card">
+    <button class="x" id="browseClose" aria-label="Chiudi" data-i18n-aria="close">✕</button>
+    <h3 id="browseTitle" data-i18n="browse">Esplora</h3>
+    <nav class="crumbs" id="crumbs" aria-label="Percorso"></nav>
+    <ul class="results browse" id="browseList"></ul>
+    <p class="smsg" id="browseMsg" role="status"></p>
+  </div>
+</div>
+
 <!-- foto grande: bottiglie e foto della cantina (app.js, openLightbox) -->
 <div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true">
   <button class="x" id="lbClose" aria-label="Chiudi" data-i18n-aria="close">✕</button>
@@ -110,7 +122,7 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 </div>
 
 <!-- la mappa (Google, Mapbox o MapLibre + OpenFreeMap) la carica app.js: vedi createMap -->
-<script src="/js/i18n.js?v=4"></script>
-<script src="/js/app.js?v=22"></script>
+<script src="/js/i18n.js?v=5"></script>
+<script src="/js/app.js?v=23"></script>
 </body>
 </html>

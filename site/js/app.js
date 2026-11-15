@@ -182,7 +182,7 @@ addEventListener("popstate", () => {
   if (ignorePop > 0) { ignorePop--; return; }
   const n = layers.pop(); if (!n) return;
   fromHistory = true;
-  try { if (n === "sheet") setSheet(false); else if (n === "detail") closeDetail(); else if (n === "search") closeSearch(); else if (n === "trip") closeTrip(); else if (n === "lightbox") closeLightbox(); }
+  try { if (n === "sheet") setSheet(false); else if (n === "detail") closeDetail(); else if (n === "search") closeSearch(); else if (n === "trip") closeTrip(); else if (n === "lightbox") closeLightbox(); else if (n === "browse") closeBrowse(); }
   finally { fromHistory = false; }
 });
 function setSheet(open) {
@@ -574,7 +574,7 @@ let hits = [], hi = -1;
 function openSearch() { $("searchModal").hidden = false; pushLayer("search"); $("searchMsg").textContent = ""; loadData().then(suggest, () => {}); loadAree().then(suggest, () => {}); setTimeout(() => $("q").focus(), 30); suggest(); }
 function closeSearch() { if ($("searchModal").hidden) return; $("searchModal").hidden = true; popLayer("search"); }
 // ---------- aree: continenti, stati, regioni, zone del vino (site/data/aree.json, tools/aree.mjs) ----------
-let areeP = null, AREE = null;
+let areeP = null, AREE = null, AR = null;
 function loadAree() {
   return areeP ||= Promise.all([fetch("/data/aree.json").then((r) => r.json()), loadData()]).then(([a]) => {
     if (a.n !== state.all.length) throw new Error("aree"); // dati di un altro giorno: gli indici non valgono
@@ -588,6 +588,15 @@ function loadAree() {
       list.push({ ak: "r", key: k, name: nm(v), alt: [v.n], sub: cn, k: v.k, b: v.b, idx: () => v.i }); }
     for (const v of a.z) list.push({ ak: "z", key: v.n, name: nm(v), alt: [v.n], k: v.k, b: v.b, idx: () => v.i });
     for (const h of list) h.keys = [h.name, ...h.alt].filter(Boolean).map(norm);
+    // per "Esplora": le zone del vino di ogni regione (quella con più cantine della zona, più le altre con almeno un quarto)
+    const reg = new Map(); for (const [k, v] of Object.entries(a.r)) for (const i of v.i) reg.set(i, k);
+    const zr = {};
+    list.filter((h) => h.ak === "z").forEach((h) => {
+      const cnt = {}; for (const i of h.idx()) { const r = reg.get(i); if (r) cnt[r] = (cnt[r] || 0) + 1; }
+      const top = Math.max(0, ...Object.values(cnt));
+      for (const [r, n] of Object.entries(cnt)) if (n === top || n >= h.k / 4) (zr[r] ||= []).push(h);
+    });
+    AR = { a, zr, by: (ak, key) => list.find((h) => h.ak === ak && h.key === key) };
     return (AREE = list);
   }).catch((e) => { areeP = null; return []; });
 }
@@ -610,6 +619,49 @@ function setArea(h) {
   M.fitBounds({ west: w, south: so, east: e, north: n }, isMobile() ? 24 : 48, null, noMotion() ? 0 : 900);
   renderList();
   if (isMobile() && mapOnly()) setSheet(false);
+}
+// ---------- esplora: a clic, continente → stato → regione → zona del vino ----------
+let bpath = []; // aree scelte finora, dal continente in giù
+function openBrowse() {
+  closeSearch();
+  if ($("browseModal").hidden) { $("browseModal").hidden = false; pushLayer("browse"); }
+  $("browseMsg").textContent = "…";
+  renderBrowse();
+  loadAree().then(() => { $("browseMsg").textContent = AR ? "" : t("search_down"); renderBrowse(); });
+}
+function closeBrowse() { if ($("browseModal").hidden) return; $("browseModal").hidden = true; popLayer("browse"); }
+function renderBrowse() {
+  const crumbs = [`<button type="button" data-b="0">${esc(t("world"))}</button>`, ...bpath.map((h, i) => `<button type="button" data-b="${i + 1}"${i === bpath.length - 1 ? ' aria-current="true"' : ""}>${esc(h.name)}</button>`)];
+  $("crumbs").innerHTML = crumbs.join('<span aria-hidden="true">›</span>');
+  if (!AR) { $("browseList").innerHTML = ""; return; }
+  const { a, zr, by } = AR, cur = bpath[bpath.length - 1];
+  let kids = [], head = "continents";
+  if (!cur) kids = Object.keys(a.ct).map((k) => by("ct", k));
+  else if (cur.ak === "ct") { kids = a.ct[cur.key].c.map((k) => by("c", k)); head = "countries"; }
+  else if (cur.ak === "c") { kids = a.c[cur.key].r.map((k) => by("r", k)); head = "regions"; }
+  else if (cur.ak === "r") { // solo le cantine della zona che stanno in questa regione (le denominazioni compaiono anche nei vini di cantine lontane)
+    const inR = new Set(a.r[cur.key].i);
+    kids = (zr[cur.key] || []).map((z) => {
+      const idx = z.idx().filter((i) => inR.has(i)), p = idx.map((i) => state.all[i]);
+      const b = [Math.min(...p.map((x) => x.lng)), Math.min(...p.map((x) => x.lat)), Math.max(...p.map((x) => x.lng)), Math.max(...p.map((x) => x.lat))];
+      return { ...z, k: idx.length, b, idx: () => idx };
+    }).filter((z) => z.k).sort((x, y) => y.k - x.k);
+    head = "wine_zones";
+  }
+  kids = kids.filter(Boolean);
+  if (!cur) kids.sort((x, y) => y.k - x.k);
+  let html = "";
+  if (cur) html += `<li class="all" data-k="-1"><b>${esc(t("all_in", { p: cur.name }))}</b><small>${fmtN(cur.k)}</small></li>`;
+  if (kids.length) html += `<li class="rhead">${esc(t(head))}</li>` + kids.map((h, i) => `<li data-k="${i}">${esc(h.name)}<small>${fmtN(h.k)}</small>${h.ak !== "z" ? '<i aria-hidden="true">›</i>' : ""}</li>`).join("");
+  $("browseList").innerHTML = html;
+  $("browseList").onclick = (e) => {
+    const li = e.target.closest("li[data-k]"); if (!li) return;
+    const k = +li.dataset.k, h = k < 0 ? cur : kids[k];
+    // la zona del vino è l'ultimo livello; una regione senza zone del vino si apre subito
+    if (k < 0 || h.ak === "z" || (h.ak === "r" && !(zr[h.key] || []).length)) { closeBrowse(); state.userMoved = true; return setArea(h); }
+    bpath.push(h); renderBrowse(); $("browseList").scrollTop = 0; $("browseModal").querySelector(".card").scrollTop = 0;
+  };
+  $("crumbs").onclick = (e) => { const b = e.target.closest("button[data-b]"); if (!b) return; bpath = bpath.slice(0, +b.dataset.b); renderBrowse(); };
 }
 function suggest() {
   const s = norm($("q").value.trim());
@@ -744,9 +796,11 @@ function bind() {
   $("results").onclick = (e) => { const li = e.target.closest("li[data-i]"); if (li) pick(+li.dataset.i); };
   document.querySelectorAll("[data-close]").forEach((b) => b.onclick = closeSearch);
   $("searchModal").onclick = (e) => { if (e.target === $("searchModal")) closeSearch(); };
+  $("browseBtn").onclick = openBrowse; $("worldAskBrowse").onclick = openBrowse; $("browseClose").onclick = closeBrowse;
+  $("browseModal").onclick = (e) => { if (e.target === $("browseModal")) closeBrowse(); };
   addEventListener("keydown", (e) => {
     if (!$("lightbox").hidden) { if (e.key === "Escape") closeLightbox(); else if (e.key === "ArrowLeft") stepLightbox(-1); else if (e.key === "ArrowRight") stepLightbox(1); return; }
-    if (e.key === "Escape") { closeSearch(); closeTrip(); toggleKm(false); }
+    if (e.key === "Escape") { closeSearch(); closeBrowse(); closeTrip(); toggleKm(false); }
   });
   $("lightbox").onclick = (e) => { if (e.target === $("lightbox") || e.target.id === "lbClose") closeLightbox(); };
   $("lbPrev").onclick = (e) => { e.stopPropagation(); stepLightbox(-1); };

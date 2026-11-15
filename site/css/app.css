@@ -407,3 +407,14 @@ form.search input:focus{border-color:var(--accent)}
 /* telefono a pannello aperto: l'invito si nasconde (nel pannello ci sono già "La mia posizione" e "Cerca un luogo"),
    così non copre l'onda con il pulsante per richiudere il pannello */
 .app.mob:not(.map-only) .worldask{display:none}
+/* esplora: continente → stato → regione → zona del vino */
+.locrow{flex-wrap:wrap}
+.locrow .btn.browse{flex:1 1 100%;min-width:0}
+.locrow .btn.browse span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.walink{display:block;margin:9px auto 0;padding:2px 4px;border:0;background:none;color:var(--accent-ink);font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px;font-size:14px;color:var(--muted)}
+.crumbs button{border:0;background:none;padding:3px 4px;border-radius:6px;font:inherit;color:var(--accent);cursor:pointer}
+.crumbs button[aria-current]{color:var(--ink,inherit);font-weight:700;cursor:default}
+.results.browse li i{font-style:normal;color:var(--muted);font-size:18px;line-height:1;margin-left:2px}
+.results.browse li.all{border:1.5px solid color-mix(in srgb,var(--accent) 45%,transparent);margin-bottom:4px}
+.results.browse li.all b{color:var(--accent)}
