@@ -725,7 +725,7 @@ function bind() {
     store.set("theme", d.dataset.theme); applyScheme();
   };
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyScheme);
-  $("shareHdr").onclick = () => share(t("share_text"), location.origin + location.pathname);
+  $("shareBtn").onclick = () => share(t("share_text"), location.origin + location.pathname);
   // Invio: il comune o la cantina con esattamente quel nome, altrimenti la ricerca del luogo
   $("searchForm").onsubmit = (e) => {
     e.preventDefault(); suggest();

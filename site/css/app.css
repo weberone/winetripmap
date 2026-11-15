@@ -201,7 +201,7 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 .app.map-only .fab svg{top:calc(-8px - env(safe-area-inset-bottom,0px))}
 .app.map-only .zoombtns{bottom:calc(58px + env(safe-area-inset-bottom,0px))} /* sopra la "i" dei crediti della mappa */
 .app.mob:not(.map-only) .zoombtns,.app.mob:not(.map-only) #previewBtn,.app.mob:not(.map-only) .kmbtn,.app.mob:not(.map-only) .kmpick,
-.app.mob:not(.map-only) .mapbtn.me,.app.mob:not(.map-only) .legend,.app.mob:not(.map-only) .mapbtn.search,.app.mob:not(.map-only) .here{display:none!important}
+.app.mob:not(.map-only) .mapbtn.me,.app.mob:not(.map-only) .legend,.app.mob:not(.map-only) .mapbtn.search,.app.mob:not(.map-only) .mapbtn.share,.app.mob:not(.map-only) .here{display:none!important}
 
 /* ---------- elementi disegnati dal core (core/js/map/: Google, Mapbox o MapLibre) ---------- */
 /* Google: la mappa resta nascosta finché le prime tessere non hanno lo stile del Map ID, poi compare */
@@ -275,8 +275,9 @@ form.search input:focus{border-color:var(--accent)}
 /* ---------- barra dei pulsanti come SkateboardMap ----------
    In basso, un unico blocco centrato sul radar (grande, 58px): a sinistra Cerca, a destra posizione e km (passo 50px).
    Zoom + − e chiaro/scuro in un'unica colonna in alto a destra. Stessa disposizione su computer e telefono. */
-.app .mapbtn.search,.app .mapbtn.me,.app .kmbtn{top:auto!important;right:auto!important;bottom:36px}
+.app .mapbtn.search,.app .mapbtn.share,.app .mapbtn.me,.app .kmbtn{top:auto!important;right:auto!important;bottom:36px}
 .app .mapbtn.search{left:calc(50% - 81px)!important}
+.app .mapbtn.share{left:calc(50% - 131px)!important} /* a fianco di Cerca, come i km dall'altra parte */
 .app .mapbtn.me{left:calc(50% + 39px)!important}
 .app .kmbtn,.app .kmpick{left:calc(50% + 89px)!important;right:auto!important}
 .app .kmpick{top:auto!important;bottom:86px} /* la scelta dei km sopra il pulsante */
@@ -296,7 +297,7 @@ form.search input:focus{border-color:var(--accent)}
 .here{bottom:100px}
 .nores{bottom:104px}
 /* telefono a pannello chiuso: la barra sta sopra l'onda del pannello */
-.app.mob.map-only .mapbtn.search,.app.mob.map-only .mapbtn.me,.app.mob.map-only .kmbtn{bottom:calc(68px + env(safe-area-inset-bottom,0px))}
+.app.mob.map-only .mapbtn.search,.app.mob.map-only .mapbtn.share,.app.mob.map-only .mapbtn.me,.app.mob.map-only .kmbtn{bottom:calc(68px + env(safe-area-inset-bottom,0px))}
 .app.mob.map-only #previewBtn{bottom:calc(60px + env(safe-area-inset-bottom,0px))}
 .app.mob.map-only .kmpick{bottom:calc(118px + env(safe-area-inset-bottom,0px))}
 .app.mob.map-only .here{bottom:calc(132px + env(safe-area-inset-bottom,0px))}
