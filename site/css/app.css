@@ -411,7 +411,7 @@ form.search input:focus{border-color:var(--accent)}
 .locrow{flex-wrap:wrap}
 .locrow .btn.browse{flex:1 1 100%;min-width:0}
 .locrow .btn.browse span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.walink{display:block;margin:9px auto 0;padding:2px 4px;border:0;background:none;color:var(--accent-ink);font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.wa-btns{display:grid;grid-template-columns:auto auto} .wa-btns .btn.wa-browse{grid-column:1 / -1} /* i primi due affiancati, Esplora sotto per tutta la larghezza */
 .crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px;font-size:14px;color:var(--muted)}
 .crumbs button{border:0;background:none;padding:3px 4px;border-radius:6px;font:inherit;color:var(--accent);cursor:pointer}
 .crumbs button[aria-current]{color:var(--ink,inherit);font-weight:700;cursor:default}
