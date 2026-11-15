@@ -426,4 +426,4 @@ form.search input:focus{border-color:var(--accent)}
 .ptsat small{position:absolute;right:0;bottom:0;padding:1px 5px;font-size:9.5px!important;line-height:1.3;color:#fff!important;background:rgb(0 0 0 / .45);border-top-left-radius:6px}
 /* niente righe ai lati del fumetto nel tema scuro: la foto sborda di 2 px (tagliata dal bordo arrotondato), niente anello del focus al clic */
 .sk-pop .maplibregl-popup-content,.sk-pop .mapboxgl-popup-content{border:0;outline:0}
-.pintip:focus:not(:focus-visible){outline:0}
+.pintip:focus:not(:focus-visible){outline:0} .pintip:focus-visible{outline:2px solid var(--accent);outline-offset:-3px;border-radius:12px} /* MapLibre mette il focus sul fumetto all apertura: senza questo Chrome disegna un bordo chiaro ai lati */
