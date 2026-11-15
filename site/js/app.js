@@ -407,7 +407,7 @@ function syncMeBtn() {
 // ---------- fumetto e scheda ----------
 // foto satellitare nel fumetto: 4 piastrelle (2×2) intorno alla cantina, ritagliate con la cantina al centro.
 // Piastrelle satellitari di Mapbox se c'è il token (750.000 al mese nel piano gratuito), altrimenti Esri World Imagery.
-const SAT_W = 210, SAT_H = 110, SAT_Z = 17;
+const SAT_W = 214, SAT_H = 111, SAT_Z = 17;
 function satTip(x) {
   const n = 2 ** SAT_Z, r = x.lat * Math.PI / 180;
   const px = (x.lng + 180) / 360 * n * 256, py = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n * 256;
