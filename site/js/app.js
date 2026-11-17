@@ -320,6 +320,7 @@ async function loadArea(minMs = 0) {
 }
 // nuova posizione (GPS o luogo cercato): le distanze si misurano da qui
 async function setMe(lat, lng, name, gps, msg) {
+  await ensureMap();
   const prev = state.center;
   state.me = { lat, lng, name, gps };
   state.area = null; state.center = { lat, lng };
@@ -336,6 +337,7 @@ async function setMe(lat, lng, name, gps, msg) {
 // "Cerca in questa zona" (o raggio cambiato): il cerchio va in c, le distanze restano da te
 async function searchAt(c, minMs) {
   clearTimeout(autoTimer);
+  await ensureMap();
   if (!state.mapsReady) return;
   state.area = null; state.center = c;
   $("searchHere").hidden = true;
@@ -659,7 +661,8 @@ function drawShape() {
   if (sh === shownShape || !state.mapsReady || !M.setShape) return;
   shownShape = sh; M.setShape(sh);
 }
-function setArea(h) {
+async function setArea(h) {
+  await ensureMap();
   const idx = h.idx(), [w, so, e, n] = h.b;
   state.area = { name: h.name, idx, mid: { lat: (so + n) / 2, lng: (w + e) / 2 }, shape: h.ak === "z" ? zoneShape(idx) : null };
   state.center = null; state.areaOk = true;
@@ -734,7 +737,7 @@ function suggest() {
   if (ws.length) html += `<li class="rhead">${esc(t("wineries"))}</li>` + ws.map((w, i) => `<li data-i="${i + 1 + ar.length + tw.length}">${esc(w.x.n)}<small>${esc(w.x.c || "")}</small></li>`).join("");
   $("results").innerHTML = html;
 }
-function pick(i) {
+async function pick(i) {
   const h = hits[i]; if (!h) return;
   if (h.kind === "geo") return geocode(h.q);
   closeSearch(); state.userMoved = true;
@@ -742,6 +745,7 @@ function pick(i) {
   if (h.kind === "town") return setMe(h.lat, h.lng, h.name, false, t("place", { p: h.name }));
   // una cantina: il raggio intorno a lei (le distanze restano da te) e la sua scheda
   const x = h.x;
+  await ensureMap();
   state.area = null; state.center = { lat: x.lat, lng: x.lng };
   fitToRadius(); drawMe();
   loadArea().then(() => { renderList(); openDetail(x.id, false); });
@@ -966,8 +970,9 @@ function tripDirections() {
   const last = s[s.length - 1], mid = s.slice(0, -1);
   return `https://www.google.com/maps/dir/?api=1&destination=${ll(last)}${mid.length ? "&waypoints=" + encodeURIComponent(mid.map(ll).join("|")) : ""}&travelmode=driving`;
 }
-function showTripOnMap() {
+async function showTripOnMap() {
   const s = state.trip.stops; if (!s.length || !state.mapsReady) return;
+  await ensureMap();
   leaveGlobe(); $("worldAsk").hidden = true;
   if (s.length === 1) { M.flyTo({ lat: s[0].lat, lng: s[0].lng }, 13); return; }
   const lat = s.map((x) => x.lat), lng = s.map((x) => x.lng), m = 0.01;
@@ -1071,10 +1076,33 @@ async function start() {
   let perm = "prompt";
   try { perm = (await navigator.permissions.query({ name: "geolocation" })).state; } catch (e) {}
   const last = store.get("lastgps"), startAt = perm === "granted" ? last : null;
-  const mapKind = await createMap({ dark: dark(), center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 30, lng: 10 },
-    bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : WORLD, padding: 12, language: I18N.lang });
+  const qs = new URLSearchParams(location.search), tq = qs.get("trip"), shared = qs.get("c");
+  // senza posizione né link: prima la Terra in 3D che gira (OpenFreeMap, gratuita e non contata); la mappa vera
+  // (Google se c'è quota, poi Mapbox) parte quando si sceglie un luogo, una posizione, un'area o un trip (ensureMap)
+  globeOnly = !startAt && !tq && !shared;
+  mapOpts = { dark: dark(), center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 30, lng: 10 },
+    bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : WORLD, padding: 12, language: I18N.lang };
+  const mapKind = await createMap({ ...mapOpts, free: globeOnly });
   state.mapsReady = true; app.classList.add("mapready");
-  loadMe(mapKind);
+  loadMe(globeOnly ? "globe" : mapKind);
+  bindMap();
+  // un trip (?trip=12, dall'account) o la bozza dopo l'accesso (?trip=draft): le tappe sulla mappa
+  if (tq) {
+    await ensureMap(); await loadData().catch(() => {}); drawTrip();
+    if ((tq === "draft" || await openTrip(+tq)) && state.trip.stops.length) { showTripOnMap(); if (tq === "draft") showTrip(); return; }
+  }
+  // link di una cantina (?c=n123): si apre lei, con il raggio intorno
+  if (shared) {
+    await loadData().catch(() => {});
+    const x = state.byId.get(shared);
+    if (x) { state.area = null; state.center = { lat: x.lat, lng: x.lng }; fitToRadius(); drawMe(); await loadArea(); renderList(); openDetail(x.id, false); return; }
+  }
+  // posizione: se il permesso c'è già si usa subito, altrimenti l'invito "Dove vuoi andare?" (cerca un luogo o usa la posizione)
+  if (perm === "granted") { if (!(await applyPosition(await getPosition(false), true))) askWhere(); }
+  else askWhere();
+}
+// eventi della mappa: da rifare a ogni mappa nuova (il modulo del core ricaricato riparte senza)
+function bindMap() {
   drawTrip();
   M.on("extraclick", (id) => openDetail(id)); // numero di una tappa del trip
   M.setBottomPadding(mapPad(), 0);
@@ -1087,22 +1115,17 @@ async function start() {
     if (isMobile() && !mapOnly()) { setSheet(false); return; }
     if (state.sel && $("detail").hidden) { state.sel = null; drawMarkers(); }
   });
-  // un trip (?trip=12, dall'account) o la bozza dopo l'accesso (?trip=draft): le tappe sulla mappa
-  const tq = new URLSearchParams(location.search).get("trip");
-  if (tq) {
-    await loadData().catch(() => {}); drawTrip();
-    if ((tq === "draft" || await openTrip(+tq)) && state.trip.stops.length) { showTripOnMap(); if (tq === "draft") showTrip(); return; }
-  }
-  // link di una cantina (?c=n123): si apre lei, con il raggio intorno
-  const shared = new URLSearchParams(location.search).get("c");
-  if (shared) {
-    await loadData().catch(() => {});
-    const x = state.byId.get(shared);
-    if (x) { state.area = null; state.center = { lat: x.lat, lng: x.lng }; fitToRadius(); drawMe(); await loadArea(); renderList(); openDetail(x.id, false); return; }
-  }
-  // posizione: se il permesso c'è già si usa subito, altrimenti l'invito "Dove vuoi andare?" (cerca un luogo o usa la posizione)
-  if (perm === "granted") { if (!(await applyPosition(await getPosition(false), true))) askWhere(); }
-  else askWhere();
+}
+// dal globo alla mappa vera: Google se c'è quota nel mese, poi Mapbox; se il contatore dice "free" resta OpenFreeMap
+let globeOnly = false, mapOpts = null, mapSwitch = null;
+function ensureMap() {
+  if (!globeOnly) return mapSwitch || Promise.resolve();
+  globeOnly = false;
+  return mapSwitch = (async () => {
+    leaveGlobe();
+    const kind = await createMap({ ...mapOpts, keepFree: true }).catch(() => "free");
+    if (kind !== "free") { bindMap(); shownShape = null; drawShape(); drawMe(); drawMarkers(); }
+  })();
 }
 function askWhere() { $("worldAsk").hidden = false; setStatus(t("where_go")); renderList(); showGlobe(); }
 // all'inizio, prima di posizione o ricerca: la Terra in 3D che gira piano (si ferma appena la tocchi); poi la mappa torna piana
@@ -1144,7 +1167,9 @@ async function createMap(o) {
   const have = [MAPS.googleKey && MAPS.googleMapId && "google", MAPS.mapboxToken && "mapbox"].filter(Boolean);
   let skip = []; try { skip = JSON.parse(sessionStorage.getItem("wtm.mapskip")) || []; } catch (e) {}
   for (;;) {
-    const use = have.some((p) => !skip.includes(p)) ? await counter(have, skip) : "free";
+    const use = !o.free && have.some((p) => !skip.includes(p)) ? await counter(have, skip) : "free";
+    if (use === "free" && o.keepFree) return "free"; // c'è già la mappa gratuita (il globo): resta quella
+    if (window.SkateMap && M.spin) M.spin(false);
     $("map").innerHTML = ""; $("map").className = "";
     try {
       if (use === "google") {
