@@ -16,7 +16,7 @@ const MAPS = {
   googleKey: "AIzaSyC70BhabZ1rknOmdxsp_EoXtM-TFsqEGEE", // pubblica: limitata a winetripmap.com e www, solo Maps JavaScript API e Places API (New)
   googleMapId: "e432c92385ee4e8be9dafcbb", // "WTM chiara": Google Cloud → Gestione mappe → JavaScript, vettoriale (serve per i pin HTML)
   googleMapIdDark: "",  // Map ID con stile scuro (vuoto = tema scuro standard di Google)
-  mapboxToken: "",      // account.mapbox.com → Tokens: token pubblico "pk." limitato a winetripmap.com
+  mapboxToken: "pk.eyJ1Ijoid2luZXRyaXBtYXAiLCJhIjoiY213a3lhb3NzMGxheTJ6czIydXQxd3RmciJ9.aGP2mAa3o2OfG7ymqhVUiw", // pubblico: account Mapbox "winetripmap" senza carta = limiti fissi (5.000 aperture, 5.000 immagini statiche al mese), oltre si ferma, nessun addebito
 };
 // traduzioni (site/js/i18n.js, caricato prima): t("chiave", { valori }), nW(n) = "12 cantine" nella lingua della pagina
 const I18N = window.WTM_I18N, t = I18N.t, LOC = I18N.locale;
@@ -406,17 +406,17 @@ function syncMeBtn() {
 
 // ---------- fumetto e scheda ----------
 // foto satellitare nel fumetto: 4 piastrelle (2×2) intorno alla cantina, ritagliate con la cantina al centro.
-// Piastrelle satellitari di Mapbox se c'è il token (750.000 al mese nel piano gratuito), altrimenti Esri World Imagery.
+// Piastrelle di Esri World Imagery.
 const SAT_W = 214, SAT_H = 111, SAT_Z = 17;
 function satTip(x) {
   const n = 2 ** SAT_Z, r = x.lat * Math.PI / 180;
   const px = (x.lng + 180) / 360 * n * 256, py = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n * 256;
   const tx = Math.floor((px - SAT_W / 2) / 256), ty = Math.floor((py - SAT_H / 2) / 256);
-  const url = (X, Y) => MAPS.mapboxToken ? `https://api.mapbox.com/v4/mapbox.satellite/${SAT_Z}/${X}/${Y}@2x.jpg90?access_token=${MAPS.mapboxToken}`
-    : `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${SAT_Z}/${Y}/${X}`;
+  // sempre Esri: i limiti di Mapbox (account senza carta) restano per la mappa e per la foto della scheda
+  const url = (X, Y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${SAT_Z}/${Y}/${X}`;
   let tiles = "";
   for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) tiles += `<img src="${url(tx + dx, ty + dy)}" alt="" loading="eager" referrerpolicy="no-referrer" style="left:${dx * 256}px;top:${dy * 256}px">`;
-  const credit = MAPS.mapboxToken ? "© Mapbox © Maxar" : "Esri, Maxar, Earthstar Geographics";
+  const credit = "Esri, Maxar, Earthstar Geographics";
   return `<span class="ptsat" aria-hidden="true"><span class="pts-in" style="left:${Math.round(tx * 256 - (px - SAT_W / 2))}px;top:${Math.round(ty * 256 - (py - SAT_H / 2))}px">${tiles}</span><i class="pts-dot"></i><small>${esc(credit)}</small></span>`;
 }
 function pinTip(id) {

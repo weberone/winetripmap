@@ -12,8 +12,8 @@
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
-const CAPS = ['google' => 9900, 'mapbox' => 47500];
-const API_CAPS = ['gtext' => 4900, 'gphoto' => 900, 'static' => 4700];
+const CAPS = ['google' => 9900, 'mapbox' => 4900];
+const API_CAPS = ['gtext' => 4900, 'gphoto' => 900, 'static' => 4900];
 
 // contatori fuori dal deploy (counter/** escluso in .github/workflows/deploy.yml) e non leggibili dal web
 $dir = dirname(__DIR__) . '/counter';
