@@ -39,7 +39,7 @@ Progetto separato da SkateboardMap: lavora solo in questa cartella e nel core co
 - In locale non c'è PHP: account e admin si provano online (senza creare account sul sito pubblico senza chiedere).
 
 ## Google Cloud (account Google di WTM, organizzazione winetripmap-org)
-- Progetto "My First Project" (`project-01cb823d-edc4-46be-8f7`), account di fatturazione `01AD7E-031E7F-0E37A2` in prova senza costi (269 € di credito, 90 giorni dal 2026-11-17; pagati 30 € anticipati con PayPal, rimborsabili da Fatturazione → Modalità di pagamento → Richiesta di rimborso). Mai "Fai l'upgrade" senza l'utente.
+- Progetto "My First Project" (`project-01cb823d-edc4-46be-8f7`), account di fatturazione `01AD7E-031E7F-0E37A2` in prova senza costi (269 € di credito, 90 giorni dal 2026-11-17; pagati 30 € anticipati con PayPal, rimborso chiesto il 2026-11-17 da Fatturazione → Modalità di pagamento → Richiesta di rimborso). Mai "Fai l'upgrade" senza l'utente.
 - API attive: Maps JavaScript API e Places API (New) (termini SEE accettati dall'utente). Chiave "Maps Platform API Key": solo https://winetripmap.com/* e https://www.winetripmap.com/*, solo quelle due API. Map ID vettoriale JavaScript "WTM chiara" (vale per chiaro e scuro, stili Google predefiniti).
 - Le quote giornaliere di Maps in Google Cloud non sono modificabili nell'account di prova: il tetto lo fa `api/counter.php`. Durante la prova la spesa la copre il credito; alla fine, senza upgrade, Google chiude la fatturazione e la mappa passa a Mapbox/OpenFreeMap.
 
