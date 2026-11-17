@@ -39,7 +39,7 @@ function hbars(array $rows, string $empty = 'Ancora nessun dato.'): string {
 
 function admin_header(string $title, string $active): void {
   $fb = (int)one("SELECT COUNT(*) FROM feedback WHERE status = 'new'");
-  $menu = [['/mappa/', '← Mappa', 'app', 0], ['dashboard.php', 'Dashboard', 'dash', 0], ['users.php', 'Utenti', 'users', 0],
+  $menu = [['/mappa/', '← Mappa', 'app', 0], ['dashboard.php', 'Dashboard', 'dash', 0], ['consumi.php', 'Consumi', 'cons', 0], ['users.php', 'Utenti', 'users', 0],
     ['opens.php', 'Aperture', 'opens', 0], ['feedback.php', 'Feedback', 'fb', $fb], ['settings.php', 'Impostazioni', 'set', 0], ['/account/', 'Il mio account', 'acc', 0]];
   $links = ''; $opts = '';
   foreach ($menu as [$href, $label, $key, $cnt]) {

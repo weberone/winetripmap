@@ -31,7 +31,7 @@ $topFav = $q('SELECT name, town, winery, COUNT(*) n FROM favorites GROUP BY wine
 
 // mappe del mese: contatore di api/counter.php (file counter/maps-AAAA-MM.json, mese UTC come il contatore)
 $maps = json_decode((string)@file_get_contents(dirname(__DIR__) . '/counter/maps-' . gmdate('Y-m') . '.json'), true) ?: [];
-$caps = ['google' => 9500, 'mapbox' => 47500];
+require_once dirname(__DIR__) . '/api/caps.php'; $caps = CAPS;
 admin_header('Dashboard', 'dash');
 ?>
 <section class="kpis">
@@ -48,7 +48,7 @@ admin_header('Dashboard', 'dash');
   <?= chart('Visitatori al giorno', $vis, '30 giorni · browser diversi') ?>
   <?= chart('Iscrizioni al giorno', $signups) ?>
 </section>
-<section class="card"><h2>Mappe di questo mese</h2>
+<section class="card"><h2><a href="consumi.php" style="color:inherit;text-decoration:none">Mappe di questo mese</a></h2>
   <p class="muted" style="margin-top:0">Prima Google finché la quota gratuita regge, poi Mapbox, poi OpenFreeMap (senza limiti). Il sito non paga mai.</p>
   <div class="grid2" style="margin:0">
   <?php foreach (['google' => 'Google Maps', 'mapbox' => 'Mapbox', 'free' => 'OpenFreeMap'] as $k => $label): $n = (int)($maps[$k] ?? 0); ?>
@@ -57,7 +57,7 @@ admin_header('Dashboard', 'dash');
       <?php else: ?><small class="muted">gratuita, senza tetto</small><?php endif; ?></div>
   <?php endforeach; ?>
   </div>
-  <p class="muted">Google e Mapbox si accendono con le chiavi in <code>site/js/app.js</code> (MAPS): per ora sono vuote.</p>
+  <p class="muted"><a href="consumi.php">Tutti i consumi →</a> foto e satellite della scheda, giorno per giorno, previsione a fine mese, mesi passati.</p>
 </section>
 <section class="grid2">
   <div class="card"><h2>Da dove arrivano</h2><?= hbars($sources) ?></div>
