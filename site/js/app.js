@@ -13,8 +13,8 @@ const M = new Proxy({}, { get: (_, k) => window.SkateMap[k] });
 // ---------- mappe: chiavi PUBBLICHE, limitate in Google Cloud e in Mapbox al dominio winetripmap.com ----------
 // Vuote = quella mappa è spenta. Mai chiavi segrete qui (Mapbox "sk.").
 const MAPS = {
-  googleKey: "",        // Google Cloud → Credenziali: chiave limitata a winetripmap.com e alla sola "Maps JavaScript API"
-  googleMapId: "",      // Google Cloud → Gestione mappe → JavaScript, vettoriale (serve per i pin HTML)
+  googleKey: "AIzaSyC70BhabZ1rknOmdxsp_EoXtM-TFsqEGEE", // pubblica: limitata a winetripmap.com e www, solo Maps JavaScript API e Places API (New)
+  googleMapId: "e432c92385ee4e8be9dafcbb", // "WTM chiara": Google Cloud → Gestione mappe → JavaScript, vettoriale (serve per i pin HTML)
   googleMapIdDark: "",  // Map ID con stile scuro (vuoto = tema scuro standard di Google)
   mapboxToken: "",      // account.mapbox.com → Tokens: token pubblico "pk." limitato a winetripmap.com
 };
