@@ -93,6 +93,6 @@ echo $crumb;
   <?php endif; ?>
   <h2><?= h(L('faq')) ?></h2>
   <div class="faq"><?php foreach ($faq as [$q, $a]): ?><details open><summary><?= h($q) ?></summary><p><?= h($a) ?></p></details><?php endforeach; ?></div>
-  <p class="more"><a href="<?= h(city_path($C['s'], $R['s'], $CI)) ?>"><?= h(L('all_in', ['where' => tn($CI)])) ?></a> · <a href="<?= h(region_path($C['s'], $R)) ?>"><?= h(L('all_in', ['where' => tn($R)])) ?></a></p>
+  <p class="more"><a href="<?= h(city_path($C['s'], $R['s'], $CI)) ?>"><?= h(L('all_in', ['where' => tn($CI)])) ?></a> · <a href="<?= h(region_path($C['s'], $R)) ?>"><?= h(L(isset(seo_texts()[seo_lang()]['all_in_r']) ? 'all_in_r' : 'all_in', ['where' => tn($R)])) ?></a></p>
 </article>
 <?php seo_foot($path);

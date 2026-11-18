@@ -16,6 +16,12 @@ Progetto separato da SkateboardMap: lavora solo in questa cartella e nel core co
 - Secrets del repository winetripmap: `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, `MAPCORE_DEPLOY_KEY`.
 - Una modifica al solo core non va online da sola: serve un push su winetripmap (o rilanciare il workflow a mano).
 
+## Lancio (SEO), da fare quando l'utente lo dice
+- Togliere `noindex` da `site/index.html` e mettere `SEO_INDEX = true` in `site/seo/common.php`.
+- Aggiungere un `site/robots.txt` nostro (oggi Infomaniak ne dà uno predefinito con `Crawl-delay: 10`) con `Sitemap: https://winetripmap.com/sitemap.xml`.
+- Google Search Console: verifica del dominio con l'account Google di WTM (la fa l'utente), poi invio della sitemap.
+- Pronti dal 2026-11-18: icona (`favicon.svg`, `apple-touch-icon.png`) e anteprima social (`og.png`, 1200×630) su home, pagine SEO, account e admin; controllo a campione delle pagine SEO fatto (corretti i testi "a Lombardia" e "si trova a Via…").
+
 ## Mappa (`site/index.html`, `site/js/app.js`, `site/css/app.css`)
 - Stessa esperienza di SkateboardMap (posizione, raggio, radar che scopre i pin, Cerca in questa zona, più vicine, elenco, scheda, pannello del telefono), con i moduli mappa del core.
 - Mappe come SkateboardMap: prima Google finché la quota gratuita del mese regge, poi Mapbox, poi OpenFreeMap (MapLibre, colori passati con `palette`). Sceglie e conta `site/api/counter.php` (tetti Google 9.900 e Mapbox 4.900 al mese: regola dell'utente = limite gratuito meno 100; Google Dynamic Maps 10.000, Mapbox senza carta 5.000 aperture; file in `site/counter/`, escluso dal deploy); `createMap` in `app.js` carica il modulo e passa alla successiva se una non parte. All'avvio senza posizione né link (`?c=`, `?trip=`) si apre il globo 3D che ruota con OpenFreeMap, senza chiamare il contatore; la mappa vera (Google, poi Mapbox) parte con `ensureMap()` appena si sceglie posizione, luogo, area, cantina o trip (`setMe`, `setArea`, `pick`, `searchAt`, `showTripOnMap`); se il contatore dice "free" resta il globo diventato piano. Gli eventi della mappa sono in `bindMap()`, rifatto a ogni mappa nuova. Chiavi pubbliche in `MAPS` in cima ad `app.js`: vuote = mappa spenta.

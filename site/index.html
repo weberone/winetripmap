@@ -11,6 +11,16 @@
 try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
 { const d = document.documentElement; d.dataset.scheme = d.dataset.theme === "light" || (d.dataset.theme === "auto" && !matchMedia("(prefers-color-scheme: dark)").matches) ? "light" : "dark"; }
 </script>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="canonical" href="https://winetripmap.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="WineTripMap">
+<meta property="og:title" content="WineTripMap · le cantine vicino a te, in tutto il mondo">
+<meta property="og:description" content="La mappa delle cantine di tutto il mondo: trova le più vicine a te, con indicazioni, orari e contatti.">
+<meta property="og:url" content="https://winetripmap.com/">
+<meta property="og:image" content="https://winetripmap.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#8e1b33">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/css/app.css?v=28">

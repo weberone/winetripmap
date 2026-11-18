@@ -141,8 +141,10 @@ function seo_head(string $title, string $desc, string $path, array $jsonld = [],
 <meta property="og:title" content="<?= h($title) ?>">
 <meta property="og:description" content="<?= h($desc) ?>">
 <meta property="og:url" content="<?= h($url) ?>">
-<?php if ($image): ?><meta property="og:image" content="<?= h($image) ?>">
-<?php endif; ?>
+<meta property="og:image" content="<?= h($image ?: SITE . '/og.png') ?>">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#8e1b33">
 <script>try{const t=JSON.parse(localStorage.getItem("wtm.theme"));if(t==="light"||t==="dark")document.documentElement.dataset.scheme=t}catch(e){}</script>
 <link rel="stylesheet" href="/fonts/fonts.css">
