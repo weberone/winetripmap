@@ -88,8 +88,9 @@ jobs:
           set -euo pipefail
           tar -czf "$RUNNER_TEMP/dati-cache.tar.gz" -C tools/.cache prod vini desc
           cp tools/.cache/produttori-motivi.json "$RUNNER_TEMP/" 2>/dev/null || true
+          gzip -c tools/.cache/osm/vigneti.json > "$RUNNER_TEMP/vigneti.json.gz" 2>/dev/null || rm -f "$RUNNER_TEMP/vigneti.json.gz"
           cd "$RUNNER_TEMP"
-          gh release upload cache-dati dati-cache.tar.gz $(ls rapporto.txt produttori-motivi.json 2>/dev/null) --clobber -R "$GITHUB_REPOSITORY"
+          gh release upload cache-dati dati-cache.tar.gz $(ls rapporto.txt produttori-motivi.json vigneti.json.gz 2>/dev/null) --clobber -R "$GITHUB_REPOSITORY"
 
       - name: Applica al sito
         if: env.APPLICA == 'true'

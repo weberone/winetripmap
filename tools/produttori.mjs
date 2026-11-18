@@ -62,9 +62,9 @@ function sites() {
 // ---- punteggio ----
 const outFile = join(here, 'data', 'produttori.json');
 const NAME_PROD = /(weingut|weinhof|winzerhof|weinbau|heurig|buschenschank|stra[uß]+wirtschaft|h[äa]cker|sekt|winzer|domaine|ch[aâ]teau|tenuta|bodegas?\b|winery|vineyards?|estates?\b|cellars\b|azienda (agricola|vinicola|vitivinicola)|az\.? ?agr|quinta\b|vignobles?|vigneron|wijngaard|wijndomein|kellerei|cantina sociale|cave (coop|des vignerons)|cooperativa|vinařství|winnica|pince(szet)?\b|vinarija|vinárstvo|oinopoieio|οινοποιείο|κτήμα)/i;
-const NAME_SHOP = /((?<!\p{L})bar(?!\p{L})|caff[eè]|(?<!\p{L})caf[eé](?!\p{L})|bibit|beverage|drinks?\b|distribu|import|ingross|wholesale|liquor|liquori|alimentari|market|\bshop\b|store\b|negozio|deli\b|gastronom|bistr|restaurant|ristorant|trattoria|osteria|pizzeri|pizza|hotel|lounge|club\b|birr|beer|brew|spirits|tabacch)/iu;
+const NAME_SHOP = /((?<!\p{L})bar(?!\p{L})|caff[eè]|(?<!\p{L})caf[eé](?!\p{L})|bibit|beverage|drinks?\b|distribu|import|ingross|wholesale|liquor|liquori|alimentari|market|\bshop\b|store\b|negozio|deli\b|gastronom|bistr|restaurant|ristorant|trattoria|osteria|pizzeri|pizza|hotel|lounge|club\b|birr|beer|brew|spirits|tabacch|coffee|kaffee|vinothek|weinhandl|caviste|cave [àa] vins?|wine ?shop|bottle ?shop|wine ?bar|weinbar|vinoteca|enoteca|merchants?\b|negoce|négoce)/iu;
 const BAD_AMENITY = /^(bar|pub|restaurant|cafe|fast_food|biergarten|nightclub|food_court|ice_cream)$/;
-const BAD_SHOP = /^(alcohol|beverages|deli|supermarket|convenience|general|wholesale|kiosk|department_store|gift|variety_store)$/;
+const BAD_SHOP = /^(wine|alcohol|beverages|deli|supermarket|convenience|general|wholesale|kiosk|department_store|gift|variety_store)$/;
 
 function vineIndex() {
   const f = join(osmDir, 'vigneti.json'); if (!existsSync(f)) return null;
@@ -118,7 +118,10 @@ function build() {
       if (Sh >= 3 && P <= 1) add(-2, 'sito da locale: ' + Object.keys(c.shop).slice(0, 4).join(', '));
     }
     // fuori: segni da locale e al massimo una prova debole da produttore (chi ne ha di più resta: cantine con ristorante, Heuriger…)
-    const s = pos <= 1 && neg <= -2 ? -2 : pos === 0 && neg === -1 ? -1 : pos + neg < 0 ? 0 : pos + neg;
+    // solo produttori (richiesta dell'utente 2026-11-18): serve almeno una prova di produzione (vigneto vicino, nome, sito,
+    // lista dei vini); chi ha segni da negozio/locale e al massimo una prova debole (+1) esce. Ristorante o Heuriger con prove
+    // da produttore restano
+    const s = (vine && pos === 0) || (pos <= 1 && neg <= -2) ? -2 : pos === 0 && neg === -1 ? -1 : pos + neg < 0 ? 0 : pos + neg;
     out[id] = [s, name, why.join('; ')];
   }
   mkdirSync(dirname(outFile), { recursive: true });
@@ -148,7 +151,8 @@ function confronta(vecchio, uscita) {
   const M = JSON.parse(readFileSync(join(here, '.cache', 'produttori-motivi.json'), 'utf8'));
   const L = existsSync(join(here, 'data', 'luoghi.json')) ? JSON.parse(readFileSync(join(here, 'data', 'luoghi.json'), 'utf8')) : { w: {}, cities: {} };
   const dove = (id) => { const c = L.cities[L.w[id]]; return c ? c.cc + ' ' + c.n : '?'; };
-  const esce = Object.keys(N).filter((id) => N[id] <= -2 && !(V[id] <= -2)), rientra = Object.keys(V).filter((id) => V[id] <= -2 && N[id] > -2);
+  const sito = new Set(JSON.parse(readFileSync(join(siteData, 'cantine.json'), 'utf8')).items.map((x) => x[0]));
+  const esce = Object.keys(N).filter((id) => N[id] <= -2 && !(V[id] <= -2) && sito.has(id)), rientra = Object.keys(V).filter((id) => V[id] <= -2 && N[id] > -2);
   const per = {}; for (const id of esce) { const k = dove(id).split(' ')[0]; per[k] = (per[k] || 0) + 1; }
   const riga = (id) => [id, N[id], M[id]?.[1], dove(id), M[id]?.[2]].join(' | ');
   const txt = [`escono ${esce.length}, rientrano ${rientra.length}`, 'per stato: ' + Object.entries(per).sort((a, b) => b[1] - a[1]).map((x) => x.join(' ')).join(', '),
