@@ -492,7 +492,7 @@ async function openDetail(id, fly = true) {
   loadMedia(x);
 }
 
-// ---------- foto in cima alla scheda: Google (se c'è, dentro la quota gratuita), altrimenti la vista dal satellite ----------
+// ---------- foto in cima alla scheda: slider con le foto di Google (se ci sono, dentro la quota gratuita) e la vista dal satellite ----------
 // Ogni chiamata a pagamento passa da api/counter.php, che si ferma prima della soglia gratuita del mese (il sito non paga mai).
 // Google Places: ricerca della cantina (nome + comune, vicino al punto) e una foto, con l'autore e "Google Maps" come chiede Google.
 // Mapbox Static Images: satellite-v9 come SkateboardMap, con "© Mapbox © Maxar". Senza chiavi in MAPS: nessuna immagine.
@@ -508,36 +508,98 @@ async function placesLib() {
   }
   return gPlaces ||= google.maps.importLibrary("places");
 }
-async function googlePhoto(x) {
+// foto di Google: la ricerca (1 chiamata gtext) dà fino a 4 foto; ognuna conta 1 (gphoto) solo quando la si guarda
+// nello slider, e la foto grande usa la stessa immagine (nessuna richiesta in più)
+const G_MAX = 4;
+async function googlePhotos(x) {
   const key = "gp." + x.id, known = store.get(key);
-  if (known && known.none && Date.now() - known.at < 30 * 864e5) return null; // già cercata di recente: nessuna foto
-  const lib = await placesLib().catch(() => null); if (!lib || !(await allowApi("gtext"))) return null;
+  if (known && known.none && Date.now() - known.at < 30 * 864e5) return []; // già cercata di recente: nessuna foto
+  const lib = await placesLib().catch(() => null); if (!lib || !(await allowApi("gtext"))) return [];
   let p;
   try {
     const r = await lib.Place.searchByText({ textQuery: [title(x), x.c].filter(Boolean).join(" "), fields: ["photos", "location", "googleMapsURI"],
       locationBias: { center: { lat: x.lat, lng: x.lng }, radius: 500 }, maxResultCount: 1 });
     p = r.places && r.places[0];
-  } catch (e) { return null; }
-  const ph = p && p.location && distKm(x, { lat: p.location.lat(), lng: p.location.lng() }) < 1.5 && p.photos && p.photos[0];
-  if (!ph) { store.set(key, { none: 1, at: Date.now() }); return null; }
-  if (!(await allowApi("gphoto", 2))) return null; // conta doppio: anteprima e foto grande
-  const by = (ph.authorAttributions || []).map((a) => a.displayName).filter(Boolean).join(", ");
-  return { src: ph.getURI({ maxWidth: 800, maxHeight: 600 }), big: ph.getURI({ maxWidth: 1600, maxHeight: 1200 }),
-    credit: t("photo_by", { a: by || "Google" }), link: (ph.authorAttributions || [])[0]?.uri || p.googleMapsURI || "" };
+  } catch (e) { return []; }
+  const list = p && p.location && distKm(x, { lat: p.location.lat(), lng: p.location.lng() }) < 1.5 && p.photos ? p.photos.slice(0, G_MAX) : [];
+  if (!list.length) { store.set(key, { none: 1, at: Date.now() }); return []; }
+  return list.map((ph) => {
+    const by = (ph.authorAttributions || []).map((a) => a.displayName).filter(Boolean).join(", ");
+    return { g: ph, credit: t("photo_by", { a: by || "Google" }), link: (ph.authorAttributions || [])[0]?.uri || p.googleMapsURI || "" };
+  });
 }
-async function satellite(x) {
-  if (!MAPS.mapboxToken || !(await allowApi("static"))) return null;
-  const u = (w, h) => `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${x.lng.toFixed(6)},${x.lat.toFixed(6)},16.5,0/${w}x${h}@2x?attribution=false&logo=false&access_token=${MAPS.mapboxToken}`;
-  return { src: u(640, 320), big: u(1200, 800), credit: "© Mapbox © Maxar", sat: true };
+// vista dal satellite: piastrelle Esri World Imagery (come il fumetto, nessun limite di Mapbox) disegnate in un canvas
+// con la cantina al centro; la foto grande è lo stesso canvas
+const SAT_CREDIT = "Esri, Maxar, Earthstar Geographics";
+function drawSat(cv, x, z = 17) {
+  const W = cv.width, H = cv.height, n = 2 ** z, r = x.lat * Math.PI / 180;
+  const px = (x.lng + 180) / 360 * n * 256, py = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n * 256;
+  const x0 = px - W / 2, y0 = py - H / 2, ctx = cv.getContext("2d");
+  const jobs = [];
+  for (let X = Math.floor(x0 / 256); X * 256 < x0 + W; X++) for (let Y = Math.floor(y0 / 256); Y * 256 < y0 + H; Y++) {
+    jobs.push(new Promise((ok) => {
+      const im = new Image(); im.crossOrigin = "anonymous"; im.referrerPolicy = "no-referrer";
+      im.onload = () => { ctx.drawImage(im, Math.round(X * 256 - x0), Math.round(Y * 256 - y0)); ok(true); };
+      im.onerror = () => ok(false);
+      im.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${Y}/${((X % n) + n) % n}`;
+    }));
+  }
+  return Promise.all(jobs).then((r) => {
+    // la cantina: un punto al centro
+    ctx.beginPath(); ctx.arc(W / 2, H / 2, 9, 0, 7); ctx.fillStyle = "#8e1b33"; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = "#fff"; ctx.stroke();
+    return r.some(Boolean);
+  });
 }
 async function loadMedia(x) {
-  const m = (await googlePhoto(x)) || (await satellite(x));
-  const box = $("dMedia"); if (!m || !box || state.sel !== x.id) return;
-  box.innerHTML = `<button type="button" class="mimg${m.sat ? " sat" : ""}"><img src="${esc(m.src)}" alt="${esc(t(m.sat ? "sat_alt" : "photo_alt", { n: title(x) }))}"></button>
-    <small class="mcredit">${m.link ? `<a href="${esc(m.link)}" target="_blank" rel="noopener nofollow">${esc(m.credit)}</a>` : esc(m.credit)}</small>`;
-  box.querySelector("img").onerror = () => { box.hidden = true; };
-  box.querySelector(".mimg").onclick = () => openLightbox([{ src: m.big, cap: m.credit }], 0);
+  const box = $("dMedia"); if (!box) return;
+  const gs = await googlePhotos(x);
+  if (state.sel !== x.id) return;
+  const slides = [...gs, { sat: true, credit: SAT_CREDIT }];
+  const many = slides.length > 1;
+  box.innerHTML = `<div class="mslider"><div class="mtrack">${slides.map((s, i) => `<button type="button" class="mimg${s.sat ? " sat" : ""}" data-i="${i}">${s.sat
+      ? `<canvas width="960" height="480" role="img" aria-label="${esc(t("sat_alt", { n: title(x) }))}"></canvas>`
+      : `<img alt="${esc(t("photo_alt", { n: title(x) }))}">`}</button>`).join("")}</div>${many
+      ? `<button type="button" class="mnav prev" aria-label="${esc(t("prev"))}">‹</button><button type="button" class="mnav next" aria-label="${esc(t("next"))}">›</button><span class="mdots">${slides.map(() => "<i></i>").join("")}</span>`
+      : ""}</div><small class="mcredit"></small>`;
+  const track = box.querySelector(".mtrack"), btns = [...track.children];
   box.hidden = false;
+  // ogni slide si carica solo quando si guarda (le foto di Google contano nella quota solo allora)
+  const ready = new Map(); // i → src per la foto grande
+  const remove = (i) => { btns[i].remove(); const d = box.querySelectorAll(".mdots i")[0]; if (d) d.remove(); slides[i].gone = true;
+    if (btns.every((b) => !b.isConnected)) box.hidden = true; else show(cur()); };
+  const load = async (i) => {
+    const s = slides[i]; if (!s || s.gone || s.loading) return; s.loading = true;
+    if (s.sat) {
+      const cv = btns[i].querySelector("canvas");
+      if (!(await drawSat(cv, x))) return remove(i);
+      try { ready.set(i, cv.toDataURL("image/jpeg", 0.88)); } catch (e) { /* senza CORS niente foto grande */ }
+    } else {
+      if (!(await allowApi("gphoto"))) return remove(i);
+      const img = btns[i].querySelector("img"), src = s.g.getURI({ maxWidth: 1200, maxHeight: 900 });
+      img.onerror = () => remove(i);
+      img.src = src; ready.set(i, src);
+    }
+  };
+  const live = () => slides.map((s, i) => i).filter((i) => !slides[i].gone);
+  const cur = () => { const L = live(), w = track.clientWidth || 1; return L[Math.min(L.length - 1, Math.round(track.scrollLeft / w))]; };
+  const credit = box.querySelector(".mcredit");
+  function show(i) {
+    if (i == null || state.sel !== x.id) return;
+    const s = slides[i]; load(i);
+    credit.innerHTML = s.link ? `<a href="${esc(s.link)}" target="_blank" rel="noopener nofollow">${esc(s.credit)}</a>` : esc(s.credit);
+    const L = live(), k = L.indexOf(i);
+    box.querySelectorAll(".mdots i").forEach((d, j) => d.classList.toggle("on", j === k));
+    const nav = box.querySelectorAll(".mnav"); nav.forEach((b) => { b.hidden = L.length < 2; });
+    if (L.length < 2) { const d = box.querySelector(".mdots"); if (d) d.hidden = true; }
+  }
+  const go = (d) => { const L = live(), k = L.indexOf(cur()); const j = L[(k + d + L.length) % L.length]; track.scrollTo({ left: L.indexOf(j) * track.clientWidth, behavior: "smooth" }); };
+  let tm = 0; track.addEventListener("scroll", () => { clearTimeout(tm); tm = setTimeout(() => show(cur()), 80); }, { passive: true });
+  box.querySelectorAll(".mnav").forEach((b) => { b.onclick = () => go(b.classList.contains("next") ? 1 : -1); });
+  btns.forEach((b, i) => { b.onclick = () => {
+    const L = live().filter((j) => ready.has(j));
+    openLightbox(L.map((j) => ({ src: ready.get(j), cap: slides[j].credit })), L.indexOf(i));
+  }; });
+  show(0);
 }
 
 // ---------- foto grande (bottiglie, foto della cantina) ----------
