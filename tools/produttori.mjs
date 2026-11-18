@@ -4,7 +4,8 @@
 //  - parole da produttore / da locale nella pagina iniziale del sito della cantina (robots.txt rispettato)
 //  - lista dei vini già trovata sul sito (tools/data/vini.json), etichette OSM (amenity=bar/restaurant, shop, cuisine…)
 //   node tools/produttori.mjs crawl [--conc 40] [--limit N] [--refresh]  → tools/.cache/prod/<id>.json
-//   vigneti: node tools/vigneti-osm.mjs → tools/.cache/osm/vigneti.json; cantine con tutte le etichette: tools/.cache/osm/cantine-tag.json
+//   node tools/produttori.mjs confronta <vecchio produttori.json> [file.txt]  → chi esce e chi rientra, con i motivi
+//   vigneti: node tools/vigneti-geofabrik.mjs (o vigneti-osm.mjs, Overpass, lento) → tools/.cache/osm/vigneti.json; cantine con tutte le etichette: tools/.cache/osm/cantine-tag.json
 //   node tools/produttori.mjs build     → tools/data/produttori.json { id: punteggio } + riepilogo; osm-cantine.mjs toglie chi è sotto soglia
 //   node tools/produttori.mjs apply     → toglie subito dai dati del sito chi è sotto soglia (e rifà aree e pagine SEO)
 //   node tools/produttori.mjs page <url> → parole trovate in una pagina
@@ -141,6 +142,21 @@ async function apply() {
   const { seoDati } = await import('./seo-dati.mjs'); seoDati();
 }
 
+// chi esce (o rientra) rispetto a un produttori.json precedente: numeri per stato ed elenco con i motivi → file di testo
+function confronta(vecchio, uscita) {
+  const V = JSON.parse(readFileSync(vecchio, 'utf8')), N = JSON.parse(readFileSync(outFile, 'utf8'));
+  const M = JSON.parse(readFileSync(join(here, '.cache', 'produttori-motivi.json'), 'utf8'));
+  const L = existsSync(join(here, 'data', 'luoghi.json')) ? JSON.parse(readFileSync(join(here, 'data', 'luoghi.json'), 'utf8')) : { w: {}, cities: {} };
+  const dove = (id) => { const c = L.cities[L.w[id]]; return c ? c.cc + ' ' + c.n : '?'; };
+  const esce = Object.keys(N).filter((id) => N[id] <= -2 && !(V[id] <= -2)), rientra = Object.keys(V).filter((id) => V[id] <= -2 && N[id] > -2);
+  const per = {}; for (const id of esce) { const k = dove(id).split(' ')[0]; per[k] = (per[k] || 0) + 1; }
+  const riga = (id) => [id, N[id], M[id]?.[1], dove(id), M[id]?.[2]].join(' | ');
+  const txt = [`escono ${esce.length}, rientrano ${rientra.length}`, 'per stato: ' + Object.entries(per).sort((a, b) => b[1] - a[1]).map((x) => x.join(' ')).join(', '),
+    '', '== escono ==', ...esce.sort((a, b) => dove(a).localeCompare(dove(b))).map(riga), '', '== rientrano ==', ...rientra.map(riga)].join('\n');
+  writeFileSync(uscita || join(here, '.cache', 'produttori-confronto.txt'), txt);
+  console.log(txt.split('\n').slice(0, 2).join('\n'));
+}
+
 export function nonProduttore(id, soglia = -2) {
   if (!existsSync(outFile)) return false;
   nonProduttore.m ||= JSON.parse(readFileSync(outFile, 'utf8'));
@@ -170,6 +186,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     await Promise.all(Array.from({ length: conc }, worker));
     console.log(`fine: ${done} siti`);
   } else if (cmd === 'build') build();
+  else if (cmd === 'confronta') confronta(args[1], args[2]);
   else if (cmd === 'apply') await apply();
   else if (cmd === 'page') { const p = await get(args[1]); console.log(JSON.stringify(wordsOf(p.text || ''))); }
   else if (cmd !== 'build' && cmd !== 'apply') console.log('usage: node tools/produttori.mjs crawl|build|apply|page <url>');

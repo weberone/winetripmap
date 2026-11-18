@@ -1,0 +1,105 @@
+# Aggiorna i dati della mappa una volta al mese, sui server di GitHub (il Mac può restare spento):
+# cantine da OpenStreetMap, luoghi da GeoNames, vigneti dai file Geofabrik, siti delle nuove cantine (vini, descrizioni,
+# parole da produttore), punteggio "chi produce vino", pagine SEO; poi commit su main e deploy.
+# La memoria dei siti già letti (tools/.cache/prod, vini, desc: mai nel repository) sta nella release privata "cache-dati",
+# così ogni mese si leggono solo i siti nuovi.
+# A mano (Actions → Aggiorna i dati → Run workflow) si può togliere la spunta "applica": calcola tutto e mette solo il
+# rapporto (chi esce e perché) nella release cache-dati, senza toccare il sito.
+name: Aggiorna i dati
+
+on:
+  schedule:
+    - cron: '17 3 2 * *' # il 2 di ogni mese, 03:17 UTC
+  workflow_dispatch:
+    inputs:
+      applica:
+        description: 'Applica al sito (commit e deploy); senza spunta solo il rapporto'
+        type: boolean
+        default: true
+
+concurrency:
+  group: dati
+  cancel-in-progress: false
+
+permissions:
+  contents: write # commit dei dati e release cache-dati
+  actions: write # avvia il deploy (un push fatto da un workflow non lo avvia da solo)
+
+jobs:
+  dati:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPLICA: ${{ github.event_name == 'schedule' || inputs.applica }}
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Strumenti
+        run: |
+          set -euo pipefail
+          node -v
+          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+          npm ci --prefix tools --silent
+
+      - name: Memoria dei siti già letti
+        run: |
+          set -euo pipefail
+          gh release download cache-dati -p dati-cache.tar.gz -D "$RUNNER_TEMP"
+          mkdir -p tools/.cache && tar -xzf "$RUNNER_TEMP/dati-cache.tar.gz" -C tools/.cache
+          for d in prod vini desc; do echo "$d: $(ls tools/.cache/$d | wc -l) siti"; done
+          cp tools/data/produttori.json "$RUNNER_TEMP/produttori-prima.json"
+
+      - name: GeoNames
+        run: |
+          set -euo pipefail
+          G=tools/.cache/geonames; mkdir -p $G
+          for f in cities500.zip admin1CodesASCII.txt countryInfo.txt; do curl -sfL -A winetripmap-build/1.0 -o $G/$f https://download.geonames.org/export/dump/$f; done
+          unzip -oq $G/cities500.zip -d $G
+
+      - name: Cantine da OpenStreetMap
+        timeout-minutes: 120
+        run: node tools/osm-cantine.mjs && node tools/luoghi.mjs
+
+      - name: Vigneti da Geofabrik
+        timeout-minutes: 150
+        run: node tools/vigneti-geofabrik.mjs
+
+      # solo i siti non ancora letti; se un giro va troppo per le lunghe si ferma e il resto si legge il mese dopo
+      - name: Siti delle nuove cantine
+        run: |
+          timeout 25m node tools/produttori.mjs crawl || true
+          timeout 40m node tools/vini-dai-siti.mjs crawl || true
+          timeout 20m node tools/descrizioni.mjs crawl || true
+
+      - name: Vini, descrizioni, chi produce vino
+        run: |
+          set -euo pipefail
+          node tools/vini-dai-siti.mjs build
+          node tools/descrizioni.mjs build
+          node tools/produttori.mjs build
+          node tools/produttori.mjs confronta "$RUNNER_TEMP/produttori-prima.json" "$RUNNER_TEMP/rapporto.txt"
+          head -2 "$RUNNER_TEMP/rapporto.txt" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Salva memoria e rapporto
+        if: always()
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/dati-cache.tar.gz" -C tools/.cache prod vini desc
+          cp tools/.cache/produttori-motivi.json "$RUNNER_TEMP/" 2>/dev/null || true
+          cd "$RUNNER_TEMP"
+          gh release upload cache-dati dati-cache.tar.gz $(ls rapporto.txt produttori-motivi.json 2>/dev/null) --clobber -R "$GITHUB_REPOSITORY"
+
+      - name: Applica al sito
+        if: env.APPLICA == 'true'
+        run: |
+          set -euo pipefail
+          node tools/produttori.mjs apply
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A site/data tools/data
+          if git diff --cached --quiet; then echo 'niente di nuovo'; exit 0; fi
+          git commit -q -m "Dati del mese: $(head -1 "$RUNNER_TEMP/rapporto.txt"), $(node -e "console.log(require('./site/data/cantine.json').items.length)") cantine"
+          git push
+          gh workflow run deploy.yml --ref main

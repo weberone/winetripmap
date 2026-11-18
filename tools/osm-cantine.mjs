@@ -46,6 +46,10 @@ const round = (x) => Math.round(x * 1e5) / 1e5; // ~1 m, file più leggero
 export const cell = (lat, lng) => `${Math.floor(lat / 2.5)}_${Math.floor(lng / 2.5)}`; // stesso calcolo in site/js/app.js
 
 const els = await download();
+// tutte le cantine con le etichette, anche quelle che non vanno sul sito: servono a tools/produttori.mjs
+const osmCache = join(dirname(fileURLToPath(import.meta.url)), '.cache', 'osm');
+mkdirSync(osmCache, { recursive: true });
+writeFileSync(join(osmCache, 'cantine-tag.json'), JSON.stringify({ elements: els }));
 const seen = new Set(), items = [], det = {};
 let tolte = 0;
 for (const e of els) {
