@@ -576,7 +576,7 @@ async function loadMedia(x) {
     } else {
       if (!(await allowApi("gphoto"))) return remove(i);
       const img = btns[i].querySelector("img"), src = s.g.getURI({ maxWidth: 1200, maxHeight: 900 });
-      img.onerror = () => remove(i);
+      img.onerror = () => remove(i); img.onload = () => img.classList.add("ok");
       img.src = src; ready.set(i, src);
     }
   };
