@@ -58,6 +58,9 @@ function country_name(string $cc, string $en): string {
   return $n && $n !== $cc ? $n : $en;
 }
 function slugify(string $s): string {
+  // apostrofo come in tools/luoghi.mjs (slug): d'Iseo → d-iseo, Mary's → marys
+  $s = preg_replace("/(^|[^\\p{L}])(d|l|dell|dall|nell|sull|all|coll|sant|quell|bell|un|j|qu|c|n|m|t|s)['’`](?=\\p{L})/iu", '$1$2-', $s);
+  $s = preg_replace("/['’`]/u", '', $s);
   $s = function_exists('transliterator_transliterate') ? transliterator_transliterate('Any-Latin; Latin-ASCII', $s) : $s;
   $s = strtolower((string)@iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s));
   return trim(preg_replace('/[^a-z0-9]+/', '-', $s), '-');

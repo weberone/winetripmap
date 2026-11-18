@@ -15,7 +15,8 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const gn = join(here, '.cache', 'geonames');
 const out = join(here, 'data', 'luoghi.json');
-export const slug = (s) => String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/['’`]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'x';
+// apostrofo: d'Iseo, Sant'Antonio, L'Aquila → trattino (provaglio-d-iseo); in inglese Mary's → marys. Stessa regola in site/seo/common.php (slugify)
+export const slug = (s) => String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/(^|[^a-z])(d|l|dell|dall|nell|sull|all|coll|sant|quell|bell|un|j|qu|c|n|m|t|s)['’`](?=[a-z])/g, '$1$2-').replace(/['’`]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'x';
 
 // ---------- GeoNames ----------
 const countries = {};
