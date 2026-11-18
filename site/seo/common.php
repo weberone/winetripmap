@@ -152,6 +152,7 @@ function seo_head(string $title, string $desc, string $path, array $jsonld = [],
 <script>try{const t=JSON.parse(localStorage.getItem("wtm.theme"));if(t==="light"||t==="dark")document.documentElement.dataset.scheme=t}catch(e){}</script>
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/seo/seo.css?v=2">
+<script src="/js/consent.js?v=1"></script>
 <?php foreach ($jsonld as $j): ?><script type="application/ld+json"><?= json_encode($j, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?></script>
 <?php endforeach; ?>
 </head>

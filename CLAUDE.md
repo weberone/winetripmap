@@ -38,6 +38,13 @@ Progetto separato da SkateboardMap: lavora solo in questa cartella e nel core co
 - Ricerca luoghi: `site/api/geocode.php` (Nominatim con memoria, prima in Italia poi nel mondo; dall'Italia vale subito solo un luogo vero, rank ≤ 25, non un locale con lo stesso nome); in locale senza PHP l'app chiama Nominatim direttamente.
 - Prova in locale: `python3 -m http.server 8642` dentro `site/` → http://127.0.0.1:8642/
 
+## Statistiche (Google Analytics 4, come SkateboardMap)
+- Proprietà GA4 dell'account Google di WTM (account 416888210, proprietà 565059896), stream web "WineTripMap" https://winetripmap.com, ID di misurazione `G-027ZVB7QZ1` (pubblico, in `site/js/consent.js`).
+- `js/consent.js` su mappa, pagine SEO, account, admin e privacy: banner Accetta/Rifiuta in 12 lingue, GA parte solo dopo "Accetta" (scelta 12 mesi in `wtm.consent`), `wtmConsent.open()` riapre la scelta (link "Cookie" in fondo alla mappa, pulsante nella privacy). Chi entra nell'admin riceve il cookie `wtm_ns=1` e non viene contato.
+- Eventi da app.js con `ga()`: view_winery, get_directions, call_winery, open_winery_site, open_google_maps, share, add_favorite/remove_favorite, add_to_trip, search, open_browse, use_location.
+- Pagina `/privacy/` (italiano/inglese): titolare ed email da Admin → Impostazioni → Privacy (finché mancano: "(da completare)").
+- Provenienza delle visite anche nel sito: `app_opens` (source, ref) nella dashboard dell'admin.
+
 ## Account e admin (come SkateboardMap, rifatti per WTM)
 - PHP + SQLite. Base in `site/api/lib.php`: cartella privata fuori dal sito (`wtm-private/` nella radice dello spazio web, creata da PHP; di riserva `site/private/`, esclusa dal deploy) con `config.json` (sale casuale), `wtm.sqlite`, `admins.json` (id degli amministratori), `settings.json` (Google Client ID, posta SMTP, email per gli avvisi: dalla pagina Impostazioni dell'admin, mai nel repository).
 - API: `api/auth.php` (me, register, login, google, logout, verify, resend, forgot, reset, update, export, delete), `api/fav.php` (cantine preferite), `api/trip.php` (trip: itinerari con nome e tappe in ordine, tabella `trips`), `api/feedback.php`.

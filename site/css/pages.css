@@ -39,6 +39,9 @@ h1,h2,h3{line-height:1.2;font-weight:800;letter-spacing:-.02em} /* come il logo 
 .ptitle{font-size:26px;margin:22px 0 6px}
 .lead{color:var(--muted);margin:0 0 18px}
 .muted{color:var(--muted);font-size:14px}
+.prose h2{font-size:19px;margin:28px 0 8px}
+.prose li{margin:6px 0}
+.prose code{font-size:13px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:14px 0}
 .card h2{font-size:18px;margin:0 0 10px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:600 15px var(--f-body);padding:10px 16px;border-radius:10px;

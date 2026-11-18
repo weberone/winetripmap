@@ -322,6 +322,7 @@ async function loadArea(minMs = 0) {
 async function setMe(lat, lng, name, gps, msg) {
   await ensureMap();
   const prev = state.center;
+  if (gps) ga("use_location");
   state.me = { lat, lng, name, gps };
   state.area = null; state.center = { lat, lng };
   $("worldAsk").hidden = true;
@@ -434,8 +435,12 @@ function pinTip(id) {
 const directionsUrl = (x) => `https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}`;
 const osmUrl = (x) => `https://www.openstreetmap.org/${{ n: "node", w: "way", r: "relation" }[x.id[0]]}/${x.id.slice(1)}`;
 const placeUrl = (x) => `${location.origin}${location.pathname}?c=${encodeURIComponent(x.id)}`;
+// eventi per Google Analytics (js/consent.js): partono solo se il visitatore ha accettato i cookie di statistica
+const ga = (name, params = {}) => { try { window.wtmGa && window.wtmGa(name, params); } catch (e) {} };
+const gaW = (x) => ({ winery_id: x.id, winery_name: title(x), town: x.c || "" });
 async function openDetail(id, fly = true) {
   const x = state.byId.get(id); if (!x) return;
+  ga("view_winery", gaW(x));
   const from = state.me || state.center;
   const wasOpen = !$("detail").hidden;
   state.sel = id;
@@ -489,6 +494,12 @@ async function openDetail(id, fly = true) {
       openLightbox(all, all.findIndex((a) => a.src === img.src));
     };
   });
+  // clic su indicazioni, telefono, sito della cantina, Google Maps
+  $("detail").onclick = (e) => {
+    const a = e.target.closest("a[href]"); if (!a) return;
+    const u = a.getAttribute("href");
+    ga(u === directionsUrl(x) ? "get_directions" : u.startsWith("tel:") ? "call_winery" : /google\.[a-z.]+\/maps|goo\.gl/.test(u) ? "open_google_maps" : /^https?:/.test(u) && !u.includes(location.host) ? "open_winery_site" : "click_link", gaW(x));
+  };
   loadMedia(x);
 }
 
@@ -647,6 +658,7 @@ function closeDetail(silent) {
   if (!silent) drawMarkers();
 }
 async function share(text, url) {
+  ga("share", { method: navigator.share ? "system" : "copy_link", item: url });
   try { if (navigator.share) return await navigator.share({ title: "WineTripMap", text, url }); } catch (e) { return; }
   try { await navigator.clipboard.writeText(url); setStatus(t("link_copied")); } catch (e) { prompt(t("copy_link"), url); }
 }
@@ -739,6 +751,7 @@ async function setArea(h) {
 // ---------- esplora: a clic, continente → stato → regione → zona del vino ----------
 let bpath = []; // aree scelte finora, dal continente in giù
 function openBrowse() {
+  ga("open_browse");
   closeSearch();
   if ($("browseModal").hidden) { $("browseModal").hidden = false; pushLayer("browse"); }
   $("browseMsg").textContent = "…";
@@ -801,6 +814,7 @@ function suggest() {
 }
 async function pick(i) {
   const h = hits[i]; if (!h) return;
+  ga("search", { search_term: h.q || h.name || (h.x && title(h.x)) || "", kind: h.kind });
   if (h.kind === "geo") return geocode(h.q);
   closeSearch(); state.userMoved = true;
   if (h.kind === "area") return setArea(h);
@@ -931,6 +945,7 @@ function bind() {
   $("footYear").textContent = new Date().getFullYear();
   // lingua: le 12 di SkateboardMap; la scelta si ricorda e la pagina si ricarica (anche ?lang= nell'indirizzo)
   $("langSel").innerHTML = I18N.langs.map((l) => `<option value="${l}"${l === I18N.lang ? " selected" : ""}>${I18N.names[l]}</option>`).join("");
+  if ($("cookieOpen")) $("cookieOpen").onclick = (e) => { e.preventDefault(); window.wtmConsent && window.wtmConsent.open(); };
   $("langSel").onchange = () => { I18N.set($("langSel").value); const u = new URL(location.href); u.searchParams.delete("lang"); location.replace(u); };
 }
 
@@ -965,6 +980,7 @@ function syncFav(id) {
 async function toggleFav(x) {
   if (!state.user) { location.href = "/account/?next=" + encodeURIComponent("/?c=" + x.id); return; }
   const on = !state.favs.has(x.id);
+  ga(on ? "add_favorite" : "remove_favorite", gaW(x));
   on ? state.favs.add(x.id) : state.favs.delete(x.id); syncFav(x.id);
   try {
     const r = await fetch("/api/fav.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
@@ -1005,6 +1021,7 @@ function toggleTrip(x) {
   else {
     if (state.trip.stops.length >= TRIP_MAX) return setStatus(t("trip_full", { n: TRIP_MAX }));
     state.trip.stops.push({ id: x.id, n: title(x), c: x.c || "", lat: x.lat, lng: x.lng });
+    ga("add_to_trip", gaW(x));
   }
   tripChanged();
   setStatus(t(tripHas(x.id) ? "trip_added" : "trip_removed", { n: state.trip.stops.length }));
