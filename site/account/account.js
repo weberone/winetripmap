@@ -18,7 +18,7 @@ const MSG = {
   google: "Accesso con Google non riuscito.", message: "Scrivi qualche parola in più.",
 };
 const say = (el, e) => { el.textContent = MSG[e.message] || "Qualcosa è andato storto, riprova."; el.hidden = false; };
-const done = () => { location.href = C.next || "/mappa/"; };
+const done = () => { location.href = C.next || "/"; };
 const busy = (form, on) => form.querySelectorAll("button").forEach((b) => { b.disabled = on; });
 
 // ---------- conferma email ----------
@@ -77,7 +77,7 @@ if ($("favs")) {
   const load = async () => {
     try {
       const d = await api("", undefined, "/api/fav.php");
-      $("favs").innerHTML = d.items.length ? d.items.map((x) => `<li><a href="/mappa/?c=${encodeURIComponent(x.id)}"><b>${esc(x.name || "Cantina")}</b><small>${esc(x.town || "")}</small></a>
+      $("favs").innerHTML = d.items.length ? d.items.map((x) => `<li><a href="/?c=${encodeURIComponent(x.id)}"><b>${esc(x.name || "Cantina")}</b><small>${esc(x.town || "")}</small></a>
         <button class="btn small" data-id="${esc(x.id)}">Togli</button></li>`).join("")
         : `<li class="muted">Ancora nessuna: nella scheda di una cantina tocca il cuore per salvarla.</li>`;
       $("favs").querySelectorAll("button[data-id]").forEach((b) => b.onclick = async () => { b.disabled = true; await api("", { id: b.dataset.id, on: false }, "/api/fav.php").catch(() => {}); load(); });
@@ -88,7 +88,7 @@ if ($("favs")) {
   const loadTrips = async () => {
     try {
       const d = await api("", undefined, "/api/trip.php");
-      $("trips").innerHTML = d.items.length ? d.items.map((x) => `<li><a href="/mappa/?trip=${x.id}"><b>${esc(x.name)}</b><small>${x.n === 1 ? "1 tappa" : x.n + " tappe"}</small></a>
+      $("trips").innerHTML = d.items.length ? d.items.map((x) => `<li><a href="/?trip=${x.id}"><b>${esc(x.name)}</b><small>${x.n === 1 ? "1 tappa" : x.n + " tappe"}</small></a>
         <button class="btn small" data-trip="${x.id}">Elimina</button></li>`).join("")
         : `<li class="muted">Ancora nessuno: nella mappa apri una cantina e tocca «Aggiungi al trip».</li>`;
       $("trips").querySelectorAll("button[data-trip]").forEach((b) => b.onclick = async () => {
@@ -117,10 +117,10 @@ if ($("favs")) {
     catch (e) { say($("fbErr"), e); }
     busy(f, false);
   };
-  $("logout").onclick = async () => { await api("logout", {}).catch(() => {}); location.href = "/mappa/"; };
+  $("logout").onclick = async () => { await api("logout", {}).catch(() => {}); location.href = "/"; };
   $("del").onclick = async () => {
     if (!confirm("Cancellare l'account? Le cantine preferite e i tuoi dati spariscono per sempre.")) return;
-    try { await api("delete", { confirm: "DELETE" }); location.href = "/mappa/"; } catch (e) { alert("Non riuscito, riprova."); }
+    try { await api("delete", { confirm: "DELETE" }); location.href = "/"; } catch (e) { alert("Non riuscito, riprova."); }
   };
 }
 })();

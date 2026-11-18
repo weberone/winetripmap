@@ -73,7 +73,7 @@ const WINE = {
 };
 // goccia piena (bordeaux; col colore del vino principale quando è noto) con dentro il logo del sito, nero se la cantina
 // ha la lista dei vini (dal suo sito), bianco se no:
-// il pin a forma di calice del puntino della i (site/mappa/index.html). La punta (ax, in basso) è il punto esatto.
+// il pin a forma di calice del puntino della i (site/index.html). La punta (ax, in basso) è il punto esatto.
 const LOGO_GLASS = "M1 5.5A5 5 0 0 1 11 5.5C11 8.9 8.4 11.3 6.6 12V14.3H8.6C9.1 14.3 9.4 14.6 9.4 14.95S9.1 15.6 8.6 15.6H3.4C2.9 15.6 2.6 15.3 2.6 14.95S2.9 14.3 3.4 14.3H5.4V12C3.6 11.3 1 8.9 1 5.5Z";
 function pinSvg(w = 28, wc = "", hv = false) {
   const h = Math.round(w * 38 / 28), fill = (WINE[wc] || WINE.r).fill(), ink = hv ? "#1a1414" : "#fff";
@@ -901,7 +901,7 @@ function syncFav(id) {
   b.setAttribute("aria-pressed", String(on)); b.querySelector("span").textContent = t(on ? "saved" : "save");
 }
 async function toggleFav(x) {
-  if (!state.user) { location.href = "/account/?next=" + encodeURIComponent("/mappa/?c=" + x.id); return; }
+  if (!state.user) { location.href = "/account/?next=" + encodeURIComponent("/?c=" + x.id); return; }
   const on = !state.favs.has(x.id);
   on ? state.favs.add(x.id) : state.favs.delete(x.id); syncFav(x.id);
   try {
@@ -993,7 +993,7 @@ async function loadMyTrips() {
 }
 function renderTrip() {
   const tr = state.trip, s = tr.stops, box = $("tripBody"); if (!box) return;
-  const loginUrl = "/account/?next=" + encodeURIComponent("/mappa/?trip=draft");
+  const loginUrl = "/account/?next=" + encodeURIComponent("/?trip=draft");
   const legs = s.map((x, i) => i ? fmtKm(distKm(s[i - 1], x)) : "");
   box.innerHTML = `
     <div class="field"><input id="tripName" maxlength="80" value="${esc(tr.name)}" placeholder="${esc(t("trip_name_ph"))}" aria-label="${esc(t("trip_name"))}"></div>

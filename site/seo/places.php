@@ -22,7 +22,7 @@ if ($cs === '') {
     [$bc, ['@context' => 'https://schema.org', '@type' => 'CollectionPage', 'name' => L('world_h1'), 'url' => SITE . $path, 'inLanguage' => seo_lang()]]);
   echo $crumb; ?>
   <h1><?= h(L('world_h1')) ?></h1>
-  <p class="lead"><?= h(L('world_lead', ['n' => fmt_n($total), 'c' => plural('p_country', count($idx))])) ?> <a href="/mappa/"><?= h(L('world_lead_link')) ?></a>.</p>
+  <p class="lead"><?= h(L('world_lead', ['n' => fmt_n($total), 'c' => plural('p_country', count($idx))])) ?> <a href="/"><?= h(L('world_lead_link')) ?></a>.</p>
   <h2><?= h(L('f_countries')) ?></h2>
   <ul class="grid"><?php foreach ($idx as $cc => $c): ?><li><a href="<?= h(country_path($c)) ?>"><b><?= h(country_name($cc, tn($c))) ?></b><small><?= h($wine($c['k'])) ?> · <?= h(plural('p_region', count($c['r']))) ?></small></a></li><?php endforeach; ?></ul>
   <?php seo_foot($path); exit;
@@ -66,7 +66,7 @@ if ($ts === '') {
   seo_head(L('region_title', $v) . ' | ' . SITE_NAME, L('region_desc', $v), $path, [$bc]);
   echo $crumb; ?>
   <h1><?= h(in_area(L('wineries'), tn($R))) ?></h1>
-  <p class="lead"><?= h(L('region_lead', $v)) ?> <a href="/mappa/"><?= h(L('open_map')) ?></a>.</p>
+  <p class="lead"><?= h(L('region_lead', $v)) ?> <a href="/"><?= h(L('open_map')) ?></a>.</p>
   <h2><?= h(L('towns')) ?></h2>
   <ul class="grid"><?php foreach ($cities as $ci): ?><li><a href="<?= h(city_path($C['s'], $R['s'], $ci)) ?>"><b><?= h(tn($ci)) ?></b><small><?= h($wine($ci['k'])) ?></small></a></li><?php endforeach; ?></ul>
   <?php seo_foot($path); exit;
@@ -91,7 +91,7 @@ $ld = ['@context' => 'https://schema.org', '@type' => 'ItemList', 'name' => L('i
 seo_head(L(count($list) === 1 ? 'city_title1' : 'city_title', $v) . ' | ' . SITE_NAME, L('city_desc', $v), $path, [$bc, $ld]);
 echo $crumb; ?>
 <h1><?= h(L('in', ['what' => L('wineries'), 'where' => tn($CI)])) ?></h1>
-<p class="lead"><?= h(L('city_lead', $v)) ?> <a href="/mappa/?c=<?= h(rawurlencode($list[0][0])) ?>"><?= h(L('city_lead_link')) ?></a>.</p>
+<p class="lead"><?= h(L('city_lead', $v)) ?> <a href="/?c=<?= h(rawurlencode($list[0][0])) ?>"><?= h(L('city_lead_link')) ?></a>.</p>
 <ul class="cards"><?php foreach ($list as $w): ?><li><a href="<?= h(winery_path($w[0], $w[1])) ?>"><?= wdot($w[2]) ?><span><b><?= h($w[1] ?: L('in', ['what' => L('winery'), 'where' => tn($CI)])) ?></b><?php if ($w[2]): ?><small><?= h(L('main_wine', ['v' => L('c_' . $w[2])])) ?></small><?php endif; ?></span></a></li><?php endforeach; ?></ul>
 <?php if ($near): ?><h2><?= h(L('nearby')) ?></h2>
   <ul class="grid"><?php foreach ($near as $c): $r = $P['r'][$c['r']]; ?><li><a href="<?= h(city_path($C['s'], $r['s'], $c)) ?>"><b><?= h(tn($c)) ?></b><small><?= h($wine($c['k'])) ?> · <?= dist($c['d']) ?></small></a></li><?php endforeach; ?></ul>

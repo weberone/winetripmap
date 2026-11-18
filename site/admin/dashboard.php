@@ -65,7 +65,7 @@ admin_header('Dashboard', 'dash');
   <div class="card"><h2>Lingua del browser</h2><?= hbars($langs) ?></div>
   <div class="card"><h2>Cantine più salvate</h2>
     <?php if (!$topFav): ?><p class="muted">Ancora nessuna.</p><?php else: ?><table><tbody>
-      <?php foreach ($topFav as $r): ?><tr><td><a href="/mappa/?c=<?= h($r['winery']) ?>" target="_blank" rel="noopener"><?= h($r['name'] ?: $r['winery']) ?></a> <small class="muted"><?= h($r['town']) ?></small></td><td class="r"><?= num($r['n']) ?></td></tr><?php endforeach; ?>
+      <?php foreach ($topFav as $r): ?><tr><td><a href="/?c=<?= h($r['winery']) ?>" target="_blank" rel="noopener"><?= h($r['name'] ?: $r['winery']) ?></a> <small class="muted"><?= h($r['town']) ?></small></td><td class="r"><?= num($r['n']) ?></td></tr><?php endforeach; ?>
     </tbody></table><?php endif; ?></div>
 </section>
 <?php admin_footer(true); ?>

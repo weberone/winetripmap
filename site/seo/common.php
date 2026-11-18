@@ -89,7 +89,7 @@ function country_path(array $c): string { return lp('/wineries/' . $c['s'] . '/'
 function region_path(string $cs, array $r): string { return lp("/wineries/$cs/{$r['s']}/"); }
 function city_path(string $cs, string $rs, array $ci): string { return lp("/wineries/$cs/$rs/{$ci['s']}/"); }
 function winery_path(string $id, string $name): string { $sl = slugify($name); return lp('/winery/' . $id . ($sl ? "-$sl" : '')); }
-function map_link(string $id): string { return '/mappa/?c=' . rawurlencode($id); }
+function map_link(string $id): string { return '/?c=' . rawurlencode($id); }
 // distanza in km tra due punti
 function km(float $a, float $b, float $c, float $d): float { $r = M_PI / 180; $x = ($d - $b) * $r * cos(($a + $c) / 2 * $r); $y = ($c - $a) * $r; return sqrt($x * $x + $y * $y) * 6371; }
 function dist(float $k): string { return $k < 1 ? round($k * 1000) . ' m' : number_format($k, 1, seo_lang() === 'en' ? '.' : ',', '') . ' km'; }
@@ -152,14 +152,14 @@ function seo_head(string $title, string $desc, string $path, array $jsonld = [],
 </head>
 <body>
 <header class="topbar"><a class="logo" href="<?= h(lp('/wineries/')) ?>" aria-label="WineTripMap"><?= WTM_WORDMARK ?></a>
-  <div class="topbar-r"><a class="btn primary" href="/mappa/"><?= h(L('open_map')) ?></a></div></header>
+  <div class="topbar-r"><a class="btn primary" href="/"><?= h(L('open_map')) ?></a></div></header>
 <main>
 <?php
 }
 function seo_foot(string $path): void { $base = base_path($path); $T = seo_texts(); ?>
 </main>
 <footer>
-  <p><a href="/mappa/"><?= h(L('f_map')) ?></a> · <a href="<?= h(lp('/wineries/')) ?>"><?= h(L('f_countries')) ?></a></p>
+  <p><a href="/"><?= h(L('f_map')) ?></a> · <a href="<?= h(lp('/wineries/')) ?>"><?= h(L('f_countries')) ?></a></p>
   <p class="langs"><?= h(L('f_langs')) ?>: <?php foreach (SEO_LANGS as $i => $l): ?><?= $i ? ' · ' : '' ?><a href="<?= h(lp($base, $l)) ?>" hreflang="<?= $l ?>" lang="<?= $l ?>"<?= $l === seo_lang() ? ' aria-current="page"' : '' ?>><?= h($T[$l]['lang_name']) ?></a><?php endforeach; ?></p>
   <p><?= str_replace(['OpenStreetMap', 'GeoNames'], ['<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>', '<a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>)'], h(L('f_data'))) ?></p>
   <p>© <?= date('Y') ?> winetripmap.com</p>
@@ -177,7 +177,7 @@ function breadcrumbs(array $items): array {
 function not_found(): never {
   http_response_code(404);
   seo_head(L('nf_title') . ' | ' . SITE_NAME, L('nf_text'), lp('/wineries/'), [], null, false);
-  echo '<h1>' . h(L('nf_title')) . '</h1><p><a href="/mappa/">' . h(L('open_map')) . '</a> · <a href="' . h(lp('/wineries/')) . '">' . h(L('nf_link')) . '</a></p>';
+  echo '<h1>' . h(L('nf_title')) . '</h1><p><a href="/">' . h(L('open_map')) . '</a> · <a href="' . h(lp('/wineries/')) . '">' . h(L('nf_link')) . '</a></p>';
   seo_foot(lp('/wineries/')); exit;
 }
 const WINE_DOT = ['r' => '#8e1b33', 'b' => '#d6a51f', 'o' => '#e27591', 's' => '#b38b2e'];

@@ -259,7 +259,7 @@ function send_action_mail(string $to, string $lang, string $subject, string $int
     . '<tr><td style="padding:24px 28px 30px;"><p style="margin:0 0 8px;' . $f . 'font-size:13px;line-height:1.5;color:#8f8580;">' . $e($outro) . '</p>'
     . '<p style="margin:0;' . $f . 'font-size:12px;line-height:1.5;color:#a89e98;word-break:break-all;">' . ($it ? 'Il pulsante non funziona? Copia questo link: ' : 'Button not working? Copy this link: ') . '<a href="' . $e($url) . '" style="color:#8e1b33;">' . $e($url) . '</a></p></td></tr>'
     . '<tr><td align="center" style="padding:18px 28px 22px;border-top:1px solid #eee3dc;"><p style="margin:0;' . $f . 'font-size:12px;line-height:1.7;color:#a89e98;">'
-    . '<a href="' . SITE_URL . '/mappa/" style="color:#8f8580;">' . ($it ? 'Apri la mappa' : 'Open the map') . '</a> &nbsp;·&nbsp; <a href="' . SITE_URL . '/account/" style="color:#8f8580;">' . ($it ? 'Il tuo account' : 'Your account') . '</a><br>'
+    . '<a href="' . SITE_URL . '/" style="color:#8f8580;">' . ($it ? 'Apri la mappa' : 'Open the map') . '</a> &nbsp;·&nbsp; <a href="' . SITE_URL . '/account/" style="color:#8f8580;">' . ($it ? 'Il tuo account' : 'Your account') . '</a><br>'
     . ($it ? 'Ricevi questa email perché hai un account su winetripmap.com.' : 'You get this email because you have an account on winetripmap.com.') . '</p></td></tr>'
     . '</table></td></tr></table></body></html>';
   return send_mail($to, $subject, "$title\n\n$intro\n\n$button: $url\n\n$outro\n\n— WineTripMap", $html);

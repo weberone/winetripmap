@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_ok()) {
       $flash = 'Salvato.';
     }
   } elseif ($act === 'test') {
-    $flash = send_action_mail($me['email'], 'it', 'Prova della posta · WineTripMap', 'Se leggi questa email, la posta del sito funziona: conferme, nuove password e avvisi partiranno da qui.', 'Apri la mappa', SITE_URL . '/mappa/', 'Email di prova mandata dalla pagina Impostazioni dell\'admin.')
+    $flash = send_action_mail($me['email'], 'it', 'Prova della posta · WineTripMap', 'Se leggi questa email, la posta del sito funziona: conferme, nuove password e avvisi partiranno da qui.', 'Apri la mappa', SITE_URL . '/', 'Email di prova mandata dalla pagina Impostazioni dell\'admin.')
       ? 'Email di prova mandata a ' . $me['email'] . '.' : '';
     if (!$flash) $err = 'Invio non riuscito: controlla server, utente e password della casella.';
   }

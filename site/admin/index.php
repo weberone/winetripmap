@@ -9,7 +9,7 @@ if ($me && $none && $_SERVER['REQUEST_METHOD'] === 'POST' && csrf_ok() && ($_POS
   admin_set((int)$me['id'], true);
   header('Location: dashboard.php'); exit;
 }
-page_start('Admin', '<a class="navlink" href="/mappa/">Mappa</a>');
+page_start('Admin', '<a class="navlink" href="/">Mappa</a>');
 ?>
 <main class="authwrap"><div class="card">
   <h1 class="ptitle" style="margin-top:0">Admin</h1>

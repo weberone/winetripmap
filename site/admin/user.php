@@ -37,7 +37,7 @@ admin_header($u['name'] ?: $u['email'], 'users');
 <section class="grid2">
   <div class="card"><h2>Cantine preferite (<?= count($favs) ?>)</h2>
     <?php if (!$favs): ?><p class="muted">Nessuna.</p><?php else: ?><table><tbody><?php foreach ($favs as $f): ?>
-      <tr><td><a href="/mappa/?c=<?= h($f['winery']) ?>" target="_blank" rel="noopener"><?= h($f['name'] ?: $f['winery']) ?></a> <small class="muted"><?= h($f['town']) ?></small></td><td class="r"><?= when($f['created_at']) ?></td></tr>
+      <tr><td><a href="/?c=<?= h($f['winery']) ?>" target="_blank" rel="noopener"><?= h($f['name'] ?: $f['winery']) ?></a> <small class="muted"><?= h($f['town']) ?></small></td><td class="r"><?= when($f['created_at']) ?></td></tr>
     <?php endforeach; ?></tbody></table><?php endif; ?></div>
   <div class="card"><h2>Ultime aperture della mappa</h2>
     <?php if (!$opens): ?><p class="muted">Nessuna da collegato.</p><?php else: ?><table><tbody><?php foreach ($opens as $o): ?>

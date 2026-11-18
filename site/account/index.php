@@ -1,23 +1,23 @@
 <?php
 // Il tuo account: accesso e registrazione (email e password o Google), conferma email, nuova password,
 // profilo, cantine preferite, consigli, dati e cancellazione. Le azioni passano da api/auth.php (account.js).
-// ?next=/mappa/... = dove tornare dopo l'accesso (solo indirizzi di questo sito).
+// ?next=/... = dove tornare dopo l'accesso (solo indirizzi di questo sito).
 require dirname(__DIR__) . '/api/lib.php';
 require dirname(__DIR__) . '/api/page.php';
 $me = current_user();
 $next = (string)($_GET['next'] ?? '');
-if (!preg_match('~^/(?!/)[^\s]*$~', $next)) $next = '/mappa/';
+if (!preg_match('~^/(?!/)[^\s]*$~', $next)) $next = '/';
 $verify = (string)($_GET['verify'] ?? ''); $reset = (string)($_GET['reset'] ?? '');
 $gid = google_client_id();
 $head = $gid ? ['<script src="https://accounts.google.com/gsi/client" async></script>'] : [];
-$right = $me ? (is_admin($me) ? '<a class="navlink" href="/admin/">Admin</a>' : '') . '<a class="navlink" href="/mappa/">Mappa</a>' : '<a class="navlink" href="/mappa/">Mappa</a>';
-page_start($me ? 'Il tuo account' : 'Accedi', $right, '/mappa/', $head);
+$right = $me ? (is_admin($me) ? '<a class="navlink" href="/admin/">Admin</a>' : '') . '<a class="navlink" href="/">Mappa</a>' : '<a class="navlink" href="/">Mappa</a>';
+page_start($me ? 'Il tuo account' : 'Accedi', $right, '/', $head);
 $cfg = ['next' => $next, 'google' => $gid ?: null, 'verify' => $verify, 'reset' => $reset];
 ?>
 <main>
 <?php if ($verify !== ''): ?>
   <div class="authwrap"><div class="card"><h1 class="ptitle" style="margin-top:0">Conferma email</h1><p id="vMsg" class="muted">Controllo il link…</p>
-    <p><a class="btn primary" href="/mappa/">Apri la mappa</a></p></div></div>
+    <p><a class="btn primary" href="/">Apri la mappa</a></p></div></div>
 
 <?php elseif ($reset !== ''): ?>
   <div class="authwrap"><div class="card"><h1 class="ptitle" style="margin-top:0">Nuova password</h1>
