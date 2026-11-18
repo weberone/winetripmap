@@ -343,6 +343,7 @@ form.search input:focus{border-color:var(--accent)}
 .info.trip.on{color:var(--accent);border-color:var(--accent)}
 .info.trip .tn{position:absolute;top:-6px;right:-7px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font:700 10.5px/17px var(--f-mono);text-align:center}
 .info.trip .tn:empty{display:none}
+#dSv svg{fill:currentColor;vertical-align:-3px;margin-right:5px}
 .btn.trip svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;vertical-align:-3px}
 .btn.trip[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
 .xm.tripno{cursor:pointer;z-index:5}
@@ -391,6 +392,11 @@ form.search input:focus{border-color:var(--accent)}
 .wpic.zoom:hover{border-color:var(--accent)}
 .lightbox{position:fixed;inset:0;z-index:60;display:grid;grid-template-columns:56px 1fr 56px;align-items:center;background:rgb(10 6 6 / .9);padding:calc(16px + env(safe-area-inset-top,0px)) 0 calc(16px + env(safe-area-inset-bottom,0px))}
 .lightbox[hidden]{display:none}
+.sview{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:#111}
+.sview[hidden]{display:none}
+.svbar{display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px 16px;background:var(--surface);color:var(--ink);border-bottom:1px solid var(--line)}
+.svbar b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px}
+#svPano{flex:1;min-height:0}
 .lightbox figure{grid-column:2;margin:0;display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0;height:100%;justify-content:center}
 .lightbox img{max-width:100%;max-height:calc(100dvh - 110px);object-fit:contain;border-radius:10px;background:#fff}
 .lightbox figcaption{color:#f3ebe6;font-size:15px;text-align:center;padding:0 8px}

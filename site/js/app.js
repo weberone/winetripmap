@@ -183,7 +183,7 @@ addEventListener("popstate", () => {
   if (ignorePop > 0) { ignorePop--; return; }
   const n = layers.pop(); if (!n) return;
   fromHistory = true;
-  try { if (n === "sheet") setSheet(false); else if (n === "detail") closeDetail(); else if (n === "search") closeSearch(); else if (n === "trip") closeTrip(); else if (n === "lightbox") closeLightbox(); else if (n === "browse") closeBrowse(); }
+  try { if (n === "sheet") setSheet(false); else if (n === "detail") closeDetail(); else if (n === "search") closeSearch(); else if (n === "trip") closeTrip(); else if (n === "lightbox") closeLightbox(); else if (n === "browse") closeBrowse(); else if (n === "sview") closeStreetView(); }
   finally { fromHistory = false; }
 });
 function setSheet(open) {
@@ -477,11 +477,13 @@ async function openDetail(id, fly = true) {
       ${d.w ? `<a class="btn" href="${esc(d.w)}" target="_blank" rel="noopener nofollow">${esc(t("site_btn"))}</a>` : ""}
       <button class="btn fav" id="dFav" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg><span>${esc(t("save"))}</span></button>
       <button class="btn trip" id="dTrip" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="6" r="2.4"/><path d="M8.4 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.6"/></svg><span>${esc(t("add_trip"))}</span></button>
+      ${MAPS.googleKey ? `<button class="btn" id="dSv" type="button"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="5" r="2.6"/><path d="M9.2 9h5.6l1 6h-2.2l-.6 6h-2l-.6-6H8.2z"/></svg>${esc(t("sview"))}</button>` : ""}
       <button class="btn" id="dShare" type="button">${esc(t("share"))}</button>
     </div>
     <p class="dsrc">${esc(t("osm"))} · <a href="${osmUrl(x)}" target="_blank" rel="noopener">${esc(t("fix"))}</a></p>`;
   $("dClose").onclick = () => closeDetail();
   $("dShare").onclick = () => share(title(x), placeUrl(x));
+  if ($("dSv")) $("dSv").onclick = () => openStreetView(x);
   $("dFav").onclick = () => toggleFav(x); syncFav(x.id);
   $("dTrip").onclick = () => toggleTrip(x); syncTripBtn();
   const more = $("wMore"); if (more) more.onclick = () => { $("detail").querySelectorAll(".wines li[hidden]").forEach((li) => { li.hidden = false; }); more.remove(); };
@@ -511,14 +513,40 @@ async function allowApi(kind, n = 1) {
   try { const r = await fetch(`/api/counter.php?api=${kind}&n=${n}`, { cache: "no-store" }); return r.ok && (await r.json()).ok === true; } catch (e) { return false; }
 }
 let gPlaces = null;
-async function placesLib() {
-  if (!MAPS.googleKey) return null;
+async function gmapsJs() {
   if (!window.google || !google.maps || !google.maps.importLibrary) {
     await load(`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(MAPS.googleKey)}&v=weekly&loading=async`);
     for (let i = 0; i < 50 && !(window.google && google.maps && google.maps.importLibrary); i++) await sleep(100);
   }
+}
+async function placesLib() {
+  if (!MAPS.googleKey) return null;
+  await gmapsJs();
   return gPlaces ||= google.maps.importLibrary("places");
 }
+// ---------- Street View (pulsante nella scheda): Google Dynamic Street View, contato prima di aprirlo (api=sview, tetto in api/caps.php) ----------
+// Prima si cerca il panorama più vicino all'aperto entro 200 m (ricerca senza costi); solo se c'è si apre e si conta.
+async function openStreetView(x) {
+  if (!MAPS.googleKey) return;
+  ga("open_street_view", gaW(x));
+  let sv;
+  try { await gmapsJs(); sv = await google.maps.importLibrary("streetView"); } catch (e) { return setStatus(t("sv_busy")); }
+  let pano;
+  try {
+    const r = await new sv.StreetViewService().getPanorama({ location: { lat: x.lat, lng: x.lng }, radius: 200, preference: sv.StreetViewPreference.NEAREST, sources: [sv.StreetViewSource.OUTDOOR] });
+    pano = r && r.data && r.data.location;
+  } catch (e) { pano = null; }
+  if (!pano) return setStatus(t("sv_none"));
+  if (!(await allowApi("sview"))) return setStatus(t("sv_busy"));
+  const p = pano.latLng, la = p.lat(), ln = p.lng();
+  // la vista guarda verso la cantina
+  const r1 = la * Math.PI / 180, r2 = x.lat * Math.PI / 180, dl = (x.lng - ln) * Math.PI / 180;
+  const heading = (Math.atan2(Math.sin(dl) * Math.cos(r2), Math.cos(r1) * Math.sin(r2) - Math.sin(r1) * Math.cos(r2) * Math.cos(dl)) * 180 / Math.PI + 360) % 360;
+  $("svTitle").textContent = title(x);
+  $("sview").hidden = false; pushLayer("sview");
+  new sv.StreetViewPanorama($("svPano"), { pano: pano.pano, pov: { heading, pitch: 0 }, zoom: 0, addressControl: false, fullscreenControl: false, motionTracking: false, motionTrackingControl: false, linksControl: true, panControl: true, enableCloseButton: false });
+}
+function closeStreetView() { if ($("sview").hidden) return; $("sview").hidden = true; $("svPano").innerHTML = ""; popLayer("sview"); }
 // foto di Google: la ricerca (1 chiamata gtext) dà fino a 4 foto; ognuna conta 1 (gphoto) solo quando la si guarda
 // nello slider, e la foto grande usa la stessa immagine (nessuna richiesta in più)
 const G_MAX = 4;
@@ -930,9 +958,11 @@ function bind() {
   $("browseBtn").onclick = openBrowse; $("worldAskBrowse").onclick = openBrowse; $("browseClose").onclick = closeBrowse;
   $("browseModal").onclick = (e) => { if (e.target === $("browseModal")) closeBrowse(); };
   addEventListener("keydown", (e) => {
+    if (!$("sview").hidden) { if (e.key === "Escape") closeStreetView(); return; }
     if (!$("lightbox").hidden) { if (e.key === "Escape") closeLightbox(); else if (e.key === "ArrowLeft") stepLightbox(-1); else if (e.key === "ArrowRight") stepLightbox(1); return; }
     if (e.key === "Escape") { closeSearch(); closeBrowse(); closeTrip(); toggleKm(false); }
   });
+  $("svClose").onclick = () => closeStreetView();
   $("lightbox").onclick = (e) => { if (e.target === $("lightbox") || e.target.id === "lbClose") closeLightbox(); };
   $("lbPrev").onclick = (e) => { e.stopPropagation(); stepLightbox(-1); };
   $("lbNext").onclick = (e) => { e.stopPropagation(); stepLightbox(1); };

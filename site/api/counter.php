@@ -5,7 +5,7 @@
 // have: le mappe che l'app sa usare (chiavi presenti); skip: quelle già fallite in questa visita (chiave rifiutata, quota finita).
 // Ogni risposta "google" o "mapbox" conta un caricamento di mappa del mese (Google: un "map load" di Dynamic Maps; Mapbox: un "map load" web).
 // Tetti = soglia gratuita del mese meno 100 (api/caps.php). Ogni conteggio va anche nel giorno (d → "GG" → servizio) per la pagina Consumi dell'admin.
-// GET api/counter.php?api=gtext|gphoto|static&n=1 → { ok: true|false }: le altre chiamate a pagamento oltre la soglia gratuita,
+// GET api/counter.php?api=gtext|gphoto|static|sview&n=1 → { ok: true|false }: le altre chiamate a pagamento oltre la soglia gratuita,
 //   contate allo stesso modo e fermate prima (Google Places: ricerca della cantina e foto, 1.000 gratis al mese ciascuna;
 //   Mapbox Static Images: immagine satellitare della scheda). ok=false = niente chiamata, la scheda resta senza.
 // GET api/counter.php?stats → i conteggi del mese (solo numeri, nessun dato dei visitatori).
