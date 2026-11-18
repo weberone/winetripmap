@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { applyVini } from './vini-applica.mjs';
 import { nonCantina } from './non-cantine.mjs';
 import { applyDesc } from './descrizioni.mjs';
+import { nonProduttore } from './produttori.mjs';
 
 const dataDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'site', 'data');
 const SERVERS = [
@@ -55,6 +56,7 @@ for (const e of els) {
   if (seen.has(id)) continue; seen.add(id);
   const name = t.name || t['name:it'] || t['name:en'] || t.brand || '';
   if (nonCantina(id, name)) { tolte++; continue; } // enoteche, wine bar, negozi: vedi tools/non-cantine.mjs
+  if (nonProduttore(id)) { tolte++; continue; } // locali, negozi, distributori senza prove da produttore: tools/produttori.mjs
   const town = t['addr:city'] || t['addr:town'] || t['addr:village'] || t['addr:place'] || '';
   items.push([id, round(lat), round(lng), name, town]);
   const d = {
