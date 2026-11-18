@@ -50,7 +50,7 @@ $cfg = ['next' => $next, 'google' => $gid ?: null, 'verify' => $verify, 'reset' 
         <div class="field"><label for="gPw">Password</label><input id="gPw" type="password" autocomplete="new-password" minlength="8" required><small>Almeno 8 caratteri</small></div>
         <p class="err" id="gErr" hidden></p>
         <button class="btn primary">Crea l'account</button>
-        <p class="muted" style="margin:0">Registrandoti accetti che salviamo email, nome e cantine preferite per farti usare l'account. Puoi scaricare i tuoi dati o cancellare l'account quando vuoi.</p>
+        <p class="muted" style="margin:0">Registrandoti accetti che salviamo email, nome e cantine preferite per farti usare l'account. Puoi scaricare i tuoi dati quando vuoi e chiedere di cancellare l'account (vedi la <a href="/privacy/">privacy</a>).</p>
       </form>
       <form class="form" id="forgotForm" hidden>
         <p class="muted" style="margin:0">Ti mandiamo un link per scegliere una nuova password.</p>
@@ -103,7 +103,7 @@ $cfg = ['next' => $next, 'google' => $gid ?: null, 'verify' => $verify, 'reset' 
       <div class="row">
         <a class="btn" href="/api/auth.php?a=export">Scarica i miei dati</a>
         <button class="btn" id="logout">Esci</button>
-        <button class="btn danger" id="del">Cancella l'account</button>
+        <button class="btn danger" id="del" hidden>Cancella l'account</button><!-- nascosto su richiesta dell'utente (2026-11-19): la cancellazione si chiede via email (pagina privacy) -->
       </div>
       <p class="muted">Iscritto dal <?= h((new DateTime($u['created_at'] . ' UTC'))->setTimezone(new DateTimeZone('Europe/Rome'))->format('d/m/Y')) ?>.</p>
     </section>

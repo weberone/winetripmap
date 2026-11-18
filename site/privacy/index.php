@@ -38,7 +38,7 @@ page_start($it ? 'Privacy e cookie' : 'Privacy and cookies', '<a class="navlink"
 <h2>Servizi esterni usati dalla mappa</h2>
 <p>Per mostrare mappe e immagini il tuo browser si collega direttamente a questi servizi, che vedono il tuo indirizzo IP: Google Maps e Google Places (mappa e foto delle cantine), Mapbox e OpenFreeMap (mappe), Esri (foto dal satellite), Nominatim di OpenStreetMap tramite il nostro server (ricerca dei luoghi). Le foto delle bottiglie si caricano dai siti delle cantine. I dati delle cantine vengono da OpenStreetMap (© OpenStreetMap contributors, ODbL).</p>
 <h2>Quanto li teniamo</h2>
-<p>I dati dell'account finché hai l'account: puoi scaricarli o cancellarli in ogni momento dalla pagina <a href="/account/">Account</a>. Le statistiche di Google Analytics restano al massimo 14 mesi.</p>
+<p>I dati dell'account finché hai l'account: puoi scaricarli in ogni momento dalla pagina <a href="/account/">Account</a> e chiedere di cancellare l'account scrivendo a <?= $contact ?>. Le statistiche di Google Analytics restano al massimo 14 mesi.</p>
 <h2>I tuoi diritti</h2>
 <p>Puoi chiedere accesso, rettifica, cancellazione, limitazione, portabilità e opporti al trattamento scrivendo a <?= $contact ?>. Puoi anche rivolgerti al Garante per la protezione dei dati personali (garanteprivacy.it).</p>
 <?php else: ?>
@@ -64,7 +64,7 @@ page_start($it ? 'Privacy e cookie' : 'Privacy and cookies', '<a class="navlink"
 <h2>External services used by the map</h2>
 <p>To show maps and images your browser connects directly to these services, which see your IP address: Google Maps and Google Places (map and winery photos), Mapbox and OpenFreeMap (maps), Esri (satellite images), OpenStreetMap Nominatim through our server (place search). Bottle photos load from the wineries' own websites. Winery data comes from OpenStreetMap (© OpenStreetMap contributors, ODbL).</p>
 <h2>How long we keep it</h2>
-<p>Account data for as long as you have an account: you can download or delete it at any time from the <a href="/account/">Account</a> page. Google Analytics statistics are kept for at most 14 months.</p>
+<p>Account data for as long as you have an account: you can download it at any time from the <a href="/account/">Account</a> page and ask for your account to be deleted by writing to <?= $contact ?>. Google Analytics statistics are kept for at most 14 months.</p>
 <h2>Your rights</h2>
 <p>You can ask for access, correction, deletion, restriction and portability, and object to processing, by writing to <?= $contact ?>. You can also contact your data protection authority.</p>
 <?php endif; ?>
