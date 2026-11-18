@@ -35,7 +35,6 @@ const state = {
   center: null,                   // centro dell'ultima ricerca (cerchio del raggio)
   radiusKm: RADII.includes(store.get("radius")) ? store.get("radius") : 20,
   showPreview: store.get("preview") !== false, // radar: cerca da solo quando sposti la mappa
-  wc: "", // filtro per colore del vino principale ("" = tutte)
   all: [], byId: new Map(), sel: null, mapsReady: false, areaOk: false, loading: false, userMoved: false,
   user: null, favs: new Set()      // account (api/auth.php) e cantine preferite (api/fav.php)
 };
@@ -120,20 +119,12 @@ function inRadius() {
     .map((x) => Object.assign(x, { kmC: distKm(state.center, x), km: distKm(from, x) }))
     .filter((x) => x.kmC <= state.radiusKm).sort((a, b) => a.km - b.km);
 }
-const visible = () => { const v = inRadius(); return state.wc ? v.filter((x) => x.wc === state.wc) : v; };
-// filtro per colore: Tutte, Rossi, Bianchi, Rosati, Bollicine, col numero di cantine nel raggio
-function renderChips(all) {
-  const n = { r: 0, b: 0, o: 0, s: 0 }; for (const x of all) if (x.wc) n[x.wc]++;
-  const chip = (k, label) => `<button type="button" class="chip" data-wc="${k}" aria-pressed="${state.wc === k}">${k ? `<span class="wdot w${k}"></span>` : ""}${label}${k ? ` <span class="cn">${fmtN(n[k])}</span>` : ""}</button>`;
-  const box = $("wineChips"); if (!box) return; // pagina vecchia ancora in memoria del browser: niente filtri
-  box.innerHTML = chip("", t("all")) + chip("r", t("reds")) + chip("b", t("whites")) + chip("o", t("roses")) + chip("s", t("sparkling"));
-}
+const visible = () => inRadius();
 
 // ---------- elenco, pin, cerchio ----------
 function renderList() {
   drawShape();
   const v = visible();
-  renderChips(inRadius());
   $("count").textContent = fmtN(v.length);
   $("countLbl").textContent = I18N.n("found", v.length, "").trim();
   const within = state.area ? t("in_area", { n: nW(v.length), a: state.area.name }) : t("within", { n: nW(v.length), km: state.radiusKm });
@@ -141,8 +132,7 @@ function renderList() {
   if (state.areaOk && !state.loading) setStatus(within);
   radarLabel();
   if (!v.length) {
-    $("list").innerHTML = state.areaOk && state.wc && inRadius().length ? `<div class="empty">${esc(t("empty_color", { c: WINE[state.wc].name.toLowerCase(), all: t("all") }))}</div>`
-      : state.areaOk ? `<div class="empty">${esc(t("empty_radius"))}</div>`
+    $("list").innerHTML = state.areaOk ? `<div class="empty">${esc(t("empty_radius"))}</div>`
       : `<div class="empty">${esc(t("empty_start"))}</div>`;
   } else {
     $("list").innerHTML = v.slice(0, 300).map((x) => `<button class="item" data-id="${esc(x.id)}"><span class="mk">${pinSvg(20, x.wc, x.hv)}</span>
@@ -923,10 +913,7 @@ function bind() {
     checkArea();
   };
   $("kmBtn").onclick = () => toggleKm();
-  if ($("wineChips")) $("wineChips").onclick = (e) => {
-    const b = e.target.closest("[data-wc]"); if (!b) return;
-    state.wc = b.dataset.wc; renderList();
-  };
+
   document.querySelectorAll("[data-km]").forEach((b) => b.onclick = () => { toggleKm(false); setRadius(+b.dataset.km); });
   $("radius").onchange = () => setRadius(+$("radius").value);
   $("list").onclick = (e) => { const b = e.target.closest(".item"); if (b) openDetail(b.dataset.id); };

@@ -25,7 +25,7 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#8e1b33">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/app.css?v=31">
+<link rel="stylesheet" href="/css/app.css?v=32">
 </head>
 <body>
 <div class="app map-only">
@@ -54,8 +54,6 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
         </label>
       </div>
     </div>
-    <div class="filters"><div class="chips" id="wineChips" role="group" aria-label="Colore del vino principale" data-i18n-aria="wine_filter"></div>
-      <p class="fnote" data-i18n="color_note">Colore del vino principale, dai siti delle cantine</p></div>
     <div class="list" id="list"></div>
     <div class="detail" id="detail" hidden></div>
     <p class="appfoot"><label class="langpick"><span data-i18n="language">Lingua</span> <select id="langSel"></select></label><br>© <span id="footYear">2026</span> winetripmap.com · <span data-i18n="data">dati</span> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a><br><a href="/privacy/">Privacy</a> · <a href="#" id="cookieOpen">Cookie</a></p>
@@ -140,6 +138,6 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 
 <!-- la mappa (Google, Mapbox o MapLibre + OpenFreeMap) la carica app.js: vedi createMap -->
 <script src="/js/i18n.js?v=6"></script>
-<script src="/js/app.js?v=34"></script>
+<script src="/js/app.js?v=35"></script>
 </body>
 </html>
