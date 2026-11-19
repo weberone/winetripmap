@@ -82,12 +82,14 @@ const JUNK_WORDS = words(`olio|oil|grappa|gin|birra|beer|biere|ale|lager|cidre|c
     unsere besten|wein des monats|en savoir plus|lire la suite|commander|ordina|read more|leggi tutto|mehr erfahren|weiterlesen|ver mas|saber mas|
     coupon|caja|dozen|bundle|abo|geschenk|geschenkset|actividades|rutas|escapada|colegios|medaille|medal|concours|award|selection|selezione|
     glas|universalglas|polo|shirt|shirts|sleeve|jacket|tote|hat|hats|beanie|case|cases|pack|packs|mixed dozen|half dozen|kirsch|poire williams|framboise|marc de|eau-de-vie|bulles|bubbles|kisten|weinkisten|sangria|traubensaft|saft|juice|succo|mosto|gift card|voucher|buono regalo|t shirt|cassetta|box|kit|abbonamento|degustazione|degustation|tasting|tour|visite|visita|open day|black friday|cyber monday|pachet|paket|pacchetto|package|auszeichnungen|awards|premi|newsletter|recensioni|reviews|weinprobe|cata|catas|cadou`);
+// pulsanti e scritte dei negozi online presi per vini ("Comprar", "MÁS", "Select options", "Ajouter au panier")
+const UI = /^ (comprar|compra|acquista|buy( now)?|shop( now)?|kaufen|acheter|(ver |leer |voir |scopri di |read |learn )?(mas|more|mehr|plus|piu)|leggi tutto|weiterlesen|lire la suite|en savoir plus|select options|seleziona opzioni|optionen wahlen|choisir les options|add to (cart|basket)|aggiungi al carrello|in den warenkorb|ajouter au panier|anadir al carrito|dettagli|details|detalles|sold out|esaurito|ausverkauft|agotado|epuise|nouveau|nuevo|neu|new|novita|boutique|tienda|negozio|home) $/;
 const generic = (s) => s.trim().split(' ').every((w) => !w || GENERIC.has(w));
 const PLURAL = / (champagner|sekte|weine|wines|vini|vins|vinos|vinhos|spumanti|passiti|rossi|bianchi|rotweine|weissweine) /;
 export function isNotWine(name) {
   if (/°|%\s*vol|<\s*0[.,]\d\s*%/i.test(name)) return true; // gradi e "% vol": distillati e vini senza alcol
   const s = norm(name);
-  if (generic(s)) return true;
+  if (generic(s) || UI.test(s.replace(/\s+/g, ' '))) return true;
   // categorie del menu al plurale ("Weißweine für Genießer", "Spumanti e passiti") se non c'è un vitigno o una denominazione
   if (PLURAL.test(s) && !(RED_G.test(s) || WHITE_G.test(s) || / (doc|docg|igt|aoc|igp|dop) /.test(s))) return true;
   if (NOT_WINE.test(s) && !(RED_G.test(s) || WHITE_G.test(s) || SPARK.test(s) || / (rosso|bianco|rosato|red|white|rose) /.test(s))) return true;
