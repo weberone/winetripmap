@@ -85,7 +85,8 @@ jobs:
           unzip -oq $G/cities500.zip -d $G
 
       - name: Cantine da Wikidata
-        run: node tools/wikidata-cantine.mjs || echo 'Wikidata non risponde: resta il file del mese prima'
+        run: |
+          node tools/wikidata-cantine.mjs || echo 'Wikidata non risponde, resta il file del mese prima'
 
       - name: Cantine da OpenStreetMap
         timeout-minutes: 120
