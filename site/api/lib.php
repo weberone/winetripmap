@@ -116,15 +116,63 @@ CREATE TABLE IF NOT EXISTS app_opens (
 );
 CREATE INDEX IF NOT EXISTS app_opens_day ON app_opens (day, id);
 CREATE INDEX IF NOT EXISTS app_opens_vid ON app_opens (vid);
+-- clic e azioni nella mappa (api/track.php): solo totali per giorno, nome dell'evento e ospite/iscritto, nessun identificativo
+CREATE TABLE IF NOT EXISTS app_events (
+  day  TEXT NOT NULL,
+  ev   TEXT NOT NULL,
+  who  TEXT NOT NULL,
+  n    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, ev, who)
+);
+-- percorso nell'app azione per azione (admin/visite.php): solo iscritti e visitatori che hanno accettato i cookie.
+-- Una sessione = una scheda del browser; si cancellano dopo 180 giorni (iscritti) o 90 (visitatori)
+CREATE TABLE IF NOT EXISTS user_sessions (
+  sid         TEXT PRIMARY KEY,
+  user_id     INTEGER NOT NULL DEFAULT 0,
+  vid         TEXT,
+  started_at  TEXT NOT NULL,
+  last_at     TEXT NOT NULL,
+  events      INTEGER NOT NULL DEFAULT 0,
+  active_secs INTEGER NOT NULL DEFAULT 0,
+  device      TEXT,
+  info        TEXT
+);
+CREATE INDEX IF NOT EXISTS user_sessions_last ON user_sessions (last_at);
+CREATE INDEX IF NOT EXISTS user_sessions_vid ON user_sessions (vid);
+CREATE TABLE IF NOT EXISTS user_events (
+  id      INTEGER PRIMARY KEY,
+  sid     TEXT NOT NULL,
+  user_id INTEGER NOT NULL DEFAULT 0,
+  vid     TEXT,
+  at      TEXT NOT NULL,
+  ev      TEXT NOT NULL,
+  x       TEXT
+);
+CREATE INDEX IF NOT EXISTS user_events_sid ON user_events (sid, at);
 SQL;
+// colonne aggiunte dopo (le tabelle già create non le prendono da CREATE TABLE): [tabella, colonna, tipo]
+const SCHEMA_ADD = [
+  // per ogni apertura (api/track.php): GPS (1 attivato, 0 negato o non riuscito), cookie (1 accetta, 0 rifiuta), secondi con la
+  // mappa davanti, azioni, cantine aperte, pagina d'ingresso (home, cantina condivisa, trip…), scheda del browser (sessione)
+  ['app_opens', 'gps', 'INTEGER'], ['app_opens', 'ck', 'INTEGER'], ['app_opens', 'secs', 'INTEGER NOT NULL DEFAULT 0'],
+  ['app_opens', 'acts', 'INTEGER NOT NULL DEFAULT 0'], ['app_opens', 'views', 'INTEGER NOT NULL DEFAULT 0'],
+  ['app_opens', 'land', 'TEXT'], ['app_opens', 'sid', 'TEXT'], ['app_opens', 'last_at', 'TEXT'],
+];
 function db(): PDO {
   static $pdo = null;
   if ($pdo) return $pdo;
   $pdo = new PDO('sqlite:' . priv('wtm.sqlite'), null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
   $pdo->exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
   // tabelle: solo quando SCHEMA cambia (la sua impronta sta in user_version)
-  $ver = crc32(SCHEMA) & 0x7fffffff;
-  if ((int)$pdo->query('PRAGMA user_version')->fetchColumn() !== $ver) { $pdo->exec(SCHEMA); $pdo->exec("PRAGMA user_version = $ver"); }
+  $ver = crc32(SCHEMA . json_encode(SCHEMA_ADD)) & 0x7fffffff;
+  if ((int)$pdo->query('PRAGMA user_version')->fetchColumn() !== $ver) {
+    $pdo->exec(SCHEMA);
+    foreach (SCHEMA_ADD as [$t, $c, $type]) {
+      $have = array_column($pdo->query("PRAGMA table_info($t)")->fetchAll(), 'name');
+      if (!in_array($c, $have, true)) $pdo->exec("ALTER TABLE $t ADD COLUMN $c $type");
+    }
+    $pdo->exec("PRAGMA user_version = $ver");
+  }
   return $pdo;
 }
 function one(string $sql, array $p = []) { $st = db()->prepare($sql); $st->execute($p); return $st->fetchColumn(); }

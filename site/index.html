@@ -7,7 +7,7 @@
 <meta name="description" content="La mappa delle cantine di tutto il mondo: trova le più vicine a te, con indicazioni, orari e contatti.">
 <meta name="robots" content="noindex"><!-- in prova: da togliere al lancio (con SEO_INDEX in seo/common.php) -->
 <!-- Google Analytics solo dopo il consenso ai cookie (js/consent.js: banner Accetta / Rifiuta) -->
-<script src="/js/consent.js?v=1"></script>
+<script src="/js/consent.js?v=2"></script>
 <script>
 // tema prima di disegnare la pagina (niente lampo del tema sbagliato): quello scelto col pulsante, altrimenti quello del sistema
 try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
@@ -138,6 +138,6 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 
 <!-- la mappa (Google, Mapbox o MapLibre + OpenFreeMap) la carica app.js: vedi createMap -->
 <script src="/js/i18n.js?v=6"></script>
-<script src="/js/app.js?v=35"></script>
+<script src="/js/app.js?v=36"></script>
 </body>
 </html>

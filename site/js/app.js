@@ -369,6 +369,9 @@ function getPosition(fresh = false) {
     fresh ? { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 } : { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }));
 }
 async function applyPosition(r, silent) {
+  // per le statistiche: GPS attivato, negato, lento o non disponibile
+  track(r.p ? "gps:ok" : !navigator.geolocation ? "gps:nobrowser" : r.err.code === 1 ? "gps:denied" : r.err.code === 3 ? "gps:timeout" : "gps:unavailable", silent ? "auto" : "");
+  if (r.p) trk.gps = 1; else if (trk.gps !== 1) trk.gps = 0;
   if (r.p) {
     store.set("lastgps", { lat: r.p.coords.latitude, lng: r.p.coords.longitude });
     await setMe(r.p.coords.latitude, r.p.coords.longitude, t("your_pos"), true, "");
@@ -426,7 +429,72 @@ const directionsUrl = (x) => `https://www.google.com/maps/dir/?api=1&destination
 const osmUrl = (x) => `https://www.openstreetmap.org/${{ n: "node", w: "way", r: "relation" }[x.id[0]]}/${x.id.slice(1)}`;
 const placeUrl = (x) => `${location.origin}${location.pathname}?c=${encodeURIComponent(x.id)}`;
 // eventi per Google Analytics (js/consent.js): partono solo se il visitatore ha accettato i cookie di statistica
-const ga = (name, params = {}) => { try { window.wtmGa && window.wtmGa(name, params); } catch (e) {} };
+// e, per la pagina Visite dell'admin, anche ad api/track.php (vedi track() sotto)
+const ga = (name, params = {}) => {
+  try { window.wtmGa && window.wtmGa(name, params); } catch (e) {}
+  track(name === "view_winery" ? "view:winery" : name === "search" ? "search:" + (params.kind || "place") : "act:" + name,
+    params.winery_name || params.search_term || params.item || "");
+};
+
+// ---------- statistiche per l'admin (api/track.php → admin/visite.php), come SkateboardMap ----------
+// 1) totali anonimi per giorno: ogni tocco su pulsanti e link ("btn:meBtn", "link:ext/…"), schede aperte, ricerche, GPS;
+// 2) sull'apertura della mappa (numero "open" da api/auth.php): secondi con la mappa davanti, GPS attivato o no, scelta sui cookie;
+// 3) il percorso azione per azione (con l'ora e un dettaglio: cantina aperta, testo cercato…), solo per chi ha un account
+//    o ha premuto "Accetta" sui cookie. Si manda ogni 10 secondi e alla chiusura della pagina.
+const trk = { q: [], j: [], sid: "", act: 0, gps: null, ck: null, info: false, ready: false, open: 0 };
+try { trk.sid = sessionStorage.getItem("wtm_sid") || ""; } catch (e) {}
+if (!/^[a-z0-9]{8,40}$/.test(trk.sid)) {
+  trk.sid = (Math.random().toString(36).slice(2, 10) + Date.now().toString(36)).toLowerCase();
+  try { sessionStorage.setItem("wtm_sid", trk.sid); } catch (e) {}
+}
+const jOn = () => !!(state.user || (window.wtmConsent && wtmConsent.given()));
+function track(name, x) {
+  const e = String(name).replace(/[^A-Za-z0-9:_.\/=-]/g, "").slice(0, 72);
+  if (!/^[a-z]{2,12}:./.test(e)) return;
+  if (trk.q.length < 200) trk.q.push(e);
+  if (trk.j.length < 300) trk.j.push([Date.now(), e, x == null ? "" : String(x).replace(/\s+/g, " ").trim().slice(0, 160)]);
+}
+function trackInfo() {
+  const c = navigator.connection || {}, mm = (q) => { try { return matchMedia(q).matches; } catch (e) { return false; } };
+  let tz = ""; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) {}
+  return { w: screen.width, h: screen.height, vw: innerWidth, vh: innerHeight, dpr: devicePixelRatio, lang: navigator.language, ui: I18N.lang, tz,
+    pwa: mm("(display-mode: standalone)") || navigator.standalone === true, net: c.effectiveType || "", touch: navigator.maxTouchPoints || 0,
+    dark: dark(), gps: trk.gps, ck: window.wtmConsent ? (wtmConsent.given() ? 1 : 0) : null, land: location.pathname + location.search, ref: document.referrer };
+}
+function trackFlush(beacon) {
+  if (!trk.ready) return; // prima serve sapere se c'è un account e il numero dell'apertura (loadMe)
+  const p = {};
+  if (trk.q.length) p.e = trk.q.splice(0, 50);
+  if (trk.open) { p.o = trk.open; if (trk.act >= 1) p.a = Math.min(120, Math.round(trk.act)); if (trk.gps != null) p.gps = trk.gps; if (trk.ck != null) p.ck = trk.ck; }
+  const j = trk.j.splice(0, 150);
+  if (jOn() && (j.length || p.a)) { Object.assign(p, { sid: trk.sid, j }); if (!trk.info) { trk.info = true; p.s = trackInfo(); } }
+  if (!p.e && !p.a && !p.j && p.gps == null && p.ck == null) return;
+  trk.act = 0; // GPS e cookie si ripetono a ogni invio: vale l'ultimo stato
+  const body = JSON.stringify(p);
+  try {
+    if (beacon && navigator.sendBeacon) navigator.sendBeacon("/api/track.php", new Blob([body], { type: "application/json" }));
+    else fetch("/api/track.php", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true, credentials: "same-origin" }).catch(() => {});
+  } catch (e) {}
+}
+// tempo con la mappa davanti: secondi veri, solo con la pagina visibile
+let actT = Date.now();
+setInterval(() => { const n = Date.now(), dt = (n - actT) / 1000; actT = n; if (!document.hidden) trk.act += Math.min(10, dt); }, 1000);
+setInterval(() => trackFlush(false), 10000);
+document.addEventListener("visibilitychange", () => { track(document.hidden ? "app:hidden" : "app:visible"); if (document.hidden) trackFlush(true); });
+addEventListener("pagehide", () => { track("app:close"); trackFlush(true); });
+addEventListener("error", (e) => track("err:js", `${e.message || "?"} @${String(e.filename || "").split("/").pop()}:${e.lineno || 0}`));
+addEventListener("wtm-consent", (e) => { trk.ck = e.detail && e.detail.ok ? 1 : 0; trackFlush(false); });
+// ogni tocco su pulsanti e link: il nome dal suo id (o dalla classe), il dettaglio dal testo che si vede
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("button, a, [role=tab], .item, input[type=checkbox]"); if (!el) return;
+  const cls = (typeof el.className === "string" ? el.className.trim().split(/\s+/)[0] : "") || el.tagName.toLowerCase();
+  const name = el.classList.contains("item") ? "list:winery"
+    : el.id ? "btn:" + el.id
+    : el.tagName === "A" ? "link:" + (el.host && el.host !== location.host ? "ext/" + el.host.replace(/^www\./, "") : (el.pathname || "/").split("/").slice(0, 2).join("/") || "/")
+    : "btn:" + cls;
+  const label = el.getAttribute("aria-label") || el.title || (el.textContent || "").trim() || (el.tagName === "A" ? el.href : "");
+  track(name, label.slice(0, 80));
+}, true);
 const gaW = (x) => ({ winery_id: x.id, winery_name: title(x), town: x.c || "" });
 async function openDetail(id, fly = true) {
   const x = state.byId.get(id); if (!x) return;
@@ -970,13 +1038,17 @@ function bind() {
 // a=me&map=1: l'apertura della mappa conta nella dashboard dell'admin (da dove arriva, dispositivo, mappa usata)
 async function loadMe(mapKind) {
   try {
+    let ck = ""; try { const c = JSON.parse(localStorage.getItem("wtm.consent")); if (c && typeof c.ok === "boolean") ck = c.ok ? "1" : "0"; } catch (e) {}
     const q = new URLSearchParams({ a: "me", map: "1", m: mapKind || "", ref: document.referrer.slice(0, 300),
-      utm: (new URLSearchParams(location.search).get("utm_source") || "").slice(0, 40) });
+      utm: (new URLSearchParams(location.search).get("utm_source") || "").slice(0, 40), ck, sid: trk.sid,
+      land: (location.pathname + location.search).slice(0, 120) });
     try { q.set("tz", Intl.DateTimeFormat().resolvedOptions().timeZone || ""); } catch (e) {}
     const r = await fetch("/api/auth.php?" + q, { credentials: "same-origin" });
     if (!r.ok) return;
     const d = await r.json(); // in locale senza PHP non è JSON: si resta senza account
     state.user = d.user || null;
+    trk.open = d.open || 0; trk.ready = true; // da qui le statistiche partono (api/track.php)
+    track("app:open", location.pathname + location.search); trackFlush(false);
     if (!$("tripModal").hidden) { renderTrip(); loadMyTrips(); }
     const b = $("acctBtn");
     b.classList.toggle("on", !!state.user);

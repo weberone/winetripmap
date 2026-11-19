@@ -42,6 +42,12 @@ jobs:
 
       # Online va il JavaScript compresso e con i nomi interni rimescolati (più leggero e difficile da copiare);
       # nel repository resta leggibile. Se la compressione fallisce, il deploy si ferma e online non cambia niente.
+      # un errore di sintassi in un file PHP non va online (sul Mac non c'è PHP per provarlo)
+      - name: Controlla i file PHP
+        run: |
+          set -e
+          find site -name '*.php' -not -path 'site/core/*' -print0 | xargs -0 -n1 php -l > /dev/null
+
       - name: Comprimi il JavaScript
         run: |
           set -euo pipefail

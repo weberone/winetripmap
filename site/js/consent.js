@@ -48,11 +48,23 @@
       @media (max-width:520px){#wtmConsent{font-size:13px;gap:10px} #wtmConsent .b{flex-direction:column;gap:6px} #wtmConsent .b button{padding:7px 12px;font-size:13px}}`;
     const el = document.createElement("div"); el.id = "wtmConsent"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Cookie");
     el.innerHTML = `<p>${t[0]} <a href="/privacy/?lang=${lang}#cookie">${t[3]}</a></p><div class="b"><button type="button" class="n">${t[2]}</button><button type="button" class="y">${t[1]}</button></div>`;
-    const close = (ok) => { save(ok); el.remove(); if (ok) loadGA(); };
+    const close = (ok) => {
+      save(ok); el.remove(); if (ok) loadGA();
+      beacon(ok ? "consent:yes" : "consent:no"); // totali per l'admin (api/track.php), anche senza accettare: nessun identificativo
+      try { dispatchEvent(new CustomEvent("wtm-consent", { detail: { ok } })); } catch (e) {} // la mappa lo segna sull'apertura
+    };
     el.querySelector(".y").onclick = () => close(true);
     el.querySelector(".n").onclick = () => close(false);
     document.head.appendChild(css); document.body.appendChild(el);
   }
+  // conteggi per la dashboard dell'admin (api/track.php): solo il nome dell'evento, per giorno
+  function beacon(ev) {
+    try { const b = JSON.stringify({ e: [ev] }); navigator.sendBeacon ? navigator.sendBeacon("/api/track.php", new Blob([b], { type: "application/json" }))
+      : fetch("/api/track.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: b, keepalive: true }); } catch (e) {}
+  }
+  // pagine diverse dalla mappa (la mappa conta le sue aperture da sola): pagine SEO delle cantine, account, privacy
+  const pg = location.pathname;
+  if (pg !== "/" && !/^\/(admin|api)\//.test(pg)) beacon("page:" + (/^\/account\//.test(pg) ? "account" : /^\/privacy\//.test(pg) ? "privacy" : "seo"));
   // per cambiare idea: riapre il banner (rifiutando dopo aver accettato, GA si ferma alla prossima pagina)
   window.wtmConsent = { open: () => { try { localStorage.removeItem(KEY); } catch (e) {} banner(); }, given: () => read() === true };
   window.wtmGa = (name, params = {}) => { try { if (loaded) gtag("event", name, params); } catch (e) {} };

@@ -26,7 +26,8 @@ page_start($it ? 'Privacy e cookie' : 'Privacy and cookies', '<a class="navlink"
   <li><b>Preferiti e trip</b>: le cantine che salvi e gli itinerari che crei, collegati al tuo account. Senza account la bozza del trip resta solo nel tuo browser.</li>
   <li><b>Feedback</b>: i messaggi che ci mandi, con il tuo account, per risponderti e migliorare il sito.</li>
   <li><b>Sicurezza</b>: dell'indirizzo IP salviamo solo un'impronta non reversibile (hash), per limitare spam e tentativi di accesso.</li>
-  <li><b>Aperture della mappa</b>: per le statistiche interne contiamo ogni apertura con un codice casuale del browser (cookie tecnico <code>wtm_vid</code>), da dove arrivi (sito o campagna di provenienza), tipo di dispositivo, lingua e fuso orario. Niente nome, email né posizione; se poi accedi, le aperture vengono collegate al tuo account.</li>
+  <li><b>Aperture della mappa</b>: per le statistiche interne contiamo ogni apertura con un codice casuale del browser (cookie tecnico <code>wtm_vid</code>), da dove arrivi (sito o campagna di provenienza), tipo di dispositivo, lingua e fuso orario, quanto tempo resti sulla mappa, quante schede di cantine apri, se il GPS è stato attivato (sì o no, mai la posizione) e la tua scelta sui cookie. Contiamo anche quante volte vengono usati i pulsanti, in totali anonimi per giorno. Niente nome, email né posizione; se poi accedi, le aperture vengono collegate al tuo account.</li>
+  <li><b>Percorso nella mappa</b> (solo se hai un account o premi "Accetta" sui cookie): le azioni che fai nella mappa con l'ora (per esempio quale cantina apri o cosa cerchi), per capire cosa migliorare. Restano 90 giorni (180 per gli account) e le vede solo l'amministratore del sito.</li>
   <li><b>Posizione</b>: se la permetti, il GPS viene usato solo nel tuo browser per mostrarti le cantine vicine; non la salviamo.</li>
 </ul>
 <h2 id="cookie">Cookie e memoria del browser</h2>
@@ -52,7 +53,8 @@ page_start($it ? 'Privacy e cookie' : 'Privacy and cookies', '<a class="navlink"
   <li><b>Favourites and trips</b>: the wineries you save and the itineraries you build, linked to your account. Without an account the trip draft stays only in your browser.</li>
   <li><b>Feedback</b>: the messages you send us, with your account, to reply and improve the site.</li>
   <li><b>Security</b>: we keep only a non-reversible fingerprint (hash) of your IP address, to limit spam and sign-in attempts.</li>
-  <li><b>Map opens</b>: for internal statistics we count each opening with a random browser code (technical cookie <code>wtm_vid</code>), where you came from (referring site or campaign), device type, language and time zone. No name, email or location; if you sign in, your opens are linked to your account.</li>
+  <li><b>Map opens</b>: for internal statistics we count each opening with a random browser code (technical cookie <code>wtm_vid</code>), where you came from (referring site or campaign), device type, language and time zone, how long you stay on the map, how many winery cards you open, whether GPS was turned on (yes or no, never your location) and your cookie choice. We also count how often buttons are used, as anonymous daily totals. No name, email or location; if you sign in, your opens are linked to your account.</li>
+  <li><b>Path in the map</b> (only if you have an account or press "Accept" on cookies): the actions you take in the map with the time (for example which winery you open or what you search for), to understand what to improve. Kept for 90 days (180 for accounts) and seen only by the site administrator.</li>
   <li><b>Location</b>: if you allow it, GPS is used only in your browser to show nearby wineries; we do not store it.</li>
 </ul>
 <h2 id="cookie">Cookies and browser storage</h2>

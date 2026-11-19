@@ -1,6 +1,6 @@
 <?php
 // Account degli utenti, in JSON (come api/auth.php di SkateboardMap). Funzioni in api/lib.php.
-//   GET  api/auth.php?a=me[&map=1&tz=…&ref=…&utm=…&m=…] → { user, google_client_id }; map=1 = apertura della mappa (dashboard admin)
+//   GET  api/auth.php?a=me[&map=1&tz=…&ref=…&utm=…&m=…&ck=…&land=…&sid=…] → { user, google_client_id, open }; map=1 = apertura della mappa (dashboard admin)
 //   POST api/auth.php?a=register  { email, password, name }        → account creato, email di conferma, già dentro
 //   POST api/auth.php?a=login     { email, password }              → { user }
 //   POST api/auth.php?a=google    { credential }                   → { user } (crea l'account se non c'è)
@@ -31,15 +31,21 @@ if ($a === 'me' && $method === 'GET') {
     try {
       $ua = (string)($_SERVER['HTTP_USER_AGENT'] ?? ''); $ref = mb_substr((string)($_GET['ref'] ?? ''), 0, 300);
       $map = preg_match('/^(google|mapbox|free)$/', (string)($_GET['m'] ?? '')) ? $_GET['m'] : null;
-      db()->prepare('INSERT INTO app_opens (at, day, vid, user_id, source, ref, device, lang, tz, map) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')->execute([
+      // ck: scelta sui cookie già fatta (1/0, vuoto = non ancora); land: pagina d'ingresso (home, ?c= cantina condivisa, ?trip=…)
+      $ck = in_array($_GET['ck'] ?? '', ['0', '1'], true) ? (int)$_GET['ck'] : null;
+      $land = (string)($_GET['land'] ?? ''); $land = $land === '' ? null : mb_substr(preg_replace('/[\x00-\x1f]/', '', $land), 0, 120);
+      $sid = preg_match('/^[a-z0-9]{8,40}$/', (string)($_GET['sid'] ?? '')) ? $_GET['sid'] : null;
+      db()->prepare('INSERT INTO app_opens (at, day, vid, user_id, source, ref, device, lang, tz, map, ck, land, sid, last_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')->execute([
         now(), today_it(), visitor_id(), $me ? (int)$me['id'] : null, traffic_source($ref, $ua, (string)($_GET['utm'] ?? '')),
         mb_substr((string)parse_url($ref, PHP_URL_HOST), 0, 80) ?: null, device_info($ua),
         substr(strtolower(explode(',', (string)($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''))[0]), 0, 10) ?: null,
-        preg_match('/^[A-Za-z_\/+-]{1,40}$/', (string)($_GET['tz'] ?? '')) ? $_GET['tz'] : null, $map]);
+        preg_match('/^[A-Za-z_\/+-]{1,40}$/', (string)($_GET['tz'] ?? '')) ? $_GET['tz'] : null, $map, $ck, $land, $sid, now()]);
+      $openId = (int)db()->lastInsertId();
       if ($me) db()->prepare('UPDATE users SET visit_count = visit_count + 1, last_seen_at = ? WHERE id = ?')->execute([now(), $me['id']]);
     } catch (Throwable $e) { error_log('opens: ' . $e->getMessage()); }
   }
-  json_out(['user' => $me ? public_user($me) : null, 'google_client_id' => google_client_id() ?: null]);
+  // open: numero dell'apertura, che la mappa rimanda ad api/track.php (GPS, cookie, tempo, cantine aperte)
+  json_out(['user' => $me ? public_user($me) : null, 'google_client_id' => google_client_id() ?: null, 'open' => $openId ?? null]);
 }
 if ($a === 'export' && $method === 'GET') {
   $u = $need();

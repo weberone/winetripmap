@@ -16,6 +16,9 @@ $users7 = (int)one('SELECT COUNT(*) FROM users WHERE created_at > ?', [ago_days(
 $favs = (int)one('SELECT COUNT(*) FROM favorites');
 $trips = (int)one('SELECT COUNT(*) FROM trips');
 $fbNew = (int)one("SELECT COUNT(*) FROM feedback WHERE status = 'new'");
+// GPS e cookie degli ultimi 7 giorni (dettagli in visite.php)
+$g7 = db()->prepare('SELECT COUNT(*) n, SUM(gps = 1) g, AVG(NULLIF(secs, 0)) t, SUM(views) w FROM app_opens WHERE day >= ?'); $g7->execute([$from7]); $g7 = $g7->fetch();
+$ck7 = db()->prepare("SELECT SUM(CASE WHEN ev = 'consent:yes' THEN n ELSE 0 END) y, SUM(CASE WHEN ev = 'consent:no' THEN n ELSE 0 END) no FROM app_events WHERE day >= ?"); $ck7->execute([$from7]); $ck7 = $ck7->fetch();
 
 $opens = day_series(30); $vis = day_series(30); $signups = day_series(30);
 foreach (db()->query("SELECT day, COUNT(*) n, COUNT(DISTINCT vid) v FROM app_opens WHERE day >= '$from30' GROUP BY day") as $r) { if (isset($opens[$r['day']])) { $opens[$r['day']] = (int)$r['n']; $vis[$r['day']] = (int)$r['v']; } }
@@ -37,6 +40,9 @@ admin_header('Dashboard', 'dash');
 <section class="kpis">
   <a class="kpi" href="opens.php"><span>Aperture oggi</span><b><?= num($opensToday) ?></b><small><?= num($visToday) ?> visitatori</small></a>
   <a class="kpi" href="opens.php"><span>Ultimi 7 giorni</span><b><?= num($opens7) ?></b><small><?= num($vis7) ?> visitatori</small></a>
+  <a class="kpi" href="visite.php?d=7"><span>GPS attivato</span><b><?= $g7['n'] ? round($g7['g'] / $g7['n'] * 100) . '%' : '—' ?></b><small>delle aperture in 7 giorni</small></a>
+  <a class="kpi" href="visite.php?d=7"><span>Cookie accettati</span><b><?= ($ck7['y'] + $ck7['no']) ? round($ck7['y'] / ($ck7['y'] + $ck7['no']) * 100) . '%' : '—' ?></b><small><?= num($ck7['y']) ?> sì · <?= num($ck7['no']) ?> no in 7 giorni</small></a>
+  <a class="kpi" href="visite.php?d=7"><span>Tempo sulla mappa</span><b><?= $g7['t'] ? (round($g7['t']) >= 60 ? floor($g7['t'] / 60) . ' min' : round($g7['t']) . ' s') : '—' ?></b><small>medio per apertura · <?= num($g7['w']) ?> cantine aperte</small></a>
   <div class="kpi"><span>Visitatori in 30 giorni</span><b><?= num($vis30) ?></b><small>browser diversi</small></div>
   <a class="kpi" href="users.php"><span>Iscritti</span><b><?= num($users) ?></b><small><?= num($users7) ?> negli ultimi 7 giorni</small></a>
   <div class="kpi"><span>Cantine salvate</span><b><?= num($favs) ?></b><small>preferite degli iscritti</small></div>
@@ -60,7 +66,7 @@ admin_header('Dashboard', 'dash');
   <p class="muted"><a href="consumi.php">Tutti i consumi →</a> foto e satellite della scheda, giorno per giorno, previsione a fine mese, mesi passati.</p>
 </section>
 <section class="grid2">
-  <div class="card"><h2>Da dove arrivano</h2><?= hbars($sources) ?></div>
+  <div class="card"><h2>Da dove arrivano</h2><?= hbars($sources) ?><p class="muted"><a href="visite.php">Visite nel dettaglio →</a> ingresso, GPS, cookie, tempo, clic e percorsi.</p></div>
   <div class="card"><h2>Dispositivi</h2><?= hbars($devices) ?></div>
   <div class="card"><h2>Lingua del browser</h2><?= hbars($langs) ?></div>
   <div class="card"><h2>Cantine più salvate</h2>

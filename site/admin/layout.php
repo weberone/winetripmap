@@ -42,7 +42,7 @@ function admin_header(string $title, string $active): void {
   if (($_COOKIE['wtm_ns'] ?? '') !== '1') setcookie('wtm_ns', '1', ['expires' => time() + 400 * 86400, 'path' => '/', 'secure' => true, 'samesite' => 'Lax']);
   $fb = (int)one("SELECT COUNT(*) FROM feedback WHERE status = 'new'");
   $menu = [['/', '← Mappa', 'app', 0], ['dashboard.php', 'Dashboard', 'dash', 0], ['consumi.php', 'Consumi', 'cons', 0], ['users.php', 'Utenti', 'users', 0],
-    ['opens.php', 'Aperture', 'opens', 0], ['feedback.php', 'Feedback', 'fb', $fb], ['settings.php', 'Impostazioni', 'set', 0], ['/account/', 'Il mio account', 'acc', 0]];
+    ['visite.php', 'Visite', 'vis', 0], ['opens.php', 'Aperture', 'opens', 0], ['feedback.php', 'Feedback', 'fb', $fb], ['settings.php', 'Impostazioni', 'set', 0], ['/account/', 'Il mio account', 'acc', 0]];
   $links = ''; $opts = '';
   foreach ($menu as [$href, $label, $key, $cnt]) {
     $links .= '<a class="navlink' . ($key === $active ? ' on" aria-current="page' : '') . '" href="' . h($href) . '">' . h($label) . ($cnt ? " <b class=\"pill\">$cnt</b>" : '') . '</a>';
