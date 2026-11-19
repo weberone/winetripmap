@@ -100,6 +100,14 @@ jobs:
           node tools/vigneti-geofabrik.mjs --merge | tee "$RUNNER_TEMP/vig.txt"
           tail -1 "$RUNNER_TEMP/vig.txt" >> "$GITHUB_STEP_SUMMARY"
 
+      # cantine segnate in OSM come agriturismo, ristorante, fattoria o punto vendita, vicine a un vigneto (tools/agri.mjs):
+      # prima della lettura dei siti, così arrivano anche i loro vini e descrizioni
+      - name: Cantine da agriturismi e aziende agricole
+        run: |
+          set -euo pipefail
+          node tools/agri.mjs apply | tee -a "$GITHUB_STEP_SUMMARY"
+          node tools/luoghi.mjs
+
       # solo i siti non ancora letti; se un giro va troppo per le lunghe si ferma e il resto si legge il mese dopo
       - name: Siti delle nuove cantine
         run: |
@@ -122,9 +130,10 @@ jobs:
           set -euo pipefail
           tar -czf "$RUNNER_TEMP/dati-cache.tar.gz" -C tools/.cache prod vini desc
           cp tools/.cache/produttori-motivi.json "$RUNNER_TEMP/" 2>/dev/null || true
+          cp tools/.cache/agri-aggiunte.json "$RUNNER_TEMP/" 2>/dev/null || true
           gzip -c tools/.cache/osm/vigneti.json > "$RUNNER_TEMP/vigneti.json.gz" 2>/dev/null || rm -f "$RUNNER_TEMP/vigneti.json.gz"
           cd "$RUNNER_TEMP"
-          gh release upload cache-dati dati-cache.tar.gz $(ls rapporto.txt produttori-motivi.json vigneti.json.gz 2>/dev/null) --clobber -R "$GITHUB_REPOSITORY"
+          gh release upload cache-dati dati-cache.tar.gz $(ls rapporto.txt produttori-motivi.json vigneti.json.gz agri-aggiunte.json 2>/dev/null) --clobber -R "$GITHUB_REPOSITORY"
 
       - name: Applica al sito
         if: env.APPLICA == 'true'
