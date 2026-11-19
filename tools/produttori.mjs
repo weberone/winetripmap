@@ -63,7 +63,7 @@ function sites() {
 
 // ---- punteggio ----
 const outFile = join(here, 'data', 'produttori.json');
-const NAME_PROD = /(weingut|weinhof|winzerhof|weinbau|heurig|buschenschank|stra[uß]+wirtschaft|h[äa]cker|sekt|winzer|domaine|ch[aâ]teau|tenuta|bodegas?\b|winery|vineyards?|estates?\b|cellars\b|azienda (agricola|vinicola|vitivinicola)|az\.? ?agr|quinta\b|vignobles?|vigneron|wijngaard|wijndomein|kellerei|cantina sociale|cave (coop|des vignerons)|cooperativa|vinařství|winnica|pince(szet)?\b|vinarija|vinárstvo|oinopoieio|οινοποιείο|κτήμα|vin[ií]cola|vinhos\b|ving[åa]a?rd|viinitila|\bwines\b|wine co\b|\bceller\b|kelter\b|ワイナリー)/i;
+const NAME_PROD = /(weingut|weinhof|winzerhof|weinbau|heurig|buschenschank|stra[uß]+wirtschaft|h[äa]cker|sekt|winzer|domaine|ch[aâ]teau|tenuta|bodegas?\b|winery|vineyards?|estates?\b|cellars\b|azienda (agricola|vinicola|vitivinicola)|az\.? ?agr|quinta\b|vignobles?|vigneron|wijngaard|wijndomein|kellerei|cantina sociale|cave (coop|des vignerons)|cooperativa|vinařství|winnica|pince(szet)?\b|vinarija|vinárstvo|oinopoieio|οινοποιείο|κτήμα|vin[ií]cola|vinhos\b|ving[åa]a?rd|viinitila|\bwines\b|wine co\b|\bceller\b|kelter\b|cantina soc\b|cantine\b|tenute\b|castello|societ[àa] agricola|soc\.? ?agr|podere|fattoria|vign[ae]\b|vigneti?\b|ワイナリー)/i;
 const NAME_SHOP = /((?<!\p{L})bar(?!\p{L})|caff[eè]|(?<!\p{L})caf[eé](?!\p{L})|bibit|beverage|drinks?\b|distribu|import|ingross|wholesale|liquor|liquori|alimentari|market|\bshop\b|store\b|negozio|deli\b|gastronom|bistr|restaurant|ristorant|trattoria|osteria|pizzeri|pizza|hotel|lounge|club\b|birr|beer|brew|spirits|tabacch|coffee|kaffee|vinothek|weinhandl|caviste|cave [àa] vins?|wine ?shop|bottle ?shop|wine ?bar|weinbar|vinoteca|enoteca|merchants?\b|negoce|négoce)/iu;
 const BAD_AMENITY = /^(bar|pub|restaurant|cafe|fast_food|biergarten|nightclub|food_court|ice_cream)$/;
 const BAD_SHOP = /^(wine|alcohol|beverages|deli|supermarket|convenience|general|wholesale|kiosk|department_store|gift|variety_store)$/;
@@ -88,12 +88,12 @@ function vineIndex() {
   }
   console.log(`${n} vigneti di OSM` + (zone ? ` in ${zone.size} zone` : ''));
   const dist = (lat, lng) => { // distanza dal vigneto più vicino (km) e quanti vigneti entro 25 km
-    let best = Infinity, near = 0; const cl = Math.cos(lat * Math.PI / 180);
+    let best = Infinity, near = 0, n10 = 0; const cl = Math.cos(lat * Math.PI / 180);
     const a = Math.floor(lat * 10), b = Math.floor(lng * 10), rl = Math.ceil(3 / cl);
     for (let i = a - 3; i <= a + 3; i++) for (let j = b - rl; j <= b + rl; j++) for (const [y, x] of grid.get(i + ':' + j) || []) {
-      const d = Math.hypot((y - lat) * 111.2, (x - lng) * 111.2 * cl); if (d < best) best = d; if (d < 25) near++;
+      const d = Math.hypot((y - lat) * 111.2, (x - lng) * 111.2 * cl); if (d < best) best = d; if (d < 25) near++; if (d < 10) n10++;
     }
-    return [best, near];
+    return [best, near, n10]; // n10 = vigneti entro 10 km: dice se il comune è in una zona del vino
   };
   // null dove i vigneti del paese non ci sono (file Geofabrik mancante o non riuscito): lì non contano né a favore né contro
   return (id, lat, lng) => covered(id, lat, lng) ? dist(lat, lng) : null;
@@ -109,6 +109,15 @@ function build() {
   const items = tagged.length ? tagged.map((e) => [e.type[0] + e.id, e.lat ?? e.center?.lat, e.lon ?? e.center?.lon, (e.tags || {}).name || '']).filter((x) => x[1] != null)
     : JSON.parse(readFileSync(join(siteData, 'cantine.json'), 'utf8')).items;
   const wdq = wdMatch(tagged).osm; // cantine OSM che Wikidata conosce come cantine o aziende del vino
+  // paesi dove OSM segna bene i vigneti (almeno il 90% delle cantine del sito ha un vigneto entro 3 km, con almeno 50 cantine:
+  // Italia, Francia, Germania, Austria, Svizzera…): lì una cantina senza vigneti vicini e senza altre prove non è un produttore
+  // (richiesta dell'utente 2026-11-19: "La Cantina Seiterre" a Vimercate, comune senza vigneti)
+  const L = existsSync(join(here, 'data', 'luoghi.json')) ? JSON.parse(readFileSync(join(here, 'data', 'luoghi.json'), 'utf8')) : { w: {}, cities: {} };
+  const ccOf = (id) => L.cities[L.w[id]]?.cc;
+  const cov = {};
+  if (vine) for (const [id, lat, lng] of items) { const cc = ccOf(id), vz = cc && vine(id, lat, lng); if (!vz) continue; const o = cov[cc] ||= [0, 0]; o[0]++; if (vz[0] <= 3) o[1]++; }
+  const dense = new Set(Object.entries(cov).filter(([, [n, k]]) => n >= 50 && k / n >= 0.9).map(([cc]) => cc));
+  console.log('paesi con i vigneti ben segnati:', [...dense].join(' '));
   const out = {};
   for (const [id, lat, lng, name] of items) {
     let pos = 0, neg = 0, vneg = 0; const why = [];
@@ -127,6 +136,8 @@ function build() {
     if (/office|company/.test(t.office || '')) add(-1, 'office=' + t.office);
     if (t.landuse === 'vineyard' || /grape|wine/.test(t.produce || '')) add(3, 'vigneto nel punto');
     if (NAME_PROD.test(name)) add(2, 'nome da produttore');
+    // "Cantina Mesa", "Cantina Ferraris": cantina + cognome, di solito un produttore; "La Cantina Seiterre", "La Cantina di Opera" no
+    else if (/^[Cc]antina \p{Lu}/u.test(name) && !/^cantina (la|il|lo|le|i|gli|del|della|dei|degli|di|da) /i.test(name)) add(1, 'nome: cantina + nome proprio');
     if (NAME_SHOP.test(name)) add(-2, 'nome da locale/negozio');
     if (vini[id]) add(1, 'lista dei vini');
     if (wdq.has(id)) add(2, 'Wikidata: ' + wdq.get(id));
@@ -142,7 +153,13 @@ function build() {
     // da produttore restano
     // i vigneti di OSM sono incompleti (tante cantine vere li hanno lontano o non segnati): la sola mancanza di vigneti non basta
     // per togliere, serve anche un altro segno da locale/negozio (2026-11-19, dopo il primo rapporto: 1.610 fuori, tanti produttori veri)
-    const s = (pos <= 1 && neg <= -2) || (pos === 0 && neg + soloVendita <= -1 && vneg < 0) ? -2 : pos === 0 && neg === -1 ? -1 : pos + neg + vneg < 0 ? 0 : pos + neg + vneg;
+    // dove i vigneti sono ben segnati: nessuna prova da produttore e nessun vigneto entro 3 km, oppure al massimo una prova debole
+    // (+1, es. la sola lista dei vini, che hanno anche le enoteche) e nessun vigneto entro 8 km → fuori
+    // ma solo fuori dalle zone del vino: in un comune pieno di vigneti (Marsala, Montaione, Forlì…) una cantina senza altre prove
+    // è quasi sempre un produttore vero con i vigneti un po' più in là; a Vimercate, Milano, Opera no
+    const fitto = vz && dense.has(ccOf(id)) && vz[2] < 40 && ((pos === 0 && vz[0] > 3) || (pos <= 1 && vz[0] > 8));
+    if (fitto) why.push(`paese con vigneti ben segnati, nessuno entro 3 km e ${vz[2]} entro 10 km`);
+    const s = fitto || (pos <= 1 && neg <= -2) || (pos === 0 && neg + soloVendita <= -1 && vneg < 0) ? -2 : pos === 0 && neg === -1 ? -1 : pos + neg + vneg < 0 ? 0 : pos + neg + vneg;
     out[id] = [s, name, why.join('; ')];
   }
   mkdirSync(dirname(outFile), { recursive: true });
