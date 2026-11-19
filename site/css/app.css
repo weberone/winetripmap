@@ -89,6 +89,9 @@ aside.panel{grid-row:3;background:var(--surface);border-top:1px solid var(--line
 .dhead{position:sticky;top:0;z-index:1;display:flex;align-items:flex-start;gap:8px;padding:14px 0 10px;background:var(--surface)}
 .dhead h2{margin:0;flex:1;font:800 22px/1.2 var(--f-display);letter-spacing:-.02em;overflow-wrap:anywhere}
 .dhead .x{flex:none}
+.dclosed{margin:-4px 0 10px;padding:6px 10px;border-radius:8px;font-size:13.5px;font-weight:600;background:rgb(210 140 0 / .14);color:#a86b00}
+.dclosed.perm{background:rgb(180 35 24 / .12);color:#b42318}
+:root[data-scheme="dark"] .dclosed{color:#f0b54a} :root[data-scheme="dark"] .dclosed.perm{color:#ff8a80}
 .dkind{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-bottom:10px}
 .dline{margin:6px 0;font-size:15px;line-height:1.45}
 .dline small{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}

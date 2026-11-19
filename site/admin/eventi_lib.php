@@ -6,7 +6,7 @@ const EV_LABELS = [
   'gps:ok' => 'GPS: posizione trovata', 'gps:denied' => 'GPS: permesso negato', 'gps:timeout' => 'GPS: nessuna risposta in tempo',
   'gps:unavailable' => 'GPS: posizione non disponibile', 'gps:nobrowser' => 'GPS: il browser non lo permette',
   'app:open' => 'Apre la mappa', 'app:close' => 'Chiude la pagina', 'app:hidden' => 'Mappa in secondo piano', 'app:visible' => 'Torna sulla mappa',
-  'view:winery' => 'Apre la scheda di una cantina', 'list:winery' => 'Elenco: tocca una cantina',
+  'view:winery' => 'Apre la scheda di una cantina', 'view:closed' => 'Scheda: Google la dà chiusa', 'list:winery' => 'Elenco: tocca una cantina',
   'search:place' => 'Ricerca: un luogo', 'search:town' => 'Ricerca: un comune', 'search:geo' => 'Ricerca: coordinate', 'search:winery' => 'Ricerca: una cantina', 'search:area' => 'Ricerca: un\'area', 'search:zone' => 'Ricerca: una zona del vino',
   'act:use_location' => 'Usa la posizione (riuscito)', 'act:open_browse' => 'Esplora per area', 'act:share' => 'Condivide', 'act:add_to_trip' => 'Aggiunge al trip',
   'act:open_street_view' => 'Apre Street View', 'act:get_directions' => 'Indicazioni stradali', 'act:call_winery' => 'Telefona alla cantina',

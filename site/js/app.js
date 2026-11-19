@@ -609,17 +609,26 @@ function closeStreetView() { if ($("sview").hidden) return; $("sview").hidden = 
 // foto di Google: la ricerca (1 chiamata gtext) dà fino a 4 foto; ognuna conta 1 (gphoto) solo quando la si guarda
 // nello slider, e la foto grande usa la stessa immagine (nessuna richiesta in più)
 const G_MAX = 4;
+function showClosed(x, k) {
+  if (state.sel !== x.id || $("detail").querySelector(".dclosed")) return;
+  const kind = $("detail").querySelector(".dkind"); if (!kind) return;
+  kind.insertAdjacentHTML("afterend", `<p class="dclosed${k === "g_closed" ? " perm" : ""}">${esc(t(k))}</p>`);
+  track("view:closed", title(x));
+}
 async function googlePhotos(x) {
   const key = "gp." + x.id, known = store.get(key);
   if (known && known.none && Date.now() - known.at < 30 * 864e5) return []; // già cercata di recente: nessuna foto
   const lib = await placesLib().catch(() => null); if (!lib || !(await allowApi("gtext"))) return [];
   let p;
   try {
-    const r = await lib.Place.searchByText({ textQuery: [title(x), x.c].filter(Boolean).join(" "), fields: ["photos", "location", "googleMapsURI"],
+    const r = await lib.Place.searchByText({ textQuery: [title(x), x.c].filter(Boolean).join(" "), fields: ["photos", "location", "googleMapsURI", "businessStatus"],
       locationBias: { center: { lat: x.lat, lng: x.lng }, radius: 500 }, maxResultCount: 1 });
     p = r.places && r.places[0];
   } catch (e) { return []; }
-  const list = p && p.location && distKm(x, { lat: p.location.lat(), lng: p.location.lng() }) < 1.5 && p.photos ? p.photos.slice(0, G_MAX) : [];
+  const near = p && p.location && distKm(x, { lat: p.location.lat(), lng: p.location.lng() }) < 1.5;
+  // chiusa secondo Google: si mostra solo nella scheda, ora, senza salvarla (condizioni di Google Maps Platform); stessa chiamata, nessun costo in più
+  if (near && /^CLOSED_(PERMANENTLY|TEMPORARILY)$/.test(p.businessStatus || "")) showClosed(x, p.businessStatus === "CLOSED_PERMANENTLY" ? "g_closed" : "g_closed_t");
+  const list = near && p.photos ? p.photos.slice(0, G_MAX) : [];
   if (!list.length) { store.set(key, { none: 1, at: Date.now() }); return []; }
   return list.map((ph) => {
     const by = (ph.authorAttributions || []).map((a) => a.displayName).filter(Boolean).join(", ");
