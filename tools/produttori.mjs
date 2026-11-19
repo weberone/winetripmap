@@ -69,12 +69,23 @@ const BAD_SHOP = /^(wine|alcohol|beverages|deli|supermarket|convenience|general|
 function vineIndex() {
   const f = join(osmDir, 'vigneti.json'); if (!existsSync(f)) return null;
   const grid = new Map(); let n = 0;
-  for (const e of JSON.parse(readFileSync(f, 'utf8')).elements) {
+  const V = JSON.parse(readFileSync(f, 'utf8'));
+  // paesi (e stati USA "US.CA") di cui si hanno i vigneti; senza elenco (vecchio vigneti-osm.mjs) tutti
+  const zone = V.zone ? new Set(V.zone) : null;
+  const L = existsSync(join(here, 'data', 'luoghi.json')) ? JSON.parse(readFileSync(join(here, 'data', 'luoghi.json'), 'utf8')) : { w: {}, cities: {} };
+  const cities = Object.values(L.cities);
+  const covered = (id, lat, lng) => {
+    if (!zone) return true;
+    let c = L.cities[L.w[id]];
+    if (!c) { let bd = Infinity; for (const x of cities) { const d = (x.lat - lat) ** 2 + ((x.lng - lng) * Math.cos(lat * Math.PI / 180)) ** 2; if (d < bd) { bd = d; c = x; } } } // cantina non nel sito: il comune più vicino
+    return !!c && (zone.has(c.cc) || zone.has(c.r));
+  };
+  for (const e of V.elements) {
     const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon; if (lat == null) continue;
     const k = Math.floor(lat * 10) + ':' + Math.floor(lng * 10); (grid.get(k) || grid.set(k, []).get(k)).push([lat, lng]); n++;
   }
-  console.log(`${n} vigneti di OSM`);
-  return (lat, lng) => { // distanza dal vigneto più vicino (km) e quanti vigneti entro 25 km
+  console.log(`${n} vigneti di OSM` + (zone ? ` in ${zone.size} zone` : ''));
+  const dist = (lat, lng) => { // distanza dal vigneto più vicino (km) e quanti vigneti entro 25 km
     let best = Infinity, near = 0; const cl = Math.cos(lat * Math.PI / 180);
     const a = Math.floor(lat * 10), b = Math.floor(lng * 10), rl = Math.ceil(3 / cl);
     for (let i = a - 3; i <= a + 3; i++) for (let j = b - rl; j <= b + rl; j++) for (const [y, x] of grid.get(i + ':' + j) || []) {
@@ -82,6 +93,8 @@ function vineIndex() {
     }
     return [best, near];
   };
+  // null dove i vigneti del paese non ci sono (file Geofabrik mancante o non riuscito): lì non contano né a favore né contro
+  return (id, lat, lng) => covered(id, lat, lng) ? dist(lat, lng) : null;
 }
 
 function build() {
@@ -97,8 +110,9 @@ function build() {
   for (const [id, lat, lng, name] of items) {
     let pos = 0, neg = 0; const why = [];
     const add = (p, w) => { if (p > 0) pos += p; else neg += p; why.push((p > 0 ? '+' : '') + p + ' ' + w); };
-    if (vine) {
-      const [d, near] = vine(lat, lng);
+    const vz = vine && vine(id, lat, lng);
+    if (vz) {
+      const [d, near] = vz;
       if (d <= 0.6) add(3, 'vigneto a ' + d.toFixed(1) + ' km'); else if (d <= 1.5) add(2, 'vigneto a ' + d.toFixed(1) + ' km'); else if (d <= 3) add(1, 'vigneto a ' + d.toFixed(1) + ' km');
       else if (near >= 5) add(-2, 'nessun vigneto entro 3 km (' + near + ' entro 25 km)'); else if (near >= 1) add(-1, 'nessun vigneto entro 3 km');
     }
@@ -121,7 +135,7 @@ function build() {
     // solo produttori (richiesta dell'utente 2026-11-18): serve almeno una prova di produzione (vigneto vicino, nome, sito,
     // lista dei vini); chi ha segni da negozio/locale e al massimo una prova debole (+1) esce. Ristorante o Heuriger con prove
     // da produttore restano
-    const s = (vine && pos === 0) || (pos <= 1 && neg <= -2) ? -2 : pos === 0 && neg === -1 ? -1 : pos + neg < 0 ? 0 : pos + neg;
+    const s = (vz && pos === 0) || (pos <= 1 && neg <= -2) ? -2 : pos === 0 && neg === -1 ? -1 : pos + neg < 0 ? 0 : pos + neg;
     out[id] = [s, name, why.join('; ')];
   }
   mkdirSync(dirname(outFile), { recursive: true });

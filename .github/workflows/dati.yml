@@ -1,5 +1,5 @@
 # Aggiorna i dati della mappa una volta al mese, sui server di GitHub (il Mac può restare spento):
-# cantine da OpenStreetMap, luoghi da GeoNames, vigneti dai file Geofabrik, siti delle nuove cantine (vini, descrizioni,
+# cantine da OpenStreetMap, luoghi da GeoNames, vigneti dai file Geofabrik (8 parti in parallelo), siti delle nuove cantine (vini, descrizioni,
 # parole da produttore), punteggio "chi produce vino", pagine SEO; poi commit su main e deploy.
 # La memoria dei siti già letti (tools/.cache/prod, vini, desc: mai nel repository) sta nella release privata "cache-dati",
 # così ogni mese si leggono solo i siti nuovi.
@@ -26,7 +26,33 @@ permissions:
   actions: write # avvia il deploy (un push fatto da un workflow non lo avvia da solo)
 
 jobs:
+  # vigneti dai file Geofabrik: troppi GB per una macchina sola (la Francia da sola ~30 minuti), 8 parti in parallelo;
+  # ogni parte mette i suoi file nella release cache-dati (vigneti-parte-N.tar.gz). Se una parte non finisce resta quella
+  # del mese prima, e dove mancano i vigneti di un paese produttori.mjs non toglie nessuno per questo
+  vigneti:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        parte: [1, 2, 3, 4, 5, 6, 7, 8]
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Vigneti, parte ${{ matrix.parte }} di 8
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+          timeout 270m node tools/vigneti-geofabrik.mjs --part ${{ matrix.parte }}/8 || true
+          ls tools/.cache/vigneti | wc -l
+          tar -czf "$RUNNER_TEMP/vigneti-parte-${{ matrix.parte }}.tar.gz" -C tools/.cache vigneti
+          gh release upload cache-dati "$RUNNER_TEMP/vigneti-parte-${{ matrix.parte }}.tar.gz" --clobber -R "$GITHUB_REPOSITORY"
+
   dati:
+    needs: vigneti
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 340
     env:
@@ -62,9 +88,13 @@ jobs:
         timeout-minutes: 120
         run: node tools/osm-cantine.mjs && node tools/luoghi.mjs
 
-      - name: Vigneti da Geofabrik
-        timeout-minutes: 150
-        run: node tools/vigneti-geofabrik.mjs
+      - name: Vigneti (unisce le 8 parti)
+        run: |
+          set -euo pipefail
+          gh release download cache-dati -p 'vigneti-parte-*.tar.gz' -D "$RUNNER_TEMP/vig"
+          for f in "$RUNNER_TEMP"/vig/*.tar.gz; do tar -xzf "$f" -C tools/.cache; done
+          node tools/vigneti-geofabrik.mjs --merge | tee "$RUNNER_TEMP/vig.txt"
+          tail -1 "$RUNNER_TEMP/vig.txt" >> "$GITHUB_STEP_SUMMARY"
 
       # solo i siti non ancora letti; se un giro va troppo per le lunghe si ferma e il resto si legge il mese dopo
       - name: Siti delle nuove cantine
