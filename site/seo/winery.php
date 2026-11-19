@@ -5,7 +5,7 @@
 require __DIR__ . '/common.php';
 seo_cache();
 $id = (string)($_GET['id'] ?? '');
-if (!preg_match('/^[nwr]\d{1,15}$/', $id)) not_found();
+if (!preg_match('/^[nwrq]\d{1,15}$/', $id)) not_found();
 $wm = json_decode((string)@file_get_contents(DATA . '/seo/w.json'), true) ?: [];
 $cc = isset($wm[$id]) ? strtoupper($wm[$id]) : null;
 $P = $cc ? seo_country($cc) : null;
@@ -84,7 +84,7 @@ echo $crumb;
     <?php if ($tel): ?><li><?= h(L('phone')) ?>: <a href="tel:<?= h(preg_replace('/[^\d+]/', '', $tel)) ?>"><?= h($tel) ?></a></li><?php endif; ?>
     <?php if ($site): ?><li><?= h(L('website')) ?>: <a href="<?= h($site) ?>" rel="nofollow noopener"><?= h($host) ?></a></li><?php endif; ?>
     <li><?= h(L('coords')) ?>: <?= h($coords) ?></li>
-    <li><?= h(L('source')) ?>: <a href="https://www.openstreetmap.org/<?= ['n' => 'node', 'w' => 'way', 'r' => 'relation'][$id[0]] . '/' . substr($id, 1) ?>" rel="nofollow">OpenStreetMap</a></li>
+    <li><?= h(L('source')) ?>: <?php if ($id[0] === 'q'): ?><a href="https://www.wikidata.org/wiki/Q<?= h(substr($id, 1)) ?>" rel="nofollow">Wikidata</a><?php else: ?><a href="https://www.openstreetmap.org/<?= ['n' => 'node', 'w' => 'way', 'r' => 'relation'][$id[0]] . '/' . substr($id, 1) ?>" rel="nofollow">OpenStreetMap</a><?php endif; ?></li>
   </ul>
   <h2><?= h(L('w_area')) ?></h2>
   <p><?= h(implode(' ', $area)) ?></p>

@@ -426,7 +426,8 @@ function pinTip(id) {
   tipFly = Date.now(); M.flyTo({ lat: x.lat, lng: x.lng }, null, Math.round(((tip ? tip.offsetHeight : 120) + 50) / 2));
 }
 const directionsUrl = (x) => `https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}`;
-const osmUrl = (x) => `https://www.openstreetmap.org/${{ n: "node", w: "way", r: "relation" }[x.id[0]]}/${x.id.slice(1)}`;
+// cantine di OpenStreetMap (n/w/r) o di Wikidata (q: mancano in OSM, tools/wikidata-cantine.mjs)
+const osmUrl = (x) => x.id[0] === "q" ? `https://www.wikidata.org/wiki/Q${x.id.slice(1)}` : `https://www.openstreetmap.org/${{ n: "node", w: "way", r: "relation" }[x.id[0]]}/${x.id.slice(1)}`;
 const placeUrl = (x) => `${location.origin}${location.pathname}?c=${encodeURIComponent(x.id)}`;
 // eventi per Google Analytics (js/consent.js): partono solo se il visitatore ha accettato i cookie di statistica
 // e, per la pagina Visite dell'admin, anche ad api/track.php (vedi track() sotto)
@@ -538,7 +539,7 @@ async function openDetail(id, fly = true) {
       ${MAPS.googleKey ? `<button class="btn" id="dSv" type="button"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="5" r="2.6"/><path d="M9.2 9h5.6l1 6h-2.2l-.6 6h-2l-.6-6H8.2z"/></svg>${esc(t("sview"))}</button>` : ""}
       <button class="btn" id="dShare" type="button">${esc(t("share"))}</button>
     </div>
-    <p class="dsrc">${esc(t("osm"))} · <a href="${osmUrl(x)}" target="_blank" rel="noopener">${esc(t("fix"))}</a></p>`;
+    <p class="dsrc">${esc(x.id[0] === "q" ? t("osm").replace("OpenStreetMap", "Wikidata") : t("osm"))} · <a href="${osmUrl(x)}" target="_blank" rel="noopener">${esc(t("fix"))}</a></p>`;
   $("dClose").onclick = () => closeDetail();
   $("dShare").onclick = () => share(title(x), placeUrl(x));
   if ($("dSv")) $("dSv").onclick = () => openStreetView(x);

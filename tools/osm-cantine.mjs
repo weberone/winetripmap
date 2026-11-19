@@ -3,7 +3,7 @@
 //   (mappa, radar, ricerca e "Trova le più vicine" lavorano solo su questo file)
 // - site/data/det5/<lat÷2,5>_<lng÷2,5>.json: indirizzo, telefono, sito e orari, divisi in riquadri di 2,5° × 2,5° (cartella det5, nome storico),
 //   caricati solo quando si apre la scheda di una cantina → { id: { a, p, w, o } }
-// usage: node tools/osm-cantine.mjs
+// usage: node tools/osm-cantine.mjs (prima, se si vuole aggiornare anche Wikidata: node tools/wikidata-cantine.mjs)
 // Dati © OpenStreetMap contributors, licenza ODbL: l'attribuzione resta visibile sulla mappa.
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -12,6 +12,7 @@ import { applyVini } from './vini-applica.mjs';
 import { nonCantina } from './non-cantine.mjs';
 import { applyDesc } from './descrizioni.mjs';
 import { nonProduttore } from './produttori.mjs';
+import { wdMatch } from './wikidata-cantine.mjs';
 
 const dataDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'site', 'data');
 const SERVERS = [
@@ -71,9 +72,18 @@ for (const e of els) {
   };
   if (d.a || d.p || d.w || d.o) (det[cell(lat, lng)] ||= {})[id] = d;
 }
+// cantine di Wikidata che mancano in OpenStreetMap (tools/wikidata-cantine.mjs): id "q<numero>", solo nome e sito
+let wd = 0; const wdSeen = new Set();
+for (const [q, lat, lng, name, w] of wdMatch(els).extra) {
+  const id = q.toLowerCase(), k = lat.toFixed(3) + ',' + lng.toFixed(3);
+  if (wdSeen.has(k) || nonCantina(id, name) || nonProduttore(id)) continue; wdSeen.add(k);
+  items.push([id, lat, lng, name, '']); wd++;
+  if (w) (det[cell(lat, lng)] ||= {})[id] = { w };
+}
+console.log(`${wd} cantine da Wikidata che mancano in OpenStreetMap`);
 items.sort((a, b) => a[0].localeCompare(b[0])); // ordine stabile: diff piccoli quando si aggiornano i dati
 mkdirSync(dataDir, { recursive: true });
-writeFileSync(join(dataDir, 'cantine.json'), JSON.stringify({ updated: new Date().toISOString().slice(0, 10), source: '© OpenStreetMap contributors (ODbL)', items }));
+writeFileSync(join(dataDir, 'cantine.json'), JSON.stringify({ updated: new Date().toISOString().slice(0, 10), source: '© OpenStreetMap contributors (ODbL); Wikidata (CC0)', items }));
 rmSync(join(dataDir, 'det5'), { recursive: true, force: true });
 mkdirSync(join(dataDir, 'det5'));
 for (const [k, v] of Object.entries(det)) writeFileSync(join(dataDir, 'det5', k + '.json'), JSON.stringify(v));

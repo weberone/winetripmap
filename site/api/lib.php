@@ -149,6 +149,13 @@ CREATE TABLE IF NOT EXISTS user_events (
   x       TEXT
 );
 CREATE INDEX IF NOT EXISTS user_events_sid ON user_events (sid, at);
+-- scelte a mano sulle cantine dubbie (admin/revisione.php): d = 't' togli, 'k' tieni; il workflow revisioni.yml le applica ai dati
+CREATE TABLE IF NOT EXISTS revisioni (
+  id TEXT PRIMARY KEY,
+  d TEXT NOT NULL,
+  at TEXT NOT NULL,
+  by_user INTEGER
+);
 SQL;
 // colonne aggiunte dopo (le tabelle già create non le prendono da CREATE TABLE): [tabella, colonna, tipo]
 const SCHEMA_ADD = [

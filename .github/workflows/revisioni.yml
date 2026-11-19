@@ -1,0 +1,57 @@
+# Ogni giorno: legge le scelte fatte a mano nell'admin (Admin → Revisione, api/revisioni.php) e, se sono cambiate,
+# toglie dalla mappa le cantine da togliere (tools/produttori.mjs apply), salva tools/data/revisioni.json e avvia il deploy.
+# Le stesse scelte valgono negli aggiornamenti mensili (dati.yml), perché stanno nel repository.
+name: Revisioni delle cantine
+
+on:
+  schedule:
+    - cron: '41 4 * * *' # ogni giorno, 04:41 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: dati # mai insieme all'aggiornamento mensile
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  revisioni:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Scelte dall'admin
+        id: r
+        run: |
+          set -euo pipefail
+          curl -sfL -A winetripmap-build/1.0 https://winetripmap.com/api/revisioni.php -o "$RUNNER_TEMP/r.json"
+          node -e "
+            const r = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')), o = {};
+            for (const d of ['t', 'k']) for (const id of r[d] || []) if (/^[nwrq][0-9]{1,15}$/.test(id)) o[id] = d;
+            const s = Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]]));
+            require('fs').writeFileSync('tools/data/revisioni.json', JSON.stringify(s, null, 0) + '\n');
+            console.log(Object.keys(s).length + ' scelte');
+          " "$RUNNER_TEMP/r.json"
+          if git diff --quiet tools/data/revisioni.json; then echo 'nessuna scelta nuova'; echo cambiate=0 >> "$GITHUB_OUTPUT"; else echo cambiate=1 >> "$GITHUB_OUTPUT"; fi
+
+      - name: Toglie dalla mappa e pubblica
+        if: steps.r.outputs.cambiate == '1'
+        run: |
+          set -euo pipefail
+          npm ci --prefix tools --silent
+          G=tools/.cache/geonames; mkdir -p $G
+          curl -sfL -A winetripmap-build/1.0 -o $G/countryInfo.txt https://download.geonames.org/export/dump/countryInfo.txt
+          node tools/produttori.mjs apply
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A site/data tools/data
+          git commit -q -m "Revisioni dall'admin: $(node -e "const r=require('./tools/data/revisioni.json');const v=Object.values(r);console.log(v.filter(x=>x==='t').length+' da togliere, '+v.filter(x=>x==='k').length+' da tenere')")"
+          git pull -q --rebase
+          git push
+          gh workflow run deploy.yml --ref main

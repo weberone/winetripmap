@@ -9,11 +9,13 @@
 //   node tools/produttori.mjs build     → tools/data/produttori.json { id: punteggio } + riepilogo; osm-cantine.mjs toglie chi è sotto soglia
 //   node tools/produttori.mjs apply     → toglie subito dai dati del sito chi è sotto soglia (e rifà aree e pagine SEO)
 //   node tools/produttori.mjs page <url> → parole trovate in una pagina
+//   node tools/produttori.mjs dubbi     → site/admin/dati/dubbi.json, le cantine da guardare a mano (Admin → Revisione)
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as cheerio from 'cheerio';
 import { get, robotsRules, allowed } from './rete.mjs';
+import { wdMatch } from './wikidata-cantine.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const siteData = join(here, '..', 'site', 'data');
@@ -106,6 +108,7 @@ function build() {
   // tutte le cantine di OSM (anche quelle già tolte dal sito), altrimenti quelle del sito
   const items = tagged.length ? tagged.map((e) => [e.type[0] + e.id, e.lat ?? e.center?.lat, e.lon ?? e.center?.lon, (e.tags || {}).name || '']).filter((x) => x[1] != null)
     : JSON.parse(readFileSync(join(siteData, 'cantine.json'), 'utf8')).items;
+  const wdq = wdMatch(tagged).osm; // cantine OSM che Wikidata conosce come cantine o aziende del vino
   const out = {};
   for (const [id, lat, lng, name] of items) {
     let pos = 0, neg = 0, vneg = 0; const why = [];
@@ -126,6 +129,7 @@ function build() {
     if (NAME_PROD.test(name)) add(2, 'nome da produttore');
     if (NAME_SHOP.test(name)) add(-2, 'nome da locale/negozio');
     if (vini[id]) add(1, 'lista dei vini');
+    if (wdq.has(id)) add(2, 'Wikidata: ' + wdq.get(id));
     const c = crawl.get(id);
     if (c && c.prod) {
       const P = Object.keys(c.prod).length, Sh = Object.keys(c.shop).length;
@@ -178,10 +182,33 @@ function confronta(vecchio, uscita) {
   console.log(txt.split('\n').slice(0, 2).join('\n'));
 }
 
+// scelte fatte a mano nell'admin (Admin → Revisione, api/revisioni.php → tools/data/revisioni.json): { id: "t" togli | "k" tieni }; vincono sul punteggio
+const revFile = join(here, 'data', 'revisioni.json');
+export const revisioni = () => (revisioni.m ||= existsSync(revFile) ? JSON.parse(readFileSync(revFile, 'utf8')) : {});
 export function nonProduttore(id, soglia = -2) {
+  const r = revisioni()[id]; if (r === 't') return true; if (r === 'k') return false;
   if (!existsSync(outFile)) return false;
   nonProduttore.m ||= JSON.parse(readFileSync(outFile, 'utf8'));
   return id in nonProduttore.m && nonProduttore.m[id] <= soglia;
+}
+
+// cantine dubbie ancora sul sito (punteggio da -1 a 1: nessuna o poche prove), per la pagina Revisione dell'admin
+// → site/admin/dati/dubbi.json (non leggibile dal web) { n: data, items: [[id, lat, lng, nome, "IT Comune", punteggio, motivi, sito], …] }
+function dubbi() {
+  const M = JSON.parse(readFileSync(join(here, '.cache', 'produttori-motivi.json'), 'utf8'));
+  const L = existsSync(join(here, 'data', 'luoghi.json')) ? JSON.parse(readFileSync(join(here, 'data', 'luoghi.json'), 'utf8')) : { w: {}, cities: {} };
+  const C = JSON.parse(readFileSync(join(siteData, 'cantine.json'), 'utf8'));
+  const det = {}; for (const f of readdirSync(join(siteData, 'det5'))) Object.assign(det, JSON.parse(readFileSync(join(siteData, 'det5', f), 'utf8')));
+  const items = [];
+  for (const [id, lat, lng, name, town] of C.items) {
+    const m = M[id]; if (!m || m[0] < -1 || m[0] > 1) continue;
+    const c = L.cities[L.w[id]];
+    items.push([id, lat, lng, name, c ? c.cc + ' ' + c.n : (town || ''), m[0], m[2], det[id]?.w || '']);
+  }
+  items.sort((a, b) => a[4].localeCompare(b[4]) || a[5] - b[5]);
+  const out = join(siteData, '..', 'admin', 'dati'); mkdirSync(out, { recursive: true });
+  writeFileSync(join(out, 'dubbi.json'), JSON.stringify({ n: C.updated, items }));
+  console.log(`${items.length} cantine dubbie → site/admin/dati/dubbi.json`);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
@@ -209,6 +236,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   } else if (cmd === 'build') build();
   else if (cmd === 'confronta') confronta(args[1], args[2]);
   else if (cmd === 'apply') await apply();
+  else if (cmd === 'dubbi') dubbi();
   else if (cmd === 'page') { const p = await get(args[1]); console.log(JSON.stringify(wordsOf(p.text || ''))); }
   else if (cmd !== 'build' && cmd !== 'apply') console.log('usage: node tools/produttori.mjs crawl|build|apply|page <url>');
 }

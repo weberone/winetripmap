@@ -1,5 +1,5 @@
 # Aggiorna i dati della mappa una volta al mese, sui server di GitHub (il Mac può restare spento):
-# cantine da OpenStreetMap, luoghi da GeoNames, vigneti dai file Geofabrik (8 parti in parallelo), siti delle nuove cantine (vini, descrizioni,
+# cantine da OpenStreetMap e Wikidata, luoghi da GeoNames, vigneti dai file Geofabrik (8 parti in parallelo), siti delle nuove cantine (vini, descrizioni,
 # parole da produttore), punteggio "chi produce vino", pagine SEO; poi commit su main e deploy.
 # La memoria dei siti già letti (tools/.cache/prod, vini, desc: mai nel repository) sta nella release privata "cache-dati",
 # così ogni mese si leggono solo i siti nuovi.
@@ -84,6 +84,9 @@ jobs:
           for f in cities500.zip admin1CodesASCII.txt countryInfo.txt; do curl -sfL -A winetripmap-build/1.0 -o $G/$f https://download.geonames.org/export/dump/$f; done
           unzip -oq $G/cities500.zip -d $G
 
+      - name: Cantine da Wikidata
+        run: node tools/wikidata-cantine.mjs || echo 'Wikidata non risponde: resta il file del mese prima'
+
       - name: Cantine da OpenStreetMap
         timeout-minutes: 120
         run: node tools/osm-cantine.mjs && node tools/luoghi.mjs
@@ -127,10 +130,12 @@ jobs:
         run: |
           set -euo pipefail
           node tools/produttori.mjs apply
+          node tools/produttori.mjs dubbi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A site/data tools/data
+          git add -A site/data site/admin/dati tools/data
           if git diff --cached --quiet; then echo 'niente di nuovo'; exit 0; fi
           git commit -q -m "Dati del mese: $(head -1 "$RUNNER_TEMP/rapporto.txt"), $(node -e "console.log(require('./site/data/cantine.json').items.length)") cantine"
+          git pull -q --rebase # nel frattempo su main possono essere arrivati altri commit
           git push
           gh workflow run deploy.yml --ref main
