@@ -44,7 +44,7 @@ jobs:
 
       - name: Vigneti, parte ${{ matrix.parte }} di 8
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+          for i in 1 2 3 4 5; do sudo apt-get update -qq && sudo apt-get install -y -qq -o Acquire::Retries=5 osmium-tool && break; echo 'apt non risponde, riprovo'; sleep 60; done; command -v osmium
           timeout 270m node tools/vigneti-geofabrik.mjs --part ${{ matrix.parte }}/8 || true
           ls tools/.cache/vigneti | wc -l
           tar -czf "$RUNNER_TEMP/vigneti-parte-${{ matrix.parte }}.tar.gz" -C tools/.cache vigneti
@@ -66,7 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           node -v
-          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+          for i in 1 2 3 4 5; do sudo apt-get update -qq && sudo apt-get install -y -qq -o Acquire::Retries=5 osmium-tool && break; echo 'apt non risponde, riprovo'; sleep 60; done; command -v osmium
           npm ci --prefix tools --silent
 
       - name: Memoria dei siti già letti
