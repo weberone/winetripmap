@@ -26,11 +26,12 @@ const DESC = /(vendita (diretta )?(di |del )?vin|produzion[ei] (di |del )?vin|pr
 // agriturismi: entrano solo vicinissimi a un vigneto (Agriturismo Terrazze di Montevecchia)
 const AGRI = /(agriturismo|agritur\b|buschenschank|heuriger)/i;
 // enoteche, wine bar, negozi e locali: mai (anche con "vigne" nel nome: Osteria delle Vigne, Trattoria nelle Vigne)
-const NO = /(enotec|vinotec|wine ?bar|bar à vins?|bar a vin|weinbar|weinhandel|weinstube|caviste|cave à vins?|cave a vin|wine (shop|store)|liquor|osteria|trattoria|ristorante|restaurant|pizz|hotel|albergo|pub\b|bistr|sushi|kebab|burger|gelat|pasticc|panific|bäckerei|caf[eé]\b|bar\b|lounge|club\b|camping|bed (and|&) breakfast|b&b|parco|park\b|affittacamere|alloggi|appartament|apartment|rooms\b|zimmer|ferienwohnung|residence|^(la |alla |)cantina$)/i;
+const NO = /(enotec|vinotec|vinothek|museum|mus[ée]e|museo|relais|h[oô]tel\b|wine ?bar|bar à vins?|bar a vin|weinbar|weinhandel|weinstube|caviste|cave à vins?|cave a vin|wine (shop|store)|liquor|osteria|trattoria|ristorante|restaurant|pizz|hotel|albergo|pub\b|bistr|sushi|kebab|burger|gelat|pasticc|panific|bäckerei|caf[eé]\b|bar\b|lounge|club\b|camping|bed (and|&) breakfast|b&b|parco|park\b|affittacamere|alloggi|appartament|apartment|rooms\b|zimmer|ferienwohnung|residence|^(la |alla |)cantina$)/i;
 
 export function agriCandidate(t) {
   if (!t || !t.name || t.craft === 'winery') return null; // le cantine vere arrivano già da osm-cantine.mjs
   if (NO.test(t.name)) return null;
+  if (/^(farmland|vineyard|orchard|meadow)$/.test(t.landuse || '') || /^(fast_food|ice_cream)$/.test(t.amenity || '')) return null; // appezzamenti di vigna ("GGF5"), fast food
   const who = [t.name, t.operator, t.brand].filter(Boolean).join(' · ');
   const desc = [t.description, t['description:it'], t['description:en'], t['description:de'], t['description:fr']].filter(Boolean).join(' · ');
   const prod = /wine|grape|vino|wein|\bvin\b|uva/i.test([t.produce, t.product].filter(Boolean).join(' '));
