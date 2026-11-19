@@ -61,7 +61,7 @@ function sites() {
 
 // ---- punteggio ----
 const outFile = join(here, 'data', 'produttori.json');
-const NAME_PROD = /(weingut|weinhof|winzerhof|weinbau|heurig|buschenschank|stra[uß]+wirtschaft|h[äa]cker|sekt|winzer|domaine|ch[aâ]teau|tenuta|bodegas?\b|winery|vineyards?|estates?\b|cellars\b|azienda (agricola|vinicola|vitivinicola)|az\.? ?agr|quinta\b|vignobles?|vigneron|wijngaard|wijndomein|kellerei|cantina sociale|cave (coop|des vignerons)|cooperativa|vinařství|winnica|pince(szet)?\b|vinarija|vinárstvo|oinopoieio|οινοποιείο|κτήμα)/i;
+const NAME_PROD = /(weingut|weinhof|winzerhof|weinbau|heurig|buschenschank|stra[uß]+wirtschaft|h[äa]cker|sekt|winzer|domaine|ch[aâ]teau|tenuta|bodegas?\b|winery|vineyards?|estates?\b|cellars\b|azienda (agricola|vinicola|vitivinicola)|az\.? ?agr|quinta\b|vignobles?|vigneron|wijngaard|wijndomein|kellerei|cantina sociale|cave (coop|des vignerons)|cooperativa|vinařství|winnica|pince(szet)?\b|vinarija|vinárstvo|oinopoieio|οινοποιείο|κτήμα|vin[ií]cola|vinhos\b|ving[åa]a?rd|viinitila|\bwines\b|wine co\b|\bceller\b|kelter\b|ワイナリー)/i;
 const NAME_SHOP = /((?<!\p{L})bar(?!\p{L})|caff[eè]|(?<!\p{L})caf[eé](?!\p{L})|bibit|beverage|drinks?\b|distribu|import|ingross|wholesale|liquor|liquori|alimentari|market|\bshop\b|store\b|negozio|deli\b|gastronom|bistr|restaurant|ristorant|trattoria|osteria|pizzeri|pizza|hotel|lounge|club\b|birr|beer|brew|spirits|tabacch|coffee|kaffee|vinothek|weinhandl|caviste|cave [àa] vins?|wine ?shop|bottle ?shop|wine ?bar|weinbar|vinoteca|enoteca|merchants?\b|negoce|négoce)/iu;
 const BAD_AMENITY = /^(bar|pub|restaurant|cafe|fast_food|biergarten|nightclub|food_court|ice_cream)$/;
 const BAD_SHOP = /^(wine|alcohol|beverages|deli|supermarket|convenience|general|wholesale|kiosk|department_store|gift|variety_store)$/;
@@ -108,18 +108,19 @@ function build() {
     : JSON.parse(readFileSync(join(siteData, 'cantine.json'), 'utf8')).items;
   const out = {};
   for (const [id, lat, lng, name] of items) {
-    let pos = 0, neg = 0; const why = [];
-    const add = (p, w) => { if (p > 0) pos += p; else neg += p; why.push((p > 0 ? '+' : '') + p + ' ' + w); };
+    let pos = 0, neg = 0, vneg = 0; const why = [];
+    const add = (p, w, v) => { if (p > 0) pos += p; else if (v) vneg += p; else neg += p; why.push((p > 0 ? '+' : '') + p + ' ' + w); };
     const vz = vine && vine(id, lat, lng);
     if (vz) {
       const [d, near] = vz;
       if (d <= 0.6) add(3, 'vigneto a ' + d.toFixed(1) + ' km'); else if (d <= 1.5) add(2, 'vigneto a ' + d.toFixed(1) + ' km'); else if (d <= 3) add(1, 'vigneto a ' + d.toFixed(1) + ' km');
-      else if (near >= 5) add(-2, 'nessun vigneto entro 3 km (' + near + ' entro 25 km)'); else if (near >= 1) add(-1, 'nessun vigneto entro 3 km');
+      else if (near >= 5) add(-2, 'nessun vigneto entro 3 km (' + near + ' entro 25 km)', 1); else add(-1, near ? 'nessun vigneto entro 3 km' : 'nessun vigneto entro 25 km', 1);
     }
     const t = tags.get(id) || {};
     if (BAD_AMENITY.test(t.amenity || '')) add(-3, 'amenity=' + t.amenity);
     if (t.cuisine) add(-1, 'cuisine');
     if (BAD_SHOP.test(t.shop || '')) add(-1, 'shop=' + t.shop);
+    const soloVendita = /^(wine|alcohol)$/.test(t.shop || '') ? 1 : 0; // spesso è la vendita diretta della cantina: con i soli vigneti lontani non basta
     if (/office|company/.test(t.office || '')) add(-1, 'office=' + t.office);
     if (t.landuse === 'vineyard' || /grape|wine/.test(t.produce || '')) add(3, 'vigneto nel punto');
     if (NAME_PROD.test(name)) add(2, 'nome da produttore');
@@ -135,7 +136,9 @@ function build() {
     // solo produttori (richiesta dell'utente 2026-11-18): serve almeno una prova di produzione (vigneto vicino, nome, sito,
     // lista dei vini); chi ha segni da negozio/locale e al massimo una prova debole (+1) esce. Ristorante o Heuriger con prove
     // da produttore restano
-    const s = (vz && pos === 0) || (pos <= 1 && neg <= -2) ? -2 : pos === 0 && neg === -1 ? -1 : pos + neg < 0 ? 0 : pos + neg;
+    // i vigneti di OSM sono incompleti (tante cantine vere li hanno lontano o non segnati): la sola mancanza di vigneti non basta
+    // per togliere, serve anche un altro segno da locale/negozio (2026-11-19, dopo il primo rapporto: 1.610 fuori, tanti produttori veri)
+    const s = (pos <= 1 && neg <= -2) || (pos === 0 && neg + soloVendita <= -1 && vneg < 0) ? -2 : pos === 0 && neg === -1 ? -1 : pos + neg + vneg < 0 ? 0 : pos + neg + vneg;
     out[id] = [s, name, why.join('; ')];
   }
   mkdirSync(dirname(outFile), { recursive: true });
