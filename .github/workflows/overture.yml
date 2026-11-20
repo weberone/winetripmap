@@ -23,6 +23,8 @@ jobs:
         run: |
           set -euo pipefail
           pip install -q duckdb
+          mkdir -p tools/.cache/osm # i vigneti (release cache-dati) servono a trovare relais e agriturismi nelle zone del vino
+          gh release download cache-dati -p vigneti.json.gz -D "$RUNNER_TEMP" && gunzip -c "$RUNNER_TEMP/vigneti.json.gz" > tools/.cache/osm/vigneti.json || true
           python3 tools/overture-cantine.py | tee -a "$GITHUB_STEP_SUMMARY"
           cp tools/.cache/overture/places.json.gz "$RUNNER_TEMP/overture-places.json.gz"
           gh release upload cache-dati "$RUNNER_TEMP/overture-places.json.gz" --clobber -R "$GITHUB_REPOSITORY"

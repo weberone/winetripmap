@@ -100,8 +100,17 @@ jobs:
         timeout-minutes: 120
         run: node tools/osm-cantine.mjs && node tools/luoghi.mjs
 
+      - name: Vigneti (unisce le 8 parti)
+        run: |
+          set -euo pipefail
+          gh release download cache-dati -p 'vigneti-parte-*.tar.gz' -D "$RUNNER_TEMP/vig"
+          for f in "$RUNNER_TEMP"/vig/*.tar.gz; do tar -xzf "$f" -C tools/.cache; done
+          node tools/vigneti-geofabrik.mjs --merge | tee "$RUNNER_TEMP/vig.txt"
+          tail -1 "$RUNNER_TEMP/vig.txt" >> "$GITHUB_STEP_SUMMARY"
+
       # cantine di Overture Maps (Meta, Microsoft, Foursquare…: tanti produttori che OSM non ha) e segni da negozio/wine bar
-      # per produttori.mjs; se Overture non risponde si usa il file del mese prima nella release cache-dati
+      # per produttori.mjs; dopo i vigneti (servono a trovare relais e agriturismi nelle zone del vino); se Overture non risponde
+      # si usa il file del mese prima nella release cache-dati
       - name: Cantine da Overture Maps
         run: |
           set -euo pipefail
@@ -110,14 +119,6 @@ jobs:
           python3 tools/overture-cantine.py || gh release download cache-dati -p overture-places.json.gz -O tools/.cache/overture/places.json.gz --clobber
           node tools/overture.mjs apply | tee -a "$GITHUB_STEP_SUMMARY"
           node tools/luoghi.mjs
-
-      - name: Vigneti (unisce le 8 parti)
-        run: |
-          set -euo pipefail
-          gh release download cache-dati -p 'vigneti-parte-*.tar.gz' -D "$RUNNER_TEMP/vig"
-          for f in "$RUNNER_TEMP"/vig/*.tar.gz; do tar -xzf "$f" -C tools/.cache; done
-          node tools/vigneti-geofabrik.mjs --merge | tee "$RUNNER_TEMP/vig.txt"
-          tail -1 "$RUNNER_TEMP/vig.txt" >> "$GITHUB_STEP_SUMMARY"
 
       # cantine segnate in OSM come agriturismo, ristorante, fattoria o punto vendita, vicine a un vigneto (tools/agri.mjs):
       # prima della lettura dei siti, così arrivano anche i loro vini e descrizioni
@@ -161,6 +162,8 @@ jobs:
         if: env.APPLICA == 'true'
         run: |
           set -euo pipefail
+          node tools/overture.mjs apply # entrano anche i relais/agriturismi confermati dal loro sito in questo giro
+          node tools/luoghi.mjs
           node tools/produttori.mjs apply
           node tools/produttori.mjs dubbi
           git config user.name 'github-actions[bot]'

@@ -1,0 +1,62 @@
+# Solo lettura dei siti delle cantine (chi produce vino, vini, descrizioni), per recuperare in fretta i siti nuovi
+# (dopo Overture Maps ~48.000): più siti insieme e più ore del giro mensile. Salva la memoria nella release cache-dati
+# e alla fine avvia "Aggiorna i dati" (dati.yml), che applica tutto al sito. Si lancia a mano.
+name: Leggi i siti delle cantine
+
+on:
+  workflow_dispatch:
+    inputs:
+      ore:
+        description: 'Ore di lettura (al massimo 5)'
+        default: '5'
+
+concurrency:
+  group: dati # mai insieme all'aggiornamento dei dati
+  cancel-in-progress: false
+
+permissions:
+  contents: write # release cache-dati
+  actions: write # avvia dati.yml
+
+jobs:
+  siti:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Strumenti e memoria
+        run: |
+          set -euo pipefail
+          npm ci --prefix tools --silent
+          gh release download cache-dati -p dati-cache.tar.gz -D "$RUNNER_TEMP"
+          mkdir -p tools/.cache/overture && tar -xzf "$RUNNER_TEMP/dati-cache.tar.gz" -C tools/.cache
+          gh release download cache-dati -p overture-places.json.gz -O tools/.cache/overture/places.json.gz || true
+          for d in prod vini desc; do echo "$d: $(ls tools/.cache/$d | wc -l) siti già letti"; done
+
+      # il tempo si divide: metà a chi produce vino (decide chi resta), il resto a vini e descrizioni
+      - name: Siti
+        env:
+          ORE: ${{ inputs.ore }}
+        run: |
+          case "$ORE" in [1-5]) ;; *) ORE=5 ;; esac
+          M=$(( ORE * 60 ))
+          timeout $(( M / 2 ))m node tools/produttori.mjs crawl --conc 120 || true
+          timeout $(( M * 3 / 10 ))m node tools/vini-dai-siti.mjs crawl --conc 80 || true
+          timeout $(( M / 5 ))m node tools/descrizioni.mjs crawl --conc 120 || true
+
+      - name: Salva memoria
+        if: always()
+        run: |
+          set -euo pipefail
+          pkill -f 'tools/(produttori|vini-dai-siti|descrizioni).mjs crawl' || true; sleep 3
+          for d in prod vini desc; do echo "$d: $(ls tools/.cache/$d | wc -l) siti letti" | tee -a "$GITHUB_STEP_SUMMARY"; done
+          tar -czf "$RUNNER_TEMP/dati-cache.tar.gz" -C tools/.cache prod vini desc || [ $? -eq 1 ]
+          gh release upload cache-dati "$RUNNER_TEMP/dati-cache.tar.gz" --clobber -R "$GITHUB_REPOSITORY"
+
+      - name: Applica (Aggiorna i dati)
+        if: success()
+        run: gh workflow run dati.yml --ref main -f applica=true -f vigneti=false

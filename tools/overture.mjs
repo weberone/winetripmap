@@ -51,7 +51,7 @@ function grid(list, f) { // indice a celle di ~2 km
 // base: [[id, lat, lng, nome, sito?], …] → { match: Map(id → luogo Overture), extra: [luoghi "winery" che mancano] }
 // luogo Overture: [gers, lat, lng, nome, comune, cc, sito, tel, indirizzo, conf, cat, fonti]
 export function ovMatch(base) {
-  const O = overture(); if (!O) return { match: new Map(), extra: [] };
+  const O = overture(); if (!O) return { match: new Map(), extra: [], cand: [] };
   const near = grid(O.items, (o) => [o[1], o[2]]);
   const match = new Map(), used = new Set();
   for (const [id, lat, lng, name, web] of base) {
@@ -62,7 +62,7 @@ export function ovMatch(base) {
       const s = sn && d <= 1.5 ? 3 - d : sw && d <= 3 ? 2.5 - d / 3 : d <= 0.06 ? 1 : 0;
       if (s > bs) { bs = s; best = o; }
     }
-    if (best) { match.set(id, best); if (best[10] === 'w' || best[10] === 'v') used.add(best[0]); }
+    if (best) { match.set(id, best); if ('wva'.includes(best[10])) used.add(best[0]); }
   }
   // le cantine Overture che restano, senza doppioni tra loro (stesso nome o stesso sito a meno di 3 km: si tiene la più sicura)
   const rest = O.items.filter((o) => o[10] === 'w' && !used.has(o[0]) && o[9] >= 0.5).sort((a, b) => b[9] - a[9]);
@@ -76,7 +76,17 @@ export function ovMatch(base) {
     if (dup) continue;
     kept.push(o); (g.get(a + ':' + b) || g.set(a + ':' + b, []).get(a + ':' + b)).push(o);
   }
-  return { match, extra: kept };
+  // alloggi, agriturismi e ristoranti delle zone del vino (cat "a") che non sono già nostri: candidati, entrano solo se il loro sito
+  // dice che producono vino (produttori.mjs); senza doppioni con le cantine Overture già prese
+  const cand = [];
+  for (const o of O.items) {
+    if (o[10] !== 'a' || used.has(o[0])) continue;
+    const a = Math.floor(o[1] * 50), b = Math.floor(o[2] * 50); let dup = false;
+    for (let i = a - 2; i <= a + 2 && !dup; i++) for (let j = b - 4; j <= b + 4 && !dup; j++) for (const k of g.get(i + ':' + j) || [])
+      if (km(o[1], o[2], k[1], k[2]) <= 1.5 && (sameName(o[3], k[3]) || (o[6] && k[6] && host(o[6]) === host(k[6])))) { dup = true; break; }
+    if (!dup) cand.push(o);
+  }
+  return { match, extra: kept, cand };
 }
 
 // "MONTEFORTE D'ALPONE" → "Monteforte D'Alpone" (Overture a volte ha i comuni in maiuscolo; "Soave" e "SOAVE" erano due comuni)
@@ -94,7 +104,7 @@ async function apply() {
   const dets = new Map(); const det = (k) => dets.get(k) || dets.set(k, existsSync(join(dataDir, 'det5', k + '.json')) ? JSON.parse(readFileSync(join(dataDir, 'det5', k + '.json'), 'utf8')) : {}).get(k);
   for (const f of readdirSync(join(dataDir, 'det5'))) { const v = det(f.replace(/\.json$/, '')); for (const id of Object.keys(v)) if (id[0] === 'o') delete v[id]; }
   const base = C.items.map(([id, lat, lng, name]) => [id, lat, lng, name, det(cell(lat, lng))[id]?.w]);
-  const { match, extra } = ovMatch(base);
+  const { match, extra, cand } = ovMatch(base);
   // completa i dettagli delle cantine che già abbiamo (solo dove mancano), se Overture le conosce come cantine
   let compl = 0;
   for (const [id, lat, lng] of C.items) {
@@ -110,10 +120,22 @@ async function apply() {
     const d = { a: o[8] || undefined, p: o[7] || undefined, w: web(o[6]) };
     if (d.a || d.p || d.w) det(cell(o[1], o[2]))[id] = d;
   }
+  // relais, agriturismi, ristoranti che producono vino: solo quelli che produttori.mjs ha confermato dal loro sito (punteggio > 0)
+  let conf = 0;
+  for (const o of cand) {
+    const id = ovId(o[0]); if (!(P[id] > 0) || R[id] === 't') continue;
+    C.items.push([id, o[1], o[2], o[3], townCase(o[4])]); conf++;
+    const d = { a: o[8] || undefined, p: o[7] || undefined, w: web(o[6]) };
+    if (d.a || d.p || d.w) det(cell(o[1], o[2]))[id] = d;
+  }
+  if (cand.length) console.log(`overture: ${conf} relais/agriturismi/ristoranti che producono vino (su ${cand.length} candidati nelle zone del vino)`);
   C.items.sort((a, b) => a[0].localeCompare(b[0]));
   C.source = '© OpenStreetMap contributors (ODbL); Wikidata (CC0); Overture Maps Foundation (CDLA Permissive 2.0, Apache 2.0, CC0)';
   writeFileSync(cf, JSON.stringify(C));
   for (const [k, v] of dets) writeFileSync(join(dataDir, 'det5', k + '.json'), JSON.stringify(v));
+  // le cantine Overture rifatte da capo: si rimettono vini e descrizioni letti dai siti
+  const { applyVini } = await import('./vini-applica.mjs'); applyVini(dataDir);
+  const { applyDesc } = await import('./descrizioni.mjs'); applyDesc();
   console.log(`overture (${O.release}): ${add} cantine nuove, ${compl} completate (sito, telefono, indirizzo); ${C.items.length} in tutto`);
   console.log('nuove per paese:', Object.entries(per).sort((a, b) => b[1] - a[1]).slice(0, 20).map((x) => x.join(' ')).join(', '));
 }
