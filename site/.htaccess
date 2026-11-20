@@ -6,6 +6,9 @@ RewriteRule ^ https://winetripmap.com%{REQUEST_URI} [R=301,L]
 # la mappa era in prova su /mappa/: ora è la pagina iniziale (i vecchi link, anche con ?c= o ?trip=, portano lì)
 RewriteRule ^mappa/?$ / [R=301,L]
 
+# manifest dell'app (icona sulla schermata Home, notifiche push su iPhone)
+AddType application/manifest+json .webmanifest
+
 # elenco dei file pubblicati dalla GitHub Action: non leggibile dal web
 <Files ".ftp-deploy-sync-state.json">
   Require all denied
