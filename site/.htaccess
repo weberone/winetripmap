@@ -2,6 +2,9 @@
 RewriteEngine On
 RewriteCond %{HTTP_HOST} ^www\.winetripmap\.com$ [NC]
 RewriteRule ^ https://winetripmap.com%{REQUEST_URI} [R=301,L]
+# e solo https (Infomaniak passa da un proxy: lo dice X-Forwarded-Proto)
+RewriteCond %{HTTP:X-Forwarded-Proto} =http
+RewriteRule ^ https://winetripmap.com%{REQUEST_URI} [R=301,L]
 
 # la mappa era in prova su /mappa/: ora è la pagina iniziale (i vecchi link, anche con ?c= o ?trip=, portano lì)
 RewriteRule ^mappa/?$ / [R=301,L]
