@@ -176,10 +176,14 @@ function build() {
     // cantina solo Overture in un paese dove OSM segna bene i vigneti (Italia, Francia, Germania…): Overture chiama "winery" anche
     // distributori, rappresentanti, enoteche e uffici (Milano, Monza, Cernusco: richiesta dell'utente 2026-11-20). Entra solo con
     // una prova vera: un vigneto entro 3 km, Wikidata o le parole da produttore sul suo sito (letto anche se non è sul sito, vedi sites())
-    const sitoProd = c && c.prod && Object.keys(c.prod).length > 0;
-    const soloOv = (ovNew.has(id) && dense.has(ccOf(id)) && !(vz && vz[0] <= 3) && !wdq.has(id) && !sitoProd)
+    const sitoProd = c && c.prod && Object.keys(c.prod).length > 0, sitoForte = c && c.prod && Object.keys(c.prod).length >= 2;
+    // fuori da una zona del vino (meno di 15 vigneti OSM entro 10 km: Milano, Monza, Cernusco) nei paesi con i vigneti ben segnati:
+    // resta solo chi ha prove forti, il proprio sito che parla di vigne/vendemmia/vinificazione o Wikidata (richiesta dell'utente 2026-11-20)
+    const fuoriZona = vz && dense.has(ccOf(id)) && vz[2] < 15 && !sitoForte && !wdq.has(id);
+    if (fuoriZona) why.push(`fuori dalle zone del vino (${vz[2]} vigneti entro 10 km)`);
+    const soloOv = fuoriZona || (ovNew.has(id) && dense.has(ccOf(id)) && !(vz && vz[0] <= 3) && !wdq.has(id) && !sitoProd)
       || (ovNew.has(id) && NAME_SHOP.test(name) && !sitoProd && !wdq.has(id)); // solo Overture con nome da negozio/locale/intermediario
-    if (soloOv) why.push('solo Overture, ' + (NAME_SHOP.test(name) ? 'nome da negozio/locale' : 'nessun vigneto entro 3 km') + (ovWeb.has(id) ? (crawl.has(id) ? ', sito senza parole da produttore' : ', sito da leggere') : ', senza sito'));
+    if (soloOv && !fuoriZona) why.push('solo Overture, ' + (NAME_SHOP.test(name) ? 'nome da negozio/locale' : 'nessun vigneto entro 3 km') + (ovWeb.has(id) ? (crawl.has(id) ? ', sito senza parole da produttore' : ', sito da leggere') : ', senza sito'));
     const fitto = soloOv || vz && dense.has(ccOf(id)) && vz[2] < 40 && ((pos === 0 && vz[0] > 3) || (pos <= 1 && vz[0] > 8));
     if (fitto && !soloOv) why.push(`paese con vigneti ben segnati, nessuno entro 3 km e ${vz[2]} entro 10 km`);
     const s = fitto || (pos <= 1 && neg <= -2) || (pos === 0 && neg + soloVendita <= -1 && vneg < 0) ? -2 : pos === 0 && neg === -1 ? -1 : pos + neg + vneg < 0 ? 0 : pos + neg + vneg;

@@ -42,6 +42,7 @@ export function agriCandidate(t) {
   return null;
 }
 // il candidato entra se è abbastanza vicino a un vigneto: 1 km con parole del vino, 400 m per agriturismi e aziende agricole
+export const ZONA = 15; // vigneti entro 10 km perché un posto sia in una zona del vino
 export const agriOk = (kind, km) => km != null && (kind === 'vino' ? km <= 1 : km <= 0.4);
 
 // indice dei vigneti (tools/.cache/osm/vigneti.json) → distanza in km dal più vicino
@@ -49,13 +50,20 @@ export function vineNear() {
   const f = join(here, '.cache', 'osm', 'vigneti.json'); if (!existsSync(f)) return null;
   const grid = new Map();
   for (const e of JSON.parse(readFileSync(f, 'utf8')).elements) { const k = Math.floor(e.lat * 20) + ':' + Math.floor(e.lon * 20); (grid.get(k) || grid.set(k, []).get(k)).push([e.lat, e.lon]); }
-  return (lat, lng) => {
+  const near = (lat, lng) => {
     let best = Infinity; const cl = Math.cos(lat * Math.PI / 180), a = Math.floor(lat * 20), b = Math.floor(lng * 20);
     for (let i = a - 1; i <= a + 1; i++) for (let j = b - 2; j <= b + 2; j++) for (const [y, x] of grid.get(i + ':' + j) || []) {
       const d = Math.hypot((y - lat) * 111.2, (x - lng) * 111.2 * cl); if (d < best) best = d;
     }
     return best;
   };
+  // quanti vigneti entro r km (zona del vino: almeno 15 entro 10 km; Cernusco sul Naviglio ne ha 6, Pontida 40)
+  near.count = (lat, lng, r = 10) => {
+    let n = 0; const cl = Math.cos(lat * Math.PI / 180), a = Math.floor(lat * 20), b = Math.floor(lng * 20);
+    for (let i = a - 2; i <= a + 2; i++) for (let j = b - 3; j <= b + 3; j++) for (const [y, x] of grid.get(i + ':' + j) || []) if (Math.hypot((y - lat) * 111.2, (x - lng) * 111.2 * cl) <= r) n++;
+    return n;
+  };
+  return near;
 }
 
 const web = (t) => { const w = t.website || t['contact:website'] || t.url; if (!w) return undefined; return /^https?:\/\//i.test(w) ? w : 'https://' + w; };
@@ -71,6 +79,8 @@ export function pickAgri(cands, items, near) {
     if (have.has(id)) continue;
     const kind = agriCandidate(t); if (!kind) continue;
     const km = near(lat, lng); if (!agriOk(kind, km)) continue;
+    // aziende agricole e agriturismi senza parole del vino: solo in una zona del vino, non vicino a una vigna isolata (Bussero, Carugate)
+    if (kind === 'agri' && near.count && near.count(lat, lng, 10) < ZONA) continue;
     let dup = false; const a = Math.floor(lat * 100), b = Math.floor(lng * 100);
     for (let i = a - 1; i <= a + 1 && !dup; i++) for (let j = b - 1; j <= b + 1 && !dup; j++) for (const x of g.get(i + ':' + j) || [])
       if (Math.hypot((x[1] - lat) * 111.2, (x[2] - lng) * 111.2 * Math.cos(lat * Math.PI / 180)) < 0.15) { dup = true; break; }
