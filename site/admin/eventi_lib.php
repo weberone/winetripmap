@@ -24,15 +24,23 @@ const EV_LABELS = [
   'btn:tripShow' => 'Trip: vedi sulla mappa', 'btn:tripSort' => 'Trip: ordine più corto', 'btn:mimg' => 'Scheda: tocca una foto', 'btn:mnav' => 'Scheda: freccia delle foto',
   'page:seo' => 'Pagine delle cantine (stati, regioni, comuni, schede)', 'page:account' => 'Pagina account', 'page:privacy' => 'Pagina privacy',
   'err:js' => 'Errore nella mappa',
+  'support:map' => 'Dona: tocca "🥂 Cin cin!" sulla mappa', 'support:header' => 'Dona: "🥂 Supporta" in alto', 'support:footer' => 'Dona: link in fondo al pannello',
+  'donate:view' => 'Dona: apre la pagina', 'donate:back' => 'Dona: torna alla mappa', 'donate:onlyview' => 'Dona: esce senza andare su Ko-fi',
+  'donate:return' => 'Dona: torna da Ko-fi', 'donate:kofi-2' => 'Dona: su Ko-fi con 2 €', 'donate:kofi-5' => 'Dona: su Ko-fi con 5 €',
+  'donate:kofi-10' => 'Dona: su Ko-fi con 10 €', 'donate:kofi-free' => 'Dona: su Ko-fi, importo libero',
 ];
 const EV_GROUPS = ['app' => 'Mappa aperta e chiusa', 'consent' => 'Cookie', 'gps' => 'GPS', 'view' => 'Schede delle cantine', 'list' => 'Elenco',
-  'search' => 'Ricerche', 'act' => 'Azioni', 'btn' => 'Pulsanti', 'link' => 'Link', 'page' => 'Altre pagine del sito', 'err' => 'Errori'];
+  'search' => 'Ricerche', 'act' => 'Azioni', 'btn' => 'Pulsanti', 'link' => 'Link', 'page' => 'Altre pagine del sito', 'support' => 'Bottone dona', 'donate' => 'Pagina Dona', 'err' => 'Errori'];
 function ev_label(string $e): string {
   if (isset(EV_LABELS[$e])) return EV_LABELS[$e];
   [$g, $k] = explode(':', $e, 2) + ['', ''];
   if ($g === 'link') return str_starts_with($k, 'ext/') ? 'Link esterno: ' . substr($k, 4) : 'Link: ' . $k;
   if ($g === 'search') return 'Ricerca: ' . $k;
   if ($g === 'act') return 'Azione: ' . str_replace('_', ' ', $k);
+  if ($g === 'donate' && str_starts_with($k, 'from-')) return 'Dona: arriva da ' . substr($k, 5);
+  if ($g === 'donate' && str_starts_with($k, 't-kofi-')) return 'Dona: va su Ko-fi dopo ' . substr($k, 7);
+  if ($g === 'donate' && str_starts_with($k, 't-')) return 'Dona: resta sulla pagina ' . substr($k, 2);
+  if ($g === 'donate' && str_starts_with($k, 'away-')) return 'Dona: su Ko-fi per ' . substr($k, 5);
   return $e;
 }
 // pagina d'ingresso della mappa (campo land di app_opens) in parole

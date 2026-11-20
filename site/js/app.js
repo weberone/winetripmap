@@ -1038,6 +1038,26 @@ function bind() {
   $("tripModal").onclick = (e) => { if (e.target === $("tripModal")) closeTrip(); };
   matchMedia(MOB_MQ).addEventListener("change", () => setSheet(!mapOnly() && isMobile()));
   $("footYear").textContent = new Date().getFullYear();
+  // donazioni (pagina /dona/, pagamento su Ko-fi, come SkateboardMap): "🥂 Cin cin!" sulla mappa (telefono), "🥂 Supporta" in alto (computer) e in fondo
+  [["donateMob", "map"], ["donateHdr", "header"], ["footSupport", "footer"]].forEach(([id, where]) => {
+    const a = $(id); if (!a) return;
+    a.href = "/dona/?lang=" + I18N.lang + "&from=" + where;
+    a.onclick = () => { track("support:" + where, a.textContent.trim()); ga("support_click", { where }); trackFlush(true); };
+  });
+  // "🥂 Cin cin!": ogni 4 secondi un'animazione breve, mai la stessa due volte di fila; ogni quarta volta la scritta diventa
+  // "Offrimi un calice" per 3 secondi. Niente con il movimento ridotto del telefono o con la pagina in secondo piano.
+  { const d = $("donateMob"), y = d && d.querySelector(".yeah"), FX = ["clink", "jump", "pop", "wiggle"]; let last = "", tick = 0;
+    const swap = (txt) => { y.classList.add("yfade"); setTimeout(() => { y.textContent = txt; y.classList.remove("yfade"); }, 140); };
+    const play = () => {
+      setTimeout(play, 4000);
+      if (!d || d.offsetParent === null || document.hidden || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      tick++;
+      if (tick % 4 === 0) { swap(t("sup_me")); setTimeout(() => swap(t("sup_btn")), 3000); }
+      const pool = FX.filter((f) => f !== last), fx = pool[Math.floor(Math.random() * pool.length)]; last = fx;
+      FX.forEach((f) => d.classList.remove("a-" + f)); void d.offsetWidth; d.classList.add("a-" + fx);
+      setTimeout(() => d.classList.remove("a-" + fx), 900);
+    };
+    if (d) setTimeout(play, 4000); }
   // lingua: le 12 di SkateboardMap; la scelta si ricorda e la pagina si ricarica (anche ?lang= nell'indirizzo)
   $("langSel").innerHTML = I18N.langs.map((l) => `<option value="${l}"${l === I18N.lang ? " selected" : ""}>${I18N.names[l]}</option>`).join("");
   if ($("cookieOpen")) $("cookieOpen").onclick = (e) => { e.preventDefault(); window.wtmConsent && window.wtmConsent.open(); };

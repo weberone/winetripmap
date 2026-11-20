@@ -441,3 +441,30 @@ form.search input:focus{border-color:var(--accent)}
 /* niente righe ai lati del fumetto nel tema scuro: la foto sborda di 2 px (tagliata dal bordo arrotondato), niente anello del focus al clic */
 .sk-pop .maplibregl-popup-content,.sk-pop .mapboxgl-popup-content{border:0;outline:0}
 .pintip:focus:not(:focus-visible){outline:0} .pintip:focus-visible{outline:2px solid var(--accent);outline-offset:-3px;border-radius:12px} /* MapLibre mette il focus sul fumetto all apertura: senza questo Chrome disegna un bordo chiaro ai lati */
+
+/* ---------- donazioni (come "🤘 Yeah!" di SkateboardMap): pagina /dona/, pagamento su Ko-fi ----------
+   telefono: "🥂 Cin cin!" in basso a destra sulla mappa, di fronte a "N cantine trovate"; computer: "🥂 Supporta" nella barra in alto */
+.donatemob{display:none}
+.app.mob.map-only .donatemob{display:inline-flex;align-items:center;gap:3px;position:absolute;right:16px;bottom:calc(30px + env(safe-area-inset-bottom,0px));z-index:3;
+  font-size:13px;font-weight:700;line-height:1;color:var(--radar-fg);text-decoration:none;text-shadow:0 1px 3px rgb(0 0 0 / .4)}
+:root[data-mapscheme="light"] .app.mob.map-only .donatemob{color:#2a1a1d;text-shadow:0 0 3px #fff,0 0 6px #fff}
+.donatemob .yeah{display:inline-block;color:var(--accent);transition:opacity .14s}
+:root[data-mapscheme="dark"] .donatemob .yeah{color:var(--rose)}
+.donatemob .yeah.yfade{opacity:0}
+.donatemob .glass,.donatehdr .glass{display:inline-block;transform-origin:50% 90%}
+/* telefono: la "i" dei crediti della mappa sotto + − e chiaro/scuro (in basso a destra c'è "Cin cin!") */
+.app.mob.map-only .mapboxgl-ctrl-bottom-right,.app.mob.map-only .maplibregl-ctrl-bottom-right{top:150px;bottom:auto!important;right:4px}
+.donatehdr{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;border:1.5px solid var(--line);color:var(--ink);
+  font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
+.donatehdr:hover{border-color:var(--accent);color:var(--accent)}
+.app.mob .donatehdr{display:none}
+/* animazioni brevi ogni pochi secondi (app.js): brindisi, saltello, scritta che cambia */
+.donatemob.a-clink .glass,.donatehdr.a-clink .glass{animation:wClink .7s ease-in-out}
+.donatemob.a-jump .yeah{animation:wJump .38s cubic-bezier(.3,1.6,.5,1)}
+.donatemob.a-pop .glass{animation:wPop .35s cubic-bezier(.3,1.8,.5,1)}
+.donatemob.a-wiggle .yeah{animation:wWiggle .4s ease-in-out}
+@keyframes wClink{0%,100%{transform:none}25%{transform:rotate(-16deg)}50%{transform:rotate(12deg)}75%{transform:rotate(-6deg)}}
+@keyframes wJump{0%,100%{transform:none}45%{transform:translateY(-5px)}}
+@keyframes wPop{0%,100%{transform:none}50%{transform:scale(1.35)}}
+@keyframes wWiggle{0%,100%{transform:none}25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)}}
+@media (prefers-reduced-motion:reduce){.donatemob *,.donatehdr *{animation:none!important}}
