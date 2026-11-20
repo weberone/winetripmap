@@ -150,3 +150,41 @@ th{font-size:12px;color:var(--muted);font-weight:600} .r{text-align:right;font-v
 .vtype.s0{background:var(--s0);color:#2a1a1d} .vtype.s1{background:var(--s1)} .vtype.s2{background:var(--s2)}
 #dayList .daynav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 @media (max-width:620px){.vtop{flex-direction:column}.vbadge{flex-direction:row;align-items:baseline;gap:10px}.cols.labeled{height:220px}}
+
+/* ---------- dashboard: aperture al giorno come SkateboardMap (colonnina a destra con/senza cookie, pallini oggi contro ieri, elenco) ---------- */
+:root{--c0:#2f9e55;--s3:#e5484d}
+:root[data-scheme="dark"]{--c0:#51cf66;--s3:#ff6b6b}
+.col i.c0,.stleg .c0,.tdot.c0{background:var(--c0)} .col i.s3,.stleg .s3,.tdot.s3{background:var(--s3)}
+.cols.labeled .col.stk .stkpair{flex:none;display:flex;gap:2px;max-height:calc(100% - 18px)}
+.cols.labeled .col.stk .stkpair .stkbar{max-height:none;flex:2 1 0;min-width:0}
+.cols.labeled .col.stk .stkpair .splitbar{flex:1 1 0}
+.cols.labeled .col.stk .splitbar i.g + i{border-top:2px solid var(--card)}
+.cols.labeled .col.stk.now .stkpair .stkbar{outline:0}
+.cols.labeled .col.stk.now .stkpair{outline:1.5px dashed var(--accent);outline-offset:1px}
+.cols.labeled .col.on .stkpair{outline:2px solid var(--ink);outline-offset:1px} .cols.labeled .col.on .stkpair .stkbar{outline:0}
+.cols.labeled .col.sel small{color:var(--accent);font-weight:800}
+.stleg span.sep{width:auto;height:auto;border-radius:0;margin:0 0 0 4px;color:var(--muted)}
+.chart.opens .cols.labeled{height:320px} .chart.opens .cols.labeled .col{flex:1 0 46px}
+.bigwrap{position:relative}
+.bigs{position:absolute;top:4px;left:6px;z-index:3;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
+.bigtrend{width:84px;height:84px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;color:#fff;text-align:center;
+  box-shadow:0 6px 18px rgb(0 0 0 / .25),inset 0 0 0 3px rgb(255 255 255 / .18)}
+.bigtrend.up{background:radial-gradient(circle at 30% 25%,#69db7c,#2b8a3e)}
+.bigtrend.down{background:radial-gradient(circle at 30% 25%,#ff8787,#c92a2a)}
+.bigtrend.flat{background:radial-gradient(circle at 30% 25%,#ffe066,#e0a800);color:#2a1a1d}
+.bigtrend .barr{position:absolute;top:9px;left:0;right:0;font-style:normal;font-size:9px;line-height:1}
+.bigtrend b{font-size:20px;font-weight:900;line-height:1;letter-spacing:-.02em;margin-top:6px}
+.bigtrend small{display:block;margin-top:3px;font-size:9px;font-weight:800;line-height:1.1;padding:0 8px}
+.chart.opens .cols.labeled .col:first-child{margin-left:92px} /* spazio per i pallini quando le colonne sono poche */
+.opens .oday{margin:16px 0 6px;font-size:17px}
+.opens .osrc{display:flex;flex-wrap:wrap;gap:4px 16px;margin:6px 0;font-size:14px}
+.opens .occ-sum{background:var(--s0);color:#2a1a1d;border-radius:12px;padding:8px 14px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.opens .olist{list-style:none;margin:8px 0 0;padding:0;font-size:14px;line-height:1.55}
+.opens .olist li{padding:8px 0;border-bottom:1px solid var(--line)} .opens .olist li:last-child{border-bottom:0}
+.opens .olist time{color:var(--ok);font-variant-numeric:tabular-nums;margin-right:4px}
+.opens .ocr{color:var(--ok);font-weight:800;text-transform:uppercase;letter-spacing:.03em} .opens .ocity{font-weight:700} .opens .olocal{color:var(--ok)}
+.opens .wv a{color:inherit;text-decoration:underline;word-break:break-all} .opens .wv.v0{color:var(--s0)} .opens .wv.v1{color:var(--s1)} .opens .wv.v2{color:var(--s2)}
+.opens .tdot{vertical-align:0}
+.opens .perm{color:var(--muted)} .opens .perm.on{color:#e8590c} .opens .ncv{color:var(--s3)}
+.opens .rinfo{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;padding:0;border:1px solid var(--accent);border-radius:50%;background:none;color:var(--accent);font:700 11px/1 Georgia,serif;cursor:pointer;vertical-align:1px}
+.rtip{position:absolute;z-index:999;max-width:300px;padding:6px 10px;border-radius:8px;background:var(--accent);color:#fff;box-shadow:0 6px 20px rgb(0 0 0 / .3);font-size:12px;word-break:break-all}

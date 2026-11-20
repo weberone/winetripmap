@@ -1,5 +1,6 @@
 <?php
-// Dashboard. In cima: persone al giorno a colonne divise (nuovi, di ritorno, iscritti; ultimi 30 giorni) con il confronto con ieri
+// Dashboard. In cima: aperture della mappa al giorno come SkateboardMap (colonne per tipo + colonnina con/senza cookie, pallini
+// oggi contro ieri alla stessa ora per aperture e minuti, elenco delle aperture del giorno: ?olist=AAAA-MM-GG). Poi: persone al giorno a colonne divise (nuovi, di ritorno, iscritti; ultimi 30 giorni) con il confronto con ieri
 // alla stessa ora, e sotto chi ha aperto la mappa nel giorno scelto (admin/visite_giorno.php; ?list=AAAA-MM-GG = solo l'elenco, per il clic sulle colonne).
 // Poi: aperture della mappa e visitatori, iscritti, mappe usate nel mese (Google, Mapbox, OpenFreeMap: api/counter.php),
 // da dove arrivano, dispositivi, cantine più salvate. Gli amministratori non entrano nei conteggi (api/auth.php).
@@ -8,6 +9,7 @@ admin_me();
 require __DIR__ . '/visite_giorno.php';
 $isDay = fn($d) => is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && $d <= today_it();
 if (isset($_GET['list'])) { if (!$isDay($_GET['list'])) exit; echo visits_day_html($_GET['list']); exit; }
+if (isset($_GET['olist'])) { if (!$isDay($_GET['olist'])) exit; echo opens_day_html($_GET['olist']); exit; }
 $selDay = $isDay($_GET['day'] ?? null) ? $_GET['day'] : today_it();
 $today = today_it(); $from30 = (new DateTime('-29 days', new DateTimeZone('Europe/Rome')))->format('Y-m-d');
 $from7 = (new DateTime('-6 days', new DateTimeZone('Europe/Rome')))->format('Y-m-d');
@@ -43,6 +45,16 @@ $pToday = array_sum($vDays[$today] ?? [0]);
 $pYest = $people((new DateTime('-1 day', new DateTimeZone('Europe/Rome')))->format('Y-m-d'), gmdate('Y-m-d H:i:s', time() - 86400));
 $pPct = $pYest ? round(($pToday - $pYest) / $pYest * 100) : null;
 $pCls = $pPct === null ? ($pToday ? 'up' : '') : ($pPct > 0 ? 'up' : ($pPct < 0 ? 'down' : ''));
+// aperture al giorno (ogni apertura, anche della stessa persona): colonne divise per tipo e, accanto, con/senza cookie
+[$oDays, $oStk, $oSpl, $oCmp] = opens_by_day($vFrom);
+$oSum = fn($i) => array_sum(array_column($oStk, $i)); $oCk = array_sum(array_column($oSpl, 0)) + array_sum(array_column($oSpl, 2)) + array_sum(array_column($oSpl, 4));
+// pallino grande: oggi fino ad adesso contro ieri fino alla stessa ora; senza il dato di ieri, la differenza in numero
+$bigBadge = function (float $now, float $before, string $small, string $title): string {
+  $p = $before > 0 ? round(($now - $before) / $before * 100) : null;
+  $c = $p === null ? ($now > 0 ? 'up' : 'flat') : ($p > 0 ? 'up' : ($p < 0 ? 'down' : 'flat'));
+  $t = $p === null ? ($now > 0 ? '+' . num($now) : '—') : (($p > 0 ? '+' : ($p < 0 ? '−' : '')) . abs($p) . '%');
+  return '<div class="bigtrend ' . $c . '" title="' . h($title) . '"><i class="barr">' . ($c === 'up' ? '▲' : ($c === 'down' ? '▼' : '')) . '</i><b>' . h($t) . '</b><small>' . $small . '</small></div>';
+};
 $q = fn($sql) => db()->query($sql)->fetchAll();
 $sources = $q("SELECT source k, COUNT(*) n FROM app_opens WHERE day >= '$from30' GROUP BY source ORDER BY n DESC LIMIT 10");
 $devices = $q("SELECT device k, COUNT(*) n FROM app_opens WHERE day >= '$from30' GROUP BY device ORDER BY n DESC LIMIT 8");
@@ -54,6 +66,30 @@ $maps = json_decode((string)@file_get_contents(dirname(__DIR__) . '/counter/maps
 require_once dirname(__DIR__) . '/api/caps.php'; $caps = CAPS;
 admin_header('Dashboard', 'dash');
 ?>
+<figure class="card chart visits opens">
+  <figcaption><b>Aperture della mappa al giorno</b><span class="muted">ogni apertura, anche della stessa persona · oggi <?= num($oDays[$today] ?? 0) ?> · ultimi <?= count($oDays) ?> giorni <?= num(array_sum($oDays)) ?> · tocca un giorno per vederne le aperture</span></figcaption>
+  <div class="bigwrap">
+    <div class="bigs">
+      <?= $bigBadge($oCmp['ot'], $oCmp['oy'], num($oCmp['ot']) . ' vs ' . num($oCmp['oy']) . '<br>aperture', "Aperture di oggi fino ad adesso rispetto a ieri alla stessa ora") ?>
+      <?= $bigBadge(round($oCmp['st'] / 60), round($oCmp['sy'] / 60), num(round($oCmp['st'] / 60)) . ' vs ' . num(round($oCmp['sy'] / 60)) . ' min', "Minuti con la mappa davanti oggi fino ad adesso, rispetto a ieri alla stessa ora") ?>
+    </div>
+    <div class="cols labeled" id="opensChart" data-series='<?= h(json_encode(array_map(fn($d, $n) => [$d, $n], array_keys($oDays), $oDays))) ?>'
+      data-stack='<?= h(json_encode(array_values($oStk))) ?>' data-stack-names='["nuovi","di ritorno","iscritti"]' data-split='<?= h(json_encode(array_values($oSpl))) ?>'
+      role="img" aria-label="Aperture della mappa al giorno: nuovi, di ritorno e iscritti; accanto chi ha accettato i cookie e chi no"></div>
+  </div>
+  <p class="stleg"><span class="s0"></span>nuovi <b><?= num($oSum(0)) ?></b> <span class="s1"></span>di ritorno <b><?= num($oSum(1)) ?></b> <span class="s2"></span>iscritti <b><?= num($oSum(2)) ?></b>
+    <span class="sep">│ colonnina a destra, per ogni tipo:</span> <span class="c0"></span>con cookie <b><?= num($oCk) ?></b> <span class="s3"></span>senza cookie <b><?= num(array_sum($oDays) - $oCk) ?></b></p>
+  <div id="opensDay"><?= opens_day_html($today) ?></div>
+</figure>
+<script>
+// aperture: tocco su un giorno del grafico → le aperture di quel giorno
+(() => {
+  const box = document.getElementById("opensDay"), chart = document.getElementById("opensChart"); let seq = 0;
+  chart.addEventListener("click", async (e) => { const c = e.target.closest(".col"); if (!c) return; const n = ++seq;
+    chart.querySelectorAll(".col.sel").forEach((x) => x.classList.remove("sel")); c.classList.add("sel");
+    try { const r = await fetch("dashboard.php?olist=" + c.dataset.d, { credentials: "same-origin" }); if (n === seq && r.ok) box.innerHTML = await r.text(); } catch (e) {} });
+})();
+</script>
 <figure class="card chart visits">
   <figcaption><b>Persone sulla mappa al giorno</b><span class="muted">tocca una colonna per vedere chi era · ultimi <?= count($vDays) ?> giorni · <?= num(array_sum(array_map('array_sum', $vDays))) ?> in tutto</span></figcaption>
   <div class="vtop">

@@ -96,3 +96,64 @@ function visits_day_html(string $day): string {
   }
   return $h . '</tbody></table></div>';
 }
+
+// ---------- aperture della mappa (ogni apertura, anche della stessa persona), come la dashboard di SkateboardMap ----------
+// k: 0 nuovo (primo giorno sulla mappa di quel browser), 1 di ritorno, 2 iscritto; ck: ha accettato i cookie (ck = 1 in app_opens)
+function opens_rows(string $from, ?string $day = null): array {
+  $st = db()->prepare('SELECT o.*, u.name uname, u.email FROM app_opens o LEFT JOIN users u ON u.id = o.user_id WHERE ' . ($day ? 'o.day = ?' : 'o.day >= ?') . ' ORDER BY o.id DESC');
+  $st->execute([$day ?: $from]); $rows = $st->fetchAll();
+  foreach ($rows as &$r) { $r['k'] = visit_type($r, $r['day']); $r['ckok'] = (int)$r['ck'] === 1; }
+  return $rows;
+}
+// grafico: [aperture per giorno, [nuovi, di ritorno, iscritti], [nuovi con/senza cookie, di ritorno con/senza, iscritti con/senza]];
+// in più oggi fino ad adesso e ieri fino alla stessa ora (aperture e secondi con la mappa davanti)
+function opens_by_day(string $from): array {
+  $tz = new DateTimeZone('Europe/Rome'); $n = []; $stk = []; $spl = [];
+  for ($d = new DateTime($from, $tz), $end = today_it(); $d->format('Y-m-d') <= $end; $d->modify('+1 day')) { $k = $d->format('Y-m-d'); $n[$k] = 0; $stk[$k] = [0, 0, 0]; $spl[$k] = [0, 0, 0, 0, 0, 0]; }
+  $today = today_it(); $yest = (new DateTime('-1 day', $tz))->format('Y-m-d'); $nowHm = (new DateTime('now', $tz))->format('H:i:s');
+  $cmp = ['ot' => 0, 'oy' => 0, 'st' => 0, 'sy' => 0];
+  foreach (opens_rows($from) as $r) { $d = $r['day']; if (!isset($n[$d])) continue;
+    $n[$d]++; $stk[$d][$r['k']]++; $spl[$d][$r['k'] * 2 + ($r['ckok'] ? 0 : 1)]++;
+    if ($d !== $today && $d !== $yest) continue;
+    if ((new DateTime($r['at'] . ' UTC'))->setTimezone($tz)->format('H:i:s') > $nowHm) continue;
+    $t = $d === $today ? 't' : 'y'; $cmp['o' . $t]++; $cmp['s' . $t] += (int)$r['secs'];
+  }
+  return [$n, $stk, $spl, $cmp];
+}
+// elenco delle aperture di un giorno: fonti, paesi, una riga per apertura (la più recente in cima)
+function opens_day_html(string $day): string {
+  $tz = new DateTimeZone('Europe/Rome');
+  $rows = opens_rows($day, $day);
+  $country = fn($cc) => $cc ? ((class_exists('Locale') ? Locale::getDisplayRegion('-' . $cc, 'it') : '') ?: $cc) : '';
+  $label = $day === today_it() ? 'Oggi' : ($day === (new DateTime('-1 day', $tz))->format('Y-m-d') ? 'Ieri' : (class_exists('IntlDateFormatter')
+    ? ucfirst((new IntlDateFormatter('it_IT', IntlDateFormatter::FULL, IntlDateFormatter::NONE, 'Europe/Rome', null, 'EEEE d MMMM'))->format(new DateTime($day . ' 12:00', $tz)))
+    : (new DateTime($day))->format('d/m/Y')));
+  $h = '<h3 class="oday">' . h($label) . ' · <b>' . num(count($rows)) . '</b> ' . (count($rows) === 1 ? 'apertura' : 'aperture') . '</h3>';
+  if (!$rows) return $h . '<p class="muted">Nessuna apertura in questo giorno.</p>';
+  $src = array_count_values(array_map(fn($o) => $o['source'] ?: 'diretto', $rows)); arsort($src);
+  $h .= '<p class="osrc">'; foreach ($src as $k => $n) $h .= '<span>' . h($k) . ' <b>' . num($n) . '</b></span>'; $h .= '</p>';
+  $cc = array_count_values(array_filter(array_map(fn($o) => (string)$o['cc'], $rows), 'strlen')); arsort($cc);
+  if ($cc) { $h .= '<p class="osrc occ-sum">'; foreach ($cc as $c => $n) $h .= '<span><span class="occ">' . h($country($c)) . '</span> <b>' . num($n) . '</b></span>'; $h .= '</p>'; }
+  $h .= '<ul class="olist">';
+  foreach ($rows as $o) {
+    $t = (new DateTime($o['at'] . ' UTC'))->setTimezone($tz)->format('H:i');
+    // ora locale di chi ha aperto la mappa (fuso orario del browser), solo se diversa dall'ora italiana
+    $lt = '';
+    if (!empty($o['tz']) && in_array($o['tz'], DateTimeZone::listIdentifiers(), true)) {
+      $l = (new DateTime($o['at'] . ' UTC'))->setTimezone(new DateTimeZone($o['tz']));
+      if ($l->format('H:i') !== $t) $lt = $l->format(in_array($o['cc'], ['US', 'CA', 'AU', 'NZ', 'IN', 'PH', 'PK', 'MX', 'CO', 'EG', 'SA'], true) ? 'g:i A' : 'H:i');
+    }
+    $where = $o['cc'] ? '<span class="ocr">' . h($country($o['cc'])) . '</span>' . ($o['city'] ? ' <span class="ocity">· ' . h($o['city']) . '</span>' : '') . ($lt ? ' <span class="olocal">(' . $lt . ' locali)</span>' : '') : '<span class="muted">luogo non noto</span>';
+    $who = $o['user_id'] ? '<a href="user.php?id=' . (int)$o['user_id'] . '">iscritto ' . h($o['uname'] ?: $o['email']) . '</a>'
+      : ($o['vid'] ? '<a href="percorso.php?vid=' . h($o['vid']) . '">ID utente ' . h($o['vid']) . '</a>' : 'senza ID');
+    $s = (int)$o['secs'];
+    $perm = $s > 0 ? '<span class="perm on">permanenza ' . ($s < 60 ? $s . ' s' : floor($s / 60) . ' min' . ($s % 60 ? ' ' . $s % 60 . ' s' : '')) . '</span>' : '<span class="perm">permanenza: nessun dato</span>';
+    $extra = array_filter([$o['views'] ? $o['views'] . ' cantin' . ($o['views'] == 1 ? 'a' : 'e') . ' aperte' : '', (int)$o['gps'] === 1 ? 'GPS attivato' : '']);
+    $h .= '<li><time>' . $t . '</time> ' . $where . '<br><b>' . h($o['source'] ?: 'diretto') . '</b>'
+      . ($o['ref'] && $o['ref'] !== $o['source'] ? ' <button type="button" class="rinfo" aria-label="Sito di provenienza" data-tip="' . h($o['ref']) . '">i</button>' : '')
+      . ' · ' . h((string)$o['device']) . ' · <small class="muted">' . h(land_kind($o['land'])) . '</small>'
+      . '<br><span class="tdot s' . $o['k'] . '"></span><span class="wv v' . $o['k'] . '">' . $who . '</span><br>' . $perm
+      . ($extra ? ' · <span class="muted">' . h(implode(' · ', $extra)) . '</span>' : '') . ($o['ckok'] ? '' : ' · <span class="ncv">senza cookie</span>') . '</li>';
+  }
+  return $h . '</ul>';
+}
