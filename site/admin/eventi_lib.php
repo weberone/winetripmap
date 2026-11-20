@@ -11,7 +11,7 @@ const EV_LABELS = [
   'act:use_location' => 'Usa la posizione (riuscito)', 'act:open_browse' => 'Esplora per area', 'act:share' => 'Condivide', 'act:add_to_trip' => 'Aggiunge al trip',
   'act:open_street_view' => 'Apre Street View', 'act:get_directions' => 'Indicazioni stradali', 'act:call_winery' => 'Telefona alla cantina',
   'act:open_winery_site' => 'Apre il sito della cantina', 'act:open_google_maps' => 'Apre Google Maps', 'act:add_favorite' => 'Salva tra le preferite',
-  'act:remove_favorite' => 'Toglie dalle preferite',
+  'act:remove_favorite' => 'Toglie dalle preferite', 'act:add_visit' => 'Segna una cantina visitata', 'act:remove_visit' => 'Toglie una cantina dalle visitate', 'btn:dVisit' => 'Scheda: Segna visitata',
   'btn:locBtn' => 'In alto: posizione', 'btn:placeBtn' => 'In alto: luogo', 'btn:browseBtn' => 'Esplora per area', 'btn:tripBtn' => 'In alto: il tuo trip',
   'btn:acctBtn' => 'In alto: account', 'btn:worldAskGps' => 'Invito iniziale: usa la mia posizione', 'btn:worldAskBtn' => 'Invito iniziale: cerca un luogo',
   'btn:worldAskBrowse' => 'Invito iniziale: esplora per area', 'btn:searchHere' => 'Cerca in questa zona', 'btn:nearBtn' => 'Le più vicine',

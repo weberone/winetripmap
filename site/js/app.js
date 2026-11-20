@@ -36,7 +36,7 @@ const state = {
   radiusKm: RADII.includes(store.get("radius")) ? store.get("radius") : 20,
   showPreview: store.get("preview") !== false, // radar: cerca da solo quando sposti la mappa
   all: [], byId: new Map(), sel: null, mapsReady: false, areaOk: false, loading: false, userMoved: false,
-  user: null, favs: new Set()      // account (api/auth.php) e cantine preferite (api/fav.php)
+  user: null, favs: new Set(), visits: new Set()      // account (api/auth.php) e cantine preferite (api/fav.php)
 };
 
 // ---------- utilità ----------
@@ -76,13 +76,16 @@ const WINE = {
 const LOGO_GLASS = "M1 5.5A5 5 0 0 1 11 5.5C11 8.9 8.4 11.3 6.9 12V14.3H8.6C9.1 14.3 9.4 14.6 9.4 14.95S9.1 15.6 8.6 15.6H3.4C2.9 15.6 2.6 15.3 2.6 14.95S2.9 14.3 3.4 14.3H5.1V12C3.6 11.3 1 8.9 1 5.5Z";
 const PIN_VB = [-1.4, -1.4, 14.8, 18.4]; // il calice (12×15,6) con il bordo intorno
 const pinH = (w) => Math.round(w * PIN_VB[3] / PIN_VB[2]);
-function pinSvg(w = 24, wc = "", hv = false) {
+function pinSvg(w = 24, wc = "", hv = false, vis = false) {
   const fill = (WINE[wc] || WINE.r).fill(), ink = hv ? "#1a1414" : "#fff";
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${pinH(w)}" viewBox="${PIN_VB.join(" ")}">`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${pinH(w)}" viewBox="${PIN_VB.join(" ")}" overflow="visible">`
     + `<path d="${LOGO_GLASS}" fill="${fill}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke"/>`
-    + `<circle cx="6" cy="5.5" r="2" fill="${ink}"/></svg>`;
+    + `<circle cx="6" cy="5.5" r="2" fill="${ink}"/>`
+    // cantina visitata (account): bollino verde con la spunta sulla coppa
+    + (vis ? `<circle cx="10.6" cy="1.4" r="3.1" fill="#1f9d55" stroke="#fff" stroke-width="1"/><path d="M9.2 1.5l1 1 1.9-2" fill="none" stroke="#fff" stroke-width=".9" stroke-linecap="round" stroke-linejoin="round"/>` : "")
+    + `</svg>`;
 }
-function markerIcon(sel, wc, hv) { const w = sel ? 34 : 26; return { svg: pinSvg(w, wc, hv), w, h: pinH(w), ax: w / 2 }; }
+function markerIcon(sel, wc, hv, vis) { const w = sel ? 34 : 26; return { svg: pinSvg(w, wc, hv, vis), w, h: pinH(w), ax: w / 2 }; }
 // gruppo di cantine vicine: cerchio bordeaux con il numero
 function clusterIcon(n) {
   const d = n < 10 ? 36 : n < 50 ? 42 : n < 500 ? 48 : 54, r = d / 2;
@@ -138,7 +141,7 @@ function renderList() {
     $("list").innerHTML = state.areaOk ? `<div class="empty">${esc(t("empty_radius"))}</div>`
       : `<div class="empty">${esc(t("empty_start"))}</div>`;
   } else {
-    $("list").innerHTML = v.slice(0, 300).map((x) => `<button class="item" data-id="${esc(x.id)}"><span class="mk">${pinSvg(17, x.wc, x.hv)}</span>
+    $("list").innerHTML = v.slice(0, 300).map((x) => `<button class="item" data-id="${esc(x.id)}"><span class="mk">${pinSvg(17, x.wc, x.hv, state.visits.has(x.id))}</span>
         <span style="min-width:0"><div class="name">${esc(title(x))}</div>${x.c && x.n ? `<div class="meta">${esc(x.c)}</div>` : ""}</span>
         <span class="km">${isFinite(x.km) ? fmtKm(x.km) : ""}</span></button>`).join("");
   }
@@ -149,7 +152,7 @@ function drawMarkers() {
   const v = visible(), sel = state.sel && state.byId.get(state.sel);
   if (sel && !v.includes(sel)) v.push(sel); // la cantina aperta resta sulla mappa anche fuori dal raggio
   for (const s of state.trip.stops) { const x = state.byId.get(s.id); if (x && !v.includes(x)) v.push(x); } // e le tappe del trip
-  M.setSpots(v.map((x) => ({ id: x.id, lat: x.lat, lng: x.lng, selected: x.id === state.sel, icon: markerIcon(x.id === state.sel, x.wc, x.hv), label: x.c || "" })), clusterIcon);
+  M.setSpots(v.map((x) => ({ id: x.id, lat: x.lat, lng: x.lng, selected: x.id === state.sel, icon: markerIcon(x.id === state.sel, x.wc, x.hv, state.visits.has(x.id)), label: x.c || "" })), clusterIcon);
   drawMe();
 }
 function drawMe() {
@@ -550,6 +553,7 @@ async function openDetail(id, fly = true) {
       ${tel ? `<a class="btn" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 3.5h3.2l1.6 4.2-2.1 1.4a11 11 0 0 0 5.2 5.2l1.4-2.1 4.2 1.6V17a2.5 2.5 0 0 1-2.7 2.5A15.5 15.5 0 0 1 2.5 6.2 2.5 2.5 0 0 1 5 3.5z"/></svg><span>${esc(t("call"))}</span></a>` : ""}
       ${d.w ? `<a class="btn" href="${esc(d.w)}" target="_blank" rel="noopener nofollow"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/></svg><span>${esc(t("site_btn"))}</span></a>` : ""}
       <button class="btn fav" id="dFav" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg><span>${esc(t("save"))}</span></button>
+      <button class="btn visit" id="dVisit" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16.2 9.4"/></svg><span>${esc(t("vis_add"))}</span></button>
       <button class="btn trip" id="dTrip" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="6" r="2.4"/><path d="M8.4 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.6"/></svg><span>${esc(t("add_trip"))}</span></button>
       ${MAPS.googleKey ? `<button class="btn" id="dSv" type="button"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="5" r="2.6"/><path d="M9.2 9h5.6l1 6h-2.2l-.6 6h-2l-.6-6H8.2z"/></svg><span>${esc(t("sview"))}</span></button>` : ""}
       <button class="btn" id="dShare" type="button"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 15V3.5m-4 4 4-4 4 4"/><path d="M8 10.5H6.5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H16"/></svg><span>${esc(t("share"))}</span></button>
@@ -560,6 +564,7 @@ async function openDetail(id, fly = true) {
   $("dShare").onclick = () => share(title(x), placeUrl(x));
   if ($("dSv")) $("dSv").onclick = () => openStreetView(x);
   $("dFav").onclick = () => toggleFav(x); syncFav(x.id);
+  $("dVisit").onclick = () => toggleVisit(x); syncVisit(x.id);
   $("dTrip").onclick = () => toggleTrip(x); syncTripBtn();
   const more = $("wMore"); if (more) more.onclick = () => { $("detail").querySelectorAll(".wines li[hidden]").forEach((li) => { li.hidden = false; }); more.remove(); };
   // bottiglie: al clic la foto grande (con le frecce si passa alle altre)
@@ -1131,6 +1136,9 @@ async function loadMe(mapKind) {
       const f = await fetch("/api/fav.php", { credentials: "same-origin" }).then((x) => x.json());
       state.favs = new Set((f.items || []).map((x) => x.id));
       if (state.sel) syncFav(state.sel);
+      const v = await fetch("/api/visit.php", { credentials: "same-origin" }).then((x) => x.json()).catch(() => ({}));
+      state.visits = new Set((v.items || []).map((x) => x.id));
+      if (state.visits.size) { drawMarkers(); if (state.sel) syncVisit(state.sel); }
     }
   } catch (e) {}
 }
@@ -1150,6 +1158,57 @@ async function toggleFav(x) {
     if (!r.ok) throw new Error(r.status);
     setStatus(t(on ? "fav_saved" : "fav_removed"));
   } catch (e) { on ? state.favs.delete(x.id) : state.favs.add(x.id); syncFav(x.id); setStatus(t("failed")); }
+}
+
+// ---------- cantine visitate (account, api/visit.php): bollino verde sul pin e mappa 3D personale (/?visited=1) ----------
+function syncVisit(id) {
+  const b = $("dVisit"); if (!b) return;
+  const on = state.visits.has(id);
+  b.setAttribute("aria-pressed", String(on)); b.querySelector("span").textContent = t(on ? "vis_on" : "vis_add");
+}
+async function toggleVisit(x) {
+  if (!state.user) { location.href = "/account/?next=" + encodeURIComponent("/?c=" + x.id); return; }
+  const on = !state.visits.has(x.id);
+  ga(on ? "add_visit" : "remove_visit", gaW(x));
+  on ? state.visits.add(x.id) : state.visits.delete(x.id); syncVisit(x.id); drawMarkers();
+  try {
+    const r = await fetch("/api/visit.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: x.id, on, name: x.n || "", town: x.c || "", lat: x.lat, lng: x.lng }) });
+    if (!r.ok) throw new Error(r.status);
+    setStatus(t(on ? "vis_saved" : "vis_removed"));
+  } catch (e) { on ? state.visits.delete(x.id) : state.visits.add(x.id); syncVisit(x.id); drawMarkers(); setStatus(t("failed")); }
+}
+// la tua mappa: la Terra in 3D che gira piano, solo con le cantine che hai visitato (bollino verde), e una scheda con quante e in quali paesi
+async function showVisited() {
+  let d;
+  try {
+    const r = await fetch("/api/visit.php", { credentials: "same-origin" });
+    if (r.status === 401) { location.href = "/account/?next=" + encodeURIComponent("/?visited=1"); return; }
+    d = await r.json();
+  } catch (e) { d = { items: [] }; }
+  await loadData().catch(() => {});
+  const idx = [];
+  for (const v of d.items || []) {
+    let x = state.byId.get(v.id);
+    if (!x && v.lat != null) { x = { id: v.id, lat: v.lat, lng: v.lng, n: v.name || "", c: v.town || "", wc: "", hv: false, p: 0 }; state.all.push(x); state.byId.set(x.id, x); } // non più nei dati: resta lo stesso
+    if (x) { state.visits.add(x.id); idx.push(state.all.indexOf(x)); }
+  }
+  $("worldAsk").hidden = true;
+  state.area = { name: t("my_visits"), idx, mid: null, shape: null }; state.center = null;
+  showGlobe(); renderList(); drawMarkers();
+  // paesi: dalle regioni di aree.json (indici validi solo per i dati dello stesso giorno)
+  let cc = [];
+  try { await loadAree(); const reg = new Map(); for (const [k, v] of Object.entries(AR.a.r)) for (const i of v.i) reg.set(i, k.split(".")[0]);
+    cc = [...new Set(idx.map((i) => reg.get(i)).filter(Boolean))]; } catch (e) {}
+  const CN = new Intl.DisplayNames([I18N.lang], { type: "region" }), name = (c) => { try { return CN.of(c); } catch (e) { return c; } };
+  const box = document.createElement("div"); box.className = "viscard"; box.id = "visCard";
+  box.innerHTML = `<b>🍷 ${esc(t("my_visits"))}</b>`
+    + (idx.length ? `<p class="vis-n"><strong>${esc(nW(idx.length))}</strong>${cc.length ? ` ${esc(t("vis_in"))} <strong>${esc(I18N.n("cn", cc.length, fmtN(cc.length)))}</strong>` : ""}</p>`
+      + (cc.length ? `<p class="vis-cc">${cc.map((c) => `<span>${esc(name(c))}</span>`).join("")}</p>` : "")
+      : `<p class="vis-n">${esc(t("vis_empty"))}</p>`)
+    + `<a class="btn" href="/">${esc(t("vis_close"))}</a>`;
+  $("map").parentElement.appendChild(box);
+  setStatus(t("my_visits"));
 }
 
 // ---------- trip: il tuo itinerario di cantine, con un nome, salvato nell'account (api/trip.php) ----------
@@ -1317,16 +1376,17 @@ async function start() {
   let perm = "prompt";
   try { perm = (await navigator.permissions.query({ name: "geolocation" })).state; } catch (e) {}
   const last = store.get("lastgps"), startAt = perm === "granted" ? last : null;
-  const qs = new URLSearchParams(location.search), tq = qs.get("trip"), shared = qs.get("c");
+  const qs = new URLSearchParams(location.search), tq = qs.get("trip"), shared = qs.get("c"), vq = qs.has("visited");
   // senza posizione né link: prima la Terra in 3D che gira (OpenFreeMap, gratuita e non contata); la mappa vera
   // (Google se c'è quota, poi Mapbox) parte quando si sceglie un luogo, una posizione, un'area o un trip (ensureMap)
-  globeOnly = !startAt && !tq && !shared;
+  globeOnly = vq || (!startAt && !tq && !shared); // le tue cantine visitate (?visited=1): sempre sul globo
   mapOpts = { dark: dark(), center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 30, lng: 10 },
     bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : WORLD, padding: 12, language: I18N.lang };
   const mapKind = await createMap({ ...mapOpts, free: globeOnly });
   state.mapsReady = true; app.classList.add("mapready");
   loadMe(globeOnly ? "globe" : mapKind);
   bindMap();
+  if (vq) return showVisited();
   // un trip (?trip=12, dall'account) o la bozza dopo l'accesso (?trip=draft): le tappe sulla mappa
   if (tq) {
     await ensureMap(); await loadData().catch(() => {}); drawTrip();

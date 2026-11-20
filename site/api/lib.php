@@ -80,6 +80,17 @@ CREATE TABLE IF NOT EXISTS favorites (
   created_at TEXT NOT NULL,
   PRIMARY KEY (user_id, winery)
 );
+-- cantine visitate (segnate dalla scheda nella mappa): stessa forma delle preferite; la mappa 3D personale le mostra (/?visited=1)
+CREATE TABLE IF NOT EXISTS visits (
+  user_id    INTEGER NOT NULL,
+  winery     TEXT NOT NULL,
+  name       TEXT,
+  town       TEXT,
+  lat        REAL,
+  lng        REAL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, winery)
+);
 -- itinerari degli iscritti (api/trip.php): nome e tappe in ordine, JSON [{ id, n, c, lat, lng }]
 CREATE TABLE IF NOT EXISTS trips (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,

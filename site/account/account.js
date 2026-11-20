@@ -84,6 +84,19 @@ if ($("favs")) {
     } catch (e) { $("favs").innerHTML = `<li class="err">Non riesco a caricare le preferite.</li>`; }
   };
   load();
+  // cantine visitate (pulsante "Segna visitata" nella scheda della mappa): elenco e link alla mappa 3D personale (/?visited=1)
+  const loadVisits = async () => {
+    try {
+      const d = await api("", undefined, "/api/visit.php");
+      $("visAll").hidden = !d.items.length;
+      $("visN").textContent = d.items.length === 1 ? "1 cantina" : d.items.length + " cantine";
+      $("visits").innerHTML = d.items.length ? d.items.map((x) => `<li><a href="/?c=${encodeURIComponent(x.id)}"><b>${esc(x.name || "Cantina")}</b><small>${esc([x.town, x.at].filter(Boolean).join(" · "))}</small></a>
+        <button class="btn small" data-vid="${esc(x.id)}">Togli</button></li>`).join("")
+        : `<li class="muted">Ancora nessuna: nella scheda di una cantina tocca «Segna visitata».</li>`;
+      $("visits").querySelectorAll("button[data-vid]").forEach((b) => b.onclick = async () => { b.disabled = true; await api("", { id: b.dataset.vid, on: false }, "/api/visit.php").catch(() => {}); loadVisits(); });
+    } catch (e) { $("visits").innerHTML = `<li class="err">Non riesco a caricare le cantine visitate.</li>`; }
+  };
+  loadVisits();
   // trip: si aprono nella mappa (?trip=id)
   const loadTrips = async () => {
     try {

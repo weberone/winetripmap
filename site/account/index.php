@@ -74,6 +74,11 @@ $cfg = ['next' => $next, 'google' => $gid ?: null, 'verify' => $verify, 'reset' 
       <ul class="favs" id="trips"><li class="muted">Carico…</li></ul>
     </section>
 
+    <section class="card"><h2>Cantine visitate</h2>
+      <p class="visall" id="visAll" hidden><a class="btn primary" href="/?visited=1">🌍 La tua mappa 3D</a> <span id="visN"></span></p>
+      <ul class="favs" id="visits"><li class="muted">Carico…</li></ul>
+    </section>
+
     <section class="card"><h2>Cantine preferite</h2>
       <ul class="favs" id="favs"><li class="muted">Carico…</li></ul>
     </section>
@@ -111,5 +116,5 @@ $cfg = ['next' => $next, 'google' => $gid ?: null, 'verify' => $verify, 'reset' 
 <?php endif; ?>
 </main>
 <script>window.WTM_ACCOUNT = <?= json_encode($cfg, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
-<script src="/account/account.js?v=2"></script>
+<script src="/account/account.js?v=3"></script>
 </body></html>

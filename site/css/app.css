@@ -500,3 +500,17 @@ form.search input:focus{border-color:var(--accent)}
 @keyframes wPop{0%,100%{transform:none}50%{transform:scale(1.35)}}
 @keyframes wWiggle{0%,100%{transform:none}25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)}}
 @media (prefers-reduced-motion:reduce){.donatemob *,.donatehdr *{animation:none!important}}
+
+/* cantine visitate: pulsante della scheda (verde quando è segnata) e scheda della mappa 3D personale (/?visited=1) */
+.dgrid .btn.visit[aria-pressed="true"]{border-color:#1f9d55;color:#1f9d55;background:color-mix(in srgb,#1f9d55 10%,var(--surface))}
+.dgrid .btn.visit[aria-pressed="true"] svg{stroke:#1f9d55;fill:color-mix(in srgb,#1f9d55 18%,transparent)}
+.viscard{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:6;width:min(360px,calc(100% - 24px));box-sizing:border-box;padding:14px 16px 12px;
+  border-radius:18px;text-align:center;background:color-mix(in srgb,var(--surface) 90%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);box-shadow:0 18px 44px -12px rgb(40 8 16 / .45);animation:waIn .6s cubic-bezier(.2,.9,.3,1.15) both}
+.viscard b{display:block;font:800 20px/1.15 var(--f-display);letter-spacing:-.02em;color:var(--ink)}
+.viscard .vis-n{margin:6px 0 8px;color:var(--muted);font-size:14.5px}
+.viscard .vis-n strong{color:var(--accent);font-weight:800}
+.viscard .vis-cc{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin:0 0 10px;max-height:64px;overflow:auto}
+.viscard .vis-cc span{padding:3px 9px;border-radius:999px;font-size:12.5px;font-weight:600;background:color-mix(in srgb,#1f9d55 14%,transparent);color:#1f9d55}
+.viscard .btn{display:inline-flex}
+.app.mob:not(.map-only) .viscard{display:none}
