@@ -19,7 +19,7 @@ Progetto separato da SkateboardMap: lavora solo in questa cartella e nel core co
 
 ## Lancio (SEO), fatto il 2026-11-20
 - Tolto `noindex` da `site/index.html`, `SEO_INDEX = true` in `site/seo/common.php`, `site/robots.txt` nostro (chiusi admin, api, account, counter; `Sitemap: https://winetripmap.com/sitemap.xml`). Account, admin e privacy restano noindex (`api/page.php`).
-- Google Search Console (2026-11-20): proprietà Dominio `winetripmap.com` sull'account Google di WTM, verificata con un record TXT `google-site-verification=…` nella Zona DNS di Infomaniak (non toglierlo), sitemap `https://winetripmap.com/sitemap.xml` inviata.
+- Google Search Console (2026-11-20): proprietà Dominio `winetripmap.com` sull'account Google di WTM, verificata con un record TXT `google-site-verification=…` nella Zona DNS di Infomaniak (non toglierlo), sitemap `https://winetripmap.com/sitemap.xml` inviata. Bing Webmaster Tools (stesso giorno, accesso con Google dell'account WTM): sito importato da Search Console (niente verifica a parte, Bing ha la lettura di Search Console), stessa sitemap inviata; vale anche per DuckDuckGo e Yahoo.
 - Pronti dal 2026-11-18: icona (`favicon.svg`, `apple-touch-icon.png`) e anteprima social (`og.png`, 1200×630) su home, pagine SEO, account e admin; controllo a campione delle pagine SEO fatto (corretti i testi "a Lombardia" e "si trova a Via…").
 
 ## Mappa (`site/index.html`, `site/js/app.js`, `site/css/app.css`)
