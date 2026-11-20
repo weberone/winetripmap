@@ -95,7 +95,7 @@ const title = (x) => x.n || (x.c ? t("winery_in", { c: x.c }) : t("winery"));
 let dataP = null;
 function loadData() {
   if (!dataP) dataP = fetch("/data/cantine.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((d) => {
-    state.all = d.items.map(([id, lat, lng, n, c, wc, hv]) => ({ id, lat, lng, n, c, wc: wc || "", hv: !!hv }));
+    state.all = d.items.map(([id, lat, lng, n, c, wc, hv, p]) => ({ id, lat, lng, n, c, wc: wc || "", hv: !!hv, p: p || 0 }));
     state.byId = new Map(state.all.map((x) => [x.id, x]));
     return d;
   });
@@ -554,7 +554,8 @@ async function openDetail(id, fly = true) {
       ${MAPS.googleKey ? `<button class="btn" id="dSv" type="button"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="5" r="2.6"/><path d="M9.2 9h5.6l1 6h-2.2l-.6 6h-2l-.6-6H8.2z"/></svg><span>${esc(t("sview"))}</span></button>` : ""}
       <button class="btn" id="dShare" type="button"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 15V3.5m-4 4 4-4 4 4"/><path d="M8 10.5H6.5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H16"/></svg><span>${esc(t("share"))}</span></button>
     </div>
-    <p class="dsrc">${esc(x.id[0] === "q" ? t("osm").replace("OpenStreetMap", "Wikidata") : t("osm"))} · <a href="${osmUrl(x)}" target="_blank" rel="noopener">${esc(t("fix"))}</a></p>`;
+    <p class="dsrc">${x.id[0] === "o" ? `${esc(t("osm").replace("OpenStreetMap", "Overture Maps"))} · <a href="https://overturemaps.org/" target="_blank" rel="noopener">Overture Maps Foundation</a>`
+      : `${esc(x.id[0] === "q" ? t("osm").replace("OpenStreetMap", "Wikidata") : t("osm"))} · <a href="${osmUrl(x)}" target="_blank" rel="noopener">${esc(t("fix"))}</a>`}</p>`;
   $("dClose").onclick = () => closeDetail();
   $("dShare").onclick = () => share(title(x), placeUrl(x));
   if ($("dSv")) $("dSv").onclick = () => openStreetView(x);
@@ -903,6 +904,33 @@ function renderBrowse() {
   };
   $("crumbs").onclick = (e) => { const b = e.target.closest("button[data-b]"); if (!b) return; bpath = bpath.slice(0, +b.dataset.b); renderBrowse(); };
 }
+// cantine per parole: "roberto anselmi" trova "Anselmi Winery", "pieropan soave" trova Pieropan a Soave. Ogni parola cercata vale se
+// è l'inizio di una parola del nome o del comune; le parole generiche (cantina, azienda, winery…) da sole non bastano.
+// In cima: tutte le parole trovate, il nome che inizia con la ricerca, poi le cantine con la lista dei vini (le più complete)
+const GENERIC_W = new Set("cantina cantine azienda agricola az agr societa soc winery wines wine vini vino vin weingut domaine chateau bodega bodegas tenuta tenute estate vineyard vineyards di del della la il le the de des du".split(" "));
+const wordsOf = (s) => norm(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(" ").filter(Boolean);
+function wineryHits(s) {
+  const q = wordsOf(s); if (!q.length) return [];
+  const key = q.filter((w) => !GENERIC_W.has(w) && w.length > 1);
+  const df = q.map(() => 0), hit = [];
+  for (const x of state.all) {
+    if (!x.n) continue;
+    const W = x._w || (x._w = wordsOf(x.n + " " + (x.c || "")));
+    const m = q.map((w) => W.some((v) => v.startsWith(w)));
+    let k = 0, kk = 0;
+    m.forEach((on, i) => { if (on) { df[i]++; k++; if (!GENERIC_W.has(q[i])) kk++; } });
+    if (!k || (key.length && !kk) || k < Math.ceil(q.length / 2)) continue;
+    hit.push([x, m]);
+  }
+  // le parole rare contano di più: "anselmi" (poche cantine) pesa più di "roberto" (tante)
+  const N = state.all.length, idf = df.map((d) => Math.log(1 + N / (1 + d)));
+  return hit.map(([x, m]) => {
+    const nn = norm(x.n);
+    let sc = m.reduce((t, on, i) => t + (on ? idf[i] : 0), 0) + (m.every(Boolean) ? 10 : 0);
+    sc += (nn.startsWith(s) ? 3 : nn.includes(s) ? 2 : 0) + (x.hv ? 0.6 : 0) + x.p * 0.25; // a parità di nome prima i produttori più sicuri
+    return [x, sc];
+  }).sort((a, b) => b[1] - a[1]).map((a) => a[0]);
+}
 function suggest() {
   const s = norm($("q").value.trim());
   hits = []; hi = -1;
@@ -910,7 +938,7 @@ function suggest() {
   const towns = new Map();
   state.all.forEach((x) => { if (x.c && norm(x.c).startsWith(s)) { const t = towns.get(x.c) || { name: x.c, n: 0, lat: 0, lng: 0 }; t.n++; t.lat += x.lat; t.lng += x.lng; towns.set(x.c, t); } });
   const tw = [...towns.values()].sort((a, b) => b.n - a.n).slice(0, 4).map((t) => ({ kind: "town", name: t.name, n: t.n, lat: t.lat / t.n, lng: t.lng / t.n }));
-  const ws = state.all.filter((x) => x.n && norm(x.n).includes(s)).sort((a, b) => (norm(a.n).startsWith(s) ? 0 : 1) - (norm(b.n).startsWith(s) ? 0 : 1)).slice(0, 8).map((x) => ({ kind: "place", x }));
+  const ws = wineryHits(s).slice(0, 8).map((x) => ({ kind: "place", x }));
   const ar = areaHits(s);
   hits = [{ kind: "geo", q: $("q").value.trim() }, ...ar, ...tw, ...ws];
   let html = `<li data-i="0">🔎 ${esc(t("find_place", { q: hits[0].q }))}</li>`;

@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 if (stripos((string)($_SERVER['CONTENT_TYPE'] ?? ''), 'application/json') !== 0) json_out(['error' => 'content_type'], 415);
 $in = json_decode((string)file_get_contents('php://input'), true) ?: [];
 $id = (string)($in['id'] ?? '');
-if (!preg_match('/^[nwrq]\d{1,15}$/', $id)) json_out(['error' => 'id'], 400);
+if (!preg_match('/^([nwrq]\d{1,15}|o[0-9a-f]{12})$/', $id)) json_out(['error' => 'id'], 400);
 if (empty($in['on'])) {
   db()->prepare('DELETE FROM favorites WHERE user_id = ? AND winery = ?')->execute([$u['id'], $id]);
 } else {

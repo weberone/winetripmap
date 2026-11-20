@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import * as cheerio from 'cheerio';
 import { get, robotsRules, allowed } from './rete.mjs';
 import { wdMatch } from './wikidata-cantine.mjs';
+import { ovMatch, ovId } from './overture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const siteData = join(here, '..', 'site', 'data');
@@ -109,13 +110,18 @@ function build() {
   const items = tagged.length ? tagged.map((e) => [e.type[0] + e.id, e.lat ?? e.center?.lat, e.lon ?? e.center?.lon, (e.tags || {}).name || '']).filter((x) => x[1] != null)
     : JSON.parse(readFileSync(join(siteData, 'cantine.json'), 'utf8')).items;
   const wdq = wdMatch(tagged).osm; // cantine OSM che Wikidata conosce come cantine o aziende del vino
+  // Overture Maps (tools/overture.mjs): conferma le cantine OSM (o le dice negozi/wine bar) e porta quelle che OSM non ha
+  const ov = ovMatch(items), OVK = { w: [2, 'Overture: cantina'], v: [1, 'Overture: vigneto'], s: [-2, 'Overture: negozio di vini/alcolici'], b: [-2, 'Overture: wine bar'], h: [-2, 'Overture: ingrosso di vini'] };
+  const ovNew = new Set(ov.extra.map((o) => ovId(o[0]))), ovWeb = new Set(ov.extra.filter((o) => o[6]).map((o) => ovId(o[0])));
+  for (const o of ov.extra) items.push([ovId(o[0]), o[1], o[2], o[3]]);
+  console.log(`Overture: ${ov.match.size} cantine OSM abbinate, ${ov.extra.length} nuove`);
   // paesi dove OSM segna bene i vigneti (almeno il 90% delle cantine del sito ha un vigneto entro 3 km, con almeno 50 cantine:
   // Italia, Francia, Germania, Austria, Svizzera…): lì una cantina senza vigneti vicini e senza altre prove non è un produttore
   // (richiesta dell'utente 2026-11-19: "La Cantina Seiterre" a Vimercate, comune senza vigneti)
   const L = existsSync(join(here, 'data', 'luoghi.json')) ? JSON.parse(readFileSync(join(here, 'data', 'luoghi.json'), 'utf8')) : { w: {}, cities: {} };
   const ccOf = (id) => L.cities[L.w[id]]?.cc;
   const cov = {};
-  if (vine) for (const [id, lat, lng] of items) { const cc = ccOf(id), vz = cc && vine(id, lat, lng); if (!vz) continue; const o = cov[cc] ||= [0, 0]; o[0]++; if (vz[0] <= 3) o[1]++; }
+  if (vine) for (const [id, lat, lng] of items) { if (id[0] === 'o') continue; const cc = ccOf(id), vz = cc && vine(id, lat, lng); if (!vz) continue; const o = cov[cc] ||= [0, 0]; o[0]++; if (vz[0] <= 3) o[1]++; }
   const dense = new Set(Object.entries(cov).filter(([, [n, k]]) => n >= 50 && k / n >= 0.9).map(([cc]) => cc));
   console.log('paesi con i vigneti ben segnati:', [...dense].join(' '));
   const out = {};
@@ -140,6 +146,8 @@ function build() {
     else if (/^[Cc]antina \p{Lu}/u.test(name) && !/^cantina (la|il|lo|le|i|gli|del|della|dei|degli|di|da) /i.test(name)) add(1, 'nome: cantina + nome proprio');
     if (NAME_SHOP.test(name)) add(-2, 'nome da locale/negozio');
     if (vini[id]) add(1, 'lista dei vini');
+    if (ovNew.has(id)) add(1, 'Overture: cantina (solo lì)');
+    else if (ov.match.has(id)) { const [p, w] = OVK[ov.match.get(id)[10]]; add(p, w); }
     if (wdq.has(id)) add(2, 'Wikidata: ' + wdq.get(id));
     const c = crawl.get(id);
     if (c && c.prod) {
@@ -157,7 +165,9 @@ function build() {
     // (+1, es. la sola lista dei vini, che hanno anche le enoteche) e nessun vigneto entro 8 km → fuori
     // ma solo fuori dalle zone del vino: in un comune pieno di vigneti (Marsala, Montaione, Forlì…) una cantina senza altre prove
     // è quasi sempre un produttore vero con i vigneti un po' più in là; a Vimercate, Milano, Opera no
-    const fitto = vz && dense.has(ccOf(id)) && vz[2] < 40 && ((pos === 0 && vz[0] > 3) || (pos <= 1 && vz[0] > 8));
+    // cantina nuova di Overture con un sito non ancora letto: la regola dei vigneti aspetta il sito (che porta le prove)
+    const attesa = ovWeb.has(id) && !crawl.has(id);
+    const fitto = !attesa && vz && dense.has(ccOf(id)) && vz[2] < 40 && ((pos === 0 && vz[0] > 3) || (pos <= 1 && vz[0] > 8));
     if (fitto) why.push(`paese con vigneti ben segnati, nessuno entro 3 km e ${vz[2]} entro 10 km`);
     const s = fitto || (pos <= 1 && neg <= -2) || (pos === 0 && neg + soloVendita <= -1 && vneg < 0) ? -2 : pos === 0 && neg === -1 ? -1 : pos + neg + vneg < 0 ? 0 : pos + neg + vneg;
     out[id] = [s, name, why.join('; ')];
@@ -173,6 +183,9 @@ function build() {
 async function apply() {
   const cf = join(siteData, 'cantine.json'); const C = JSON.parse(readFileSync(cf, 'utf8'));
   const prima = C.items.length; C.items = C.items.filter(([id]) => !nonProduttore(id));
+  // ottavo campo: quanto è sicuro che sia un produttore (punteggio 0-9), per ordinare i risultati della ricerca nella mappa
+  const S = existsSync(outFile) ? JSON.parse(readFileSync(outFile, 'utf8')) : {};
+  for (const it of C.items) { const p = Math.max(0, Math.min(9, S[it[0]] ?? 0)); while (it.length < 7) it.push(it.length === 5 ? '' : 0); it[7] = p; }
   writeFileSync(cf, JSON.stringify(C));
   for (const f of readdirSync(join(siteData, 'det5'))) {
     const p = join(siteData, 'det5', f); const d = JSON.parse(readFileSync(p, 'utf8')); let ch = false;

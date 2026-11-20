@@ -1,5 +1,5 @@
 # Aggiorna i dati della mappa una volta al mese, sui server di GitHub (il Mac può restare spento):
-# cantine da OpenStreetMap e Wikidata, luoghi da GeoNames, vigneti dai file Geofabrik (8 parti in parallelo), siti delle nuove cantine (vini, descrizioni,
+# cantine da OpenStreetMap, Wikidata e Overture Maps, luoghi da GeoNames, vigneti dai file Geofabrik (8 parti in parallelo), siti delle nuove cantine (vini, descrizioni,
 # parole da produttore), punteggio "chi produce vino", pagine SEO; poi commit su main e deploy.
 # La memoria dei siti già letti (tools/.cache/prod, vini, desc: mai nel repository) sta nella release privata "cache-dati",
 # così ogni mese si leggono solo i siti nuovi.
@@ -62,7 +62,7 @@ jobs:
     needs: vigneti
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    timeout-minutes: 340
+    timeout-minutes: 355
     env:
       GH_TOKEN: ${{ github.token }}
       APPLICA: ${{ github.event_name == 'schedule' || inputs.applica }}
@@ -100,6 +100,17 @@ jobs:
         timeout-minutes: 120
         run: node tools/osm-cantine.mjs && node tools/luoghi.mjs
 
+      # cantine di Overture Maps (Meta, Microsoft, Foursquare…: tanti produttori che OSM non ha) e segni da negozio/wine bar
+      # per produttori.mjs; se Overture non risponde si usa il file del mese prima nella release cache-dati
+      - name: Cantine da Overture Maps
+        run: |
+          set -euo pipefail
+          pip install -q duckdb
+          mkdir -p tools/.cache/overture
+          python3 tools/overture-cantine.py || gh release download cache-dati -p overture-places.json.gz -O tools/.cache/overture/places.json.gz --clobber
+          node tools/overture.mjs apply | tee -a "$GITHUB_STEP_SUMMARY"
+          node tools/luoghi.mjs
+
       - name: Vigneti (unisce le 8 parti)
         run: |
           set -euo pipefail
@@ -119,9 +130,9 @@ jobs:
       # solo i siti non ancora letti; se un giro va troppo per le lunghe si ferma e il resto si legge il mese dopo
       - name: Siti delle nuove cantine
         run: |
-          timeout 25m node tools/produttori.mjs crawl || true
-          timeout 40m node tools/vini-dai-siti.mjs crawl || true
-          timeout 20m node tools/descrizioni.mjs crawl || true
+          timeout 60m node tools/produttori.mjs crawl || true
+          timeout 90m node tools/vini-dai-siti.mjs crawl || true
+          timeout 45m node tools/descrizioni.mjs crawl || true
 
       - name: Vini, descrizioni, chi produce vino
         run: |
@@ -140,8 +151,9 @@ jobs:
           cp tools/.cache/produttori-motivi.json "$RUNNER_TEMP/" 2>/dev/null || true
           cp tools/.cache/agri-aggiunte.json "$RUNNER_TEMP/" 2>/dev/null || true
           gzip -c tools/.cache/osm/vigneti.json > "$RUNNER_TEMP/vigneti.json.gz" 2>/dev/null || rm -f "$RUNNER_TEMP/vigneti.json.gz"
+          cp tools/.cache/overture/places.json.gz "$RUNNER_TEMP/overture-places.json.gz" 2>/dev/null || true
           cd "$RUNNER_TEMP"
-          gh release upload cache-dati dati-cache.tar.gz $(ls rapporto.txt produttori-motivi.json vigneti.json.gz agri-aggiunte.json 2>/dev/null) --clobber -R "$GITHUB_REPOSITORY"
+          gh release upload cache-dati dati-cache.tar.gz $(ls rapporto.txt produttori-motivi.json vigneti.json.gz agri-aggiunte.json overture-places.json.gz 2>/dev/null) --clobber -R "$GITHUB_REPOSITORY"
 
       - name: Applica al sito
         if: env.APPLICA == 'true'

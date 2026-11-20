@@ -7,7 +7,7 @@ $me = admin_me();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!csrf_ok()) json_out(['error' => 'csrf'], 403);
   $id = (string)($_POST['id'] ?? ''); $d = (string)($_POST['d'] ?? '');
-  if (!preg_match('/^[nwrq][0-9]{1,15}$/', $id) || !in_array($d, ['t', 'k', ''], true)) json_out(['error' => 'input'], 400);
+  if (!preg_match('/^([nwrq][0-9]{1,15}|o[0-9a-f]{12})$/', $id) || !in_array($d, ['t', 'k', ''], true)) json_out(['error' => 'input'], 400);
   if ($d === '') db()->prepare('DELETE FROM revisioni WHERE id = ?')->execute([$id]);
   else db()->prepare('INSERT INTO revisioni (id, d, at, by_user) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET d = excluded.d, at = excluded.at, by_user = excluded.by_user')
     ->execute([$id, $d, now(), (int)$me['id']]);

@@ -34,7 +34,7 @@ if ($name === '') json_out(['error' => 'name'], 400);
 $stops = [];
 foreach (array_slice(is_array($in['stops'] ?? null) ? $in['stops'] : [], 0, STOP_MAX) as $s) {
   $sid = (string)($s['id'] ?? '');
-  if (!preg_match('/^[nwrq]\d{1,15}$/', $sid) || !is_numeric($s['lat'] ?? null) || !is_numeric($s['lng'] ?? null)) continue;
+  if (!preg_match('/^([nwrq]\d{1,15}|o[0-9a-f]{12})$/', $sid) || !is_numeric($s['lat'] ?? null) || !is_numeric($s['lng'] ?? null)) continue;
   $lat = (float)$s['lat']; $lng = (float)$s['lng'];
   if (abs($lat) > 90 || abs($lng) > 180) continue;
   $stops[] = ['id' => $sid, 'n' => mb_substr(trim((string)($s['n'] ?? '')), 0, 120), 'c' => mb_substr(trim((string)($s['c'] ?? '')), 0, 80), 'lat' => round($lat, 6), 'lng' => round($lng, 6)];
