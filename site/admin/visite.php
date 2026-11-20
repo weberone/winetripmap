@@ -53,6 +53,10 @@ $rows = fn($a) => array_map(fn($k, $v) => ['k' => $k, 'n' => $v], array_keys($a)
 arsort($devT); arsort($devO); arsort($devB);
 $q = function ($sql) use ($P) { $st = db()->prepare($sql); $st->execute($P); return $st->fetchAll(); };
 $langs = $q("SELECT substr(lang, 1, 2) k, COUNT(*) n FROM app_opens WHERE day >= ? AND lang IS NOT NULL GROUP BY k ORDER BY n DESC LIMIT 10");
+// luogo approssimato dall'IP (api/geoip.php): paesi e città
+$ccs = array_map(fn($r) => ['k' => (class_exists('Locale') ? Locale::getDisplayRegion('-' . $r['k'], 'it') : $r['k']) ?: $r['k'], 'n' => $r['n']],
+  $q("SELECT cc k, COUNT(*) n FROM app_opens WHERE day >= ? AND cc IS NOT NULL GROUP BY cc ORDER BY n DESC LIMIT 12"));
+$cities = $q("SELECT city || ' (' || cc || ')' k, COUNT(*) n FROM app_opens WHERE day >= ? AND city IS NOT NULL GROUP BY city, cc ORDER BY n DESC LIMIT 12");
 $tzs = $q("SELECT tz k, COUNT(*) n FROM app_opens WHERE day >= ? AND tz IS NOT NULL GROUP BY tz ORDER BY n DESC LIMIT 10");
 $mapsUsed = $q("SELECT CASE map WHEN 'globe' THEN 'Globo iniziale (poi la mappa vera)' WHEN 'google' THEN 'Google' WHEN 'mapbox' THEN 'Mapbox' WHEN 'free' THEN 'OpenFreeMap' ELSE COALESCE(map, '—') END k, COUNT(*) n FROM app_opens WHERE day >= ? GROUP BY map ORDER BY n DESC");
 $hours = array_fill(0, 24, 0);
@@ -108,6 +112,8 @@ admin_header('Visite della mappa', 'vis');
   <div class="card"><h2>Dispositivo</h2><?= hbars($rows($devT)) ?></div>
   <div class="card"><h2>Sistema</h2><?= hbars($rows($devO)) ?></div>
   <div class="card"><h2>Browser</h2><?= hbars($rows($devB)) ?></div>
+  <div class="card"><h2>Paese <small class="muted">dall'indirizzo IP</small></h2><?= hbars($ccs, 'Ancora nessun dato (si registra dal 20/11/2026).') ?></div>
+  <div class="card"><h2>Città <small class="muted">approssimata</small></h2><?= hbars($cities, 'Ancora nessun dato (si registra dal 20/11/2026).') ?><p class="muted" style="font-size:12px">IP Geolocation by <a href="https://db-ip.com">DB-IP</a></p></div>
   <div class="card"><h2>Lingua del browser</h2><?= hbars($langs) ?></div>
   <div class="card"><h2>Fuso orario</h2><?= hbars($tzs) ?></div>
   <div class="card"><h2>Mappa all'apertura</h2><?= hbars($mapsUsed) ?></div>

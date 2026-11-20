@@ -26,10 +26,11 @@ admin_header(($day ? 'Aperture del ' . (new DateTime($day))->format('d/m/Y') : '
   <form method="get" class="usearch"><input type="date" name="day" value="<?= h($day) ?>" aria-label="Giorno"><?php if ($src !== ''): ?><input type="hidden" name="src" value="<?= h($src) ?>"><?php endif; ?><button class="btn">Mostra</button><?php if ($day || $src !== ''): ?> <a class="btn" href="opens.php">Tutte</a><?php endif; ?> <a href="visite.php">Riepilogo delle visite →</a></form>
   <?php if (!$list): ?><p class="muted">Ancora nessuna apertura.</p><?php else: ?>
   <div class="tscroll"><table>
-    <thead><tr><th>Ora</th><th>Visitatore</th><th>Da dove</th><th>Ingresso</th><th title="GPS attivato">GPS</th><th title="Scelta sui cookie">Cookie</th><th class="r" title="Con la mappa davanti">Tempo</th><th class="r" title="Schede di cantine aperte">Cantine</th><th>Dispositivo</th><th>Lingua</th><th>Mappa</th><th>Iscritto</th><th>Percorso</th></tr></thead>
+    <thead><tr><th>Ora</th><th>Visitatore</th><th>Luogo</th><th>Da dove</th><th>Ingresso</th><th title="GPS attivato">GPS</th><th title="Scelta sui cookie">Cookie</th><th class="r" title="Con la mappa davanti">Tempo</th><th class="r" title="Schede di cantine aperte">Cantine</th><th>Dispositivo</th><th>Lingua</th><th>Mappa</th><th>Iscritto</th><th>Percorso</th></tr></thead>
     <tbody><?php foreach ($list as $o): $n = $seen[$o['vid']] ?? 1; ?><tr>
       <td><?= (new DateTime($o['at'] . ' UTC'))->setTimezone($tz)->format($day ? 'H:i' : 'd/m H:i') ?></td>
       <td><a href="percorso.php?vid=<?= h($o['vid']) ?>"><code><?= h(substr((string)$o['vid'], 0, 6)) ?></code></a> <?= $n > 1 ? '<small class="muted">' . $n . ' giorni</small>' : '<small class="muted">nuovo</small>' ?></td>
+      <td><small><?= h(implode(', ', array_filter([$o['city'] ?? '', $o['cc'] ?? '']))) ?: '—' ?></small></td>
       <td><?= h($o['source']) ?><?= $o['ref'] && $o['ref'] !== $o['source'] ? ' <small class="muted">' . h($o['ref']) . '</small>' : '' ?></td>
       <td><small><?= h(land_kind($o['land'] ?? null)) ?></small></td>
       <td><?= ($o['gps'] ?? null) === null ? '<small class="muted">—</small>' : ($o['gps'] ? '<b>sì</b>' : 'no') ?></td>

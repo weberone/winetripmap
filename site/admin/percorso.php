@@ -15,13 +15,15 @@ $sessions = $st->fetchAll();
 // aperture di questo visitatore (anche quelle senza percorso): da dove arriva, GPS, cookie
 $opens = [];
 if ($vid) { $st = db()->prepare('SELECT * FROM app_opens WHERE vid = ? ORDER BY id DESC LIMIT 50'); $st->execute([$vid]); $opens = $st->fetchAll(); }
+elseif ($sid) { $st = db()->prepare('SELECT * FROM app_opens WHERE sid = ? ORDER BY id DESC LIMIT 50'); $st->execute([$sid]); $opens = $st->fetchAll(); }
 admin_header($vid ? 'Visitatore ' . substr($vid, 0, 6) : 'Percorso nella mappa', 'vis');
 ?>
-<p><a href="visite.php">← Visite</a></p>
-<?php if ($vid && $opens): ?>
+<p><a href="visite.php">← Visite</a> · <a href="" onclick="location.reload();return false">Aggiorna</a> <small class="muted">(si aggiorna da sola ogni 30 secondi)</small></p>
+<script>setInterval(() => { if (!document.hidden && scrollY < 200) location.reload(); }, 30000);</script>
+<?php if ($opens): ?>
 <section class="card"><h2>Aperture <small class="muted"><?= count($opens) ?><?= count($opens) === 50 ? '+' : '' ?></small></h2><div class="tscroll"><table>
-  <thead><tr><th>Ora</th><th>Da dove</th><th>Ingresso</th><th>GPS</th><th>Cookie</th><th class="r">Tempo</th><th class="r">Cantine</th><th>Dispositivo</th></tr></thead>
-  <tbody><?php foreach ($opens as $o): ?><tr><td><?= when($o['at']) ?></td><td><?= h($o['source']) ?></td><td><small><?= h(land_kind($o['land'])) ?></small></td>
+  <thead><tr><th>Ora</th><th>Luogo</th><th>Da dove</th><th>Ingresso</th><th>GPS</th><th>Cookie</th><th class="r">Tempo</th><th class="r">Cantine</th><th>Dispositivo</th></tr></thead>
+  <tbody><?php foreach ($opens as $o): ?><tr><td><?= when($o['at']) ?></td><td><small><?= h(implode(', ', array_filter([$o['city'] ?? '', $o['region'] ?? '', $o['cc'] ?? '']))) ?: '—' ?></small></td><td><?= h($o['source']) ?><?= $o['ref'] && $o['ref'] !== $o['source'] ? ' <small class="muted">' . h($o['ref']) . '</small>' : '' ?></td><td><small><?= h(land_kind($o['land'])) ?></small></td>
     <td><?= $o['gps'] === null ? '—' : ($o['gps'] ? 'sì' : 'no') ?></td><td><?= $o['ck'] === null ? '—' : ($o['ck'] ? 'Accetta' : 'Rifiuta') ?></td>
     <td class="r"><?= $mins($o['secs']) ?></td><td class="r"><?= num($o['views']) ?></td><td><small><?= h($o['device']) ?></small></td></tr><?php endforeach; ?></tbody></table></div></section>
 <?php endif; ?>

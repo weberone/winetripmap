@@ -164,6 +164,8 @@ const SCHEMA_ADD = [
   ['app_opens', 'gps', 'INTEGER'], ['app_opens', 'ck', 'INTEGER'], ['app_opens', 'secs', 'INTEGER NOT NULL DEFAULT 0'],
   ['app_opens', 'acts', 'INTEGER NOT NULL DEFAULT 0'], ['app_opens', 'views', 'INTEGER NOT NULL DEFAULT 0'],
   ['app_opens', 'land', 'TEXT'], ['app_opens', 'sid', 'TEXT'], ['app_opens', 'last_at', 'TEXT'],
+  // luogo approssimato dall'IP (api/geoip.php, l'IP non si salva): città, regione, codice del paese
+  ['app_opens', 'city', 'TEXT'], ['app_opens', 'region', 'TEXT'], ['app_opens', 'cc', 'TEXT'],
 ];
 function db(): PDO {
   static $pdo = null;

@@ -1,0 +1,13 @@
+name: Prova geoip (temporanea)
+on: workflow_dispatch
+jobs:
+  prova:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: |
+          php -v | head -1
+          curl -sfL https://download.db-ip.com/free/dbip-city-lite-2026-11.mmdb.gz | gunzip > "$RUNNER_TEMP/dbip-city-lite.mmdb"
+          ls -la "$RUNNER_TEMP/dbip-city-lite.mmdb"
+          for f in site/api/geoip.php site/api/webpush.php site/api/visit_notify.php site/api/auth.php site/admin/push.php site/admin/settings.php site/admin/percorso.php site/admin/opens.php site/admin/visite.php site/privacy/index.php; do php -l $f; done
+          php .github/prova/geo-test.php

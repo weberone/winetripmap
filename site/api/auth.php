@@ -13,6 +13,8 @@
 //   GET  api/auth.php?a=export                                     → tutti i dati dell'utente (diritto di accesso, GDPR)
 //   POST api/auth.php?a=delete    { confirm: "DELETE" }            → account cancellato
 require __DIR__ . '/lib.php';
+require __DIR__ . '/geoip.php';
+require __DIR__ . '/visit_notify.php';
 header('Cache-Control: no-store');
 
 $a = (string)($_GET['a'] ?? '');
@@ -35,12 +37,17 @@ if ($a === 'me' && $method === 'GET') {
       $ck = in_array($_GET['ck'] ?? '', ['0', '1'], true) ? (int)$_GET['ck'] : null;
       $land = (string)($_GET['land'] ?? ''); $land = $land === '' ? null : mb_substr(preg_replace('/[\x00-\x1f]/', '', $land), 0, 120);
       $sid = preg_match('/^[a-z0-9]{8,40}$/', (string)($_GET['sid'] ?? '')) ? $_GET['sid'] : null;
-      db()->prepare('INSERT INTO app_opens (at, day, vid, user_id, source, ref, device, lang, tz, map, ck, land, sid, last_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')->execute([
-        now(), today_it(), visitor_id(), $me ? (int)$me['id'] : null, traffic_source($ref, $ua, (string)($_GET['utm'] ?? '')),
-        mb_substr((string)parse_url($ref, PHP_URL_HOST), 0, 80) ?: null, device_info($ua),
-        substr(strtolower(explode(',', (string)($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''))[0]), 0, 10) ?: null,
-        preg_match('/^[A-Za-z_\/+-]{1,40}$/', (string)($_GET['tz'] ?? '')) ? $_GET['tz'] : null, $map, $ck, $land, $sid, now()]);
+      // luogo approssimato dall'IP (api/geoip.php, database DB-IP nella cartella privata): si salvano solo città, regione e paese
+      $geo = geo_lookup((string)($_SERVER['REMOTE_ADDR'] ?? '')); geo_refresh();
+      $row = ['vid' => visitor_id(), 'source' => traffic_source($ref, $ua, (string)($_GET['utm'] ?? '')),
+        'ref' => mb_substr((string)parse_url($ref, PHP_URL_HOST), 0, 80) ?: null, 'device' => device_info($ua),
+        'lang' => substr(strtolower(explode(',', (string)($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''))[0]), 0, 10) ?: null, 'land' => $land, 'sid' => $sid];
+      db()->prepare('INSERT INTO app_opens (at, day, vid, user_id, source, ref, device, lang, tz, map, ck, land, sid, last_at, city, region, cc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')->execute([
+        now(), today_it(), $row['vid'], $me ? (int)$me['id'] : null, $row['source'], $row['ref'], $row['device'], $row['lang'],
+        preg_match('/^[A-Za-z_\/+-]{1,40}$/', (string)($_GET['tz'] ?? '')) ? $_GET['tz'] : null, $map, $ck, $land, $sid, now(),
+        mb_substr($geo['city'] ?? '', 0, 80) ?: null, mb_substr($geo['region'] ?? '', 0, 80) ?: null, ($geo['cc'] ?? '') ?: null]);
       $openId = (int)db()->lastInsertId();
+      if (($_COOKIE['wtm_ns'] ?? '') !== '1') notify_visit($me, $row + ['id' => $openId], $geo); // notifica push all'admin (api/visit_notify.php)
       if ($me) db()->prepare('UPDATE users SET visit_count = visit_count + 1, last_seen_at = ? WHERE id = ?')->execute([now(), $me['id']]);
     } catch (Throwable $e) { error_log('opens: ' . $e->getMessage()); }
   }
