@@ -31,11 +31,10 @@ header.top{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding-bloc
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   border-bottom:1px solid var(--line);background:var(--surface)}
 .logo{display:flex;align-items:center;flex:none;text-decoration:none;color:var(--ink);font-size:21px;line-height:1}
-/* logo: scritta minuscola, il puntino della i di trip è un pin a forma di calice (la punta diventa gambo e base) */
+/* logo: scritta minuscola, la i di trip è il calice a forma di pin (coppa in alto, gambo e base sulla riga) */
 .wm{font:800 1em/1 var(--f-body);letter-spacing:-.03em;white-space:nowrap}
 .wm b{color:var(--accent);font-weight:800}
-.wm .wi{position:relative}
-.wm .wpin{position:absolute;left:50%;top:-.24em;width:.42em;height:.56em;transform:translateX(-50%);fill:var(--accent);overflow:visible}
+.wm .wi{display:inline-block;width:.5em;height:.92em;margin:0 .01em;vertical-align:-.01em;fill:currentColor;overflow:visible} /* la i di trip è il calice: coppa a pin, gambo, base */
 .hstat{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0}
 /* account: omino da ospite, iniziale del nome su sfondo bordeaux da collegato */
 .acct{text-decoration:none}
@@ -163,14 +162,38 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 :root[data-mapscheme="light"] .app.mob.map-only .countmob{color:#2a1a1d;text-shadow:0 0 3px #fff,0 0 6px #fff}
 .countmob .cm-n{color:var(--accent)}
 
-/* invito iniziale */
-.worldask{position:absolute;left:12px;right:62px;top:12px;z-index:6;padding:14px 16px;border-radius:12px;background:color-mix(in srgb,var(--accent) 85%,transparent);color:var(--accent-ink);max-width:420px;margin:0 auto;box-shadow:0 8px 24px rgb(0 0 0 / .3)}
-.worldask b{display:block;font:800 18px/1.2 var(--f-display);letter-spacing:-.02em;margin-bottom:4px}
-.worldask p{margin:0 0 10px;font-size:14px;line-height:1.4}
-.wa-btns{display:flex;gap:6px;flex-wrap:nowrap} /* sempre affiancati */
-.wa-btns .btn{flex:1 1 auto;justify-content:center;white-space:nowrap;min-width:0}
-.worldask .btn{background:transparent;color:var(--accent-ink);border-color:var(--accent-ink)}
-.worldask .btn.primary{background:var(--accent-ink);color:var(--accent)}
+/* invito iniziale: scheda al centro della mappa, sopra il globo che gira */
+.worldask{position:absolute;inset:0;z-index:6;display:grid;place-items:center;padding:16px;pointer-events:none}
+.wa-card{pointer-events:auto;position:relative;width:min(380px,100%);padding:26px 22px 16px;border-radius:22px;text-align:center;
+  background:color-mix(in srgb,var(--surface) 90%,transparent);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);
+  border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);
+  box-shadow:0 22px 60px -12px rgb(40 8 16 / .45),0 2px 6px rgb(0 0 0 / .12);animation:waIn .6s cubic-bezier(.2,.9,.3,1.15) both}
+.wa-ico{display:grid;place-items:center;width:58px;height:58px;margin:-56px auto 10px;border-radius:50%;background:var(--accent);
+  box-shadow:0 8px 22px -4px color-mix(in srgb,var(--accent) 70%,transparent),0 0 0 5px var(--surface)}
+.wa-ico svg{width:20px;height:36px;fill:#fff;animation:waBob 3.2s ease-in-out .7s infinite}
+.wa-title{display:block;font:800 clamp(24px,6.4vw,30px)/1.1 var(--f-display);letter-spacing:-.03em;color:var(--ink);margin:0 0 6px}
+.wa-card p{margin:0 auto 16px;max-width:30ch;font-size:14.5px;line-height:1.45;color:var(--muted)}
+.wa-search,.wa-gps,.wa-browse{display:flex;align-items:center;gap:10px;width:100%;font:inherit;cursor:pointer;border:0}
+.wa-search{padding:13px 14px;border-radius:14px;background:var(--bg);color:var(--muted);border:1.5px solid var(--line);font-size:15px;text-align:left;
+  transition:border-color .15s,box-shadow .15s}
+.wa-search span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wa-search svg{flex:none;color:var(--accent)}
+.wa-search:hover{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 14%,transparent)}
+.wa-gps{position:relative;justify-content:center;margin-top:10px;padding:14px;border-radius:14px;background:var(--accent);color:var(--accent-ink);
+  font-weight:700;font-size:16px;box-shadow:0 10px 24px -8px color-mix(in srgb,var(--accent) 80%,transparent);transition:transform .15s,filter .15s}
+.wa-gps::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent);animation:waPulse 2.4s ease-out 1s infinite}
+.wa-gps:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.wa-gps:active,.wa-search:active,.wa-browse:active{transform:scale(.98)}
+.wa-browse{justify-content:center;gap:7px;margin-top:8px;padding:10px;border-radius:12px;background:none;color:var(--accent);font-weight:700;font-size:15px}
+.wa-browse:hover{background:color-mix(in srgb,var(--accent) 9%,transparent)}
+.wa-browse i{font-style:normal;font-size:20px;line-height:1;margin-left:-2px}
+.wa-count{display:block;margin-top:6px;font-size:12.5px;color:var(--muted);min-height:1.2em}
+.wa-count b{color:var(--ink)}
+.worldask :focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+@keyframes waIn{from{opacity:0;transform:translateY(18px) scale(.96)}}
+@keyframes waBob{50%{transform:translateY(-3px) rotate(-4deg)}}
+@keyframes waPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent)}70%,100%{box-shadow:0 0 0 14px transparent}}
+@media (prefers-reduced-motion:reduce){.wa-card,.wa-ico svg,.wa-gps::after{animation:none}}
 
 /* legenda / filtri sulla mappa */
 .legend{display:none;position:absolute;left:14px;bottom:24px;z-index:2;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;gap:14px;font-size:14px;flex-wrap:wrap;max-width:calc(100% - 28px)}
@@ -271,7 +294,6 @@ form.search input:focus{border-color:var(--accent)}
   .zoombtns,.app.map-only .zoombtns{bottom:34px}
   .nores{display:none}
   .app:has(#nearBtn:not([hidden])) .nores{display:block}
-  .worldask{top:12px} /* in alto, a sinistra della colonna + − (right 62px) */
   .mapboxgl-ctrl-bottom-right,.maplibregl-ctrl-bottom-right{bottom:0}
 }
 
@@ -416,8 +438,6 @@ form.search input:focus{border-color:var(--accent)}
   .lbnav.prev{left:8px} .lbnav.next{right:8px}
   .lightbox .x{top:calc(4px + env(safe-area-inset-top,0px));right:4px;z-index:2;background:rgb(0 0 0 / .45)}
 }
-/* telefono: i due pulsanti dell'invito stanno su una riga anche con la colonna + − accanto */
-@media (max-width:420px){ .worldask{padding:12px 12px} .worldask .wa-btns .btn{padding:6px 8px;font-size:clamp(11.5px,3.4vw,13.5px)} }
 /* telefono a pannello aperto: l'invito si nasconde (nel pannello ci sono già "La mia posizione" e "Cerca un luogo"),
    così non copre l'onda con il pulsante per richiudere il pannello */
 .app.mob:not(.map-only) .worldask{display:none}
@@ -425,7 +445,6 @@ form.search input:focus{border-color:var(--accent)}
 .locrow{flex-wrap:wrap}
 .locrow .btn.browse{flex:1 1 100%;min-width:0}
 .locrow .btn.browse span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.wa-btns{display:grid;grid-template-columns:auto auto} .wa-btns .btn.wa-browse{grid-column:1 / -1} /* i primi due affiancati, Esplora sotto per tutta la larghezza */
 .crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px;font-size:14px;color:var(--muted)}
 .crumbs button{border:0;background:none;padding:3px 4px;border-radius:6px;font:inherit;color:var(--accent);cursor:pointer}
 .crumbs button[aria-current]{color:var(--ink,inherit);font-weight:700;cursor:default}

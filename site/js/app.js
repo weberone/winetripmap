@@ -70,16 +70,19 @@ const WINE = {
   o: { name: t("rose"), fill: () => "#e27591" },
   s: { name: t("spark"), fill: () => "#b38b2e" },
 };
-// goccia piena (bordeaux; col colore del vino principale quando è noto) con dentro il logo del sito, nero se la cantina
-// ha la lista dei vini (dal suo sito), bianco se no:
-// il pin a forma di calice del puntino della i (site/index.html). La punta (ax, in basso) è il punto esatto.
-const LOGO_GLASS = "M1 5.5A5 5 0 0 1 11 5.5C11 8.9 8.4 11.3 6.6 12V14.3H8.6C9.1 14.3 9.4 14.6 9.4 14.95S9.1 15.6 8.6 15.6H3.4C2.9 15.6 2.6 15.3 2.6 14.95S2.9 14.3 3.4 14.3H5.4V12C3.6 11.3 1 8.9 1 5.5Z";
-function pinSvg(w = 28, wc = "", hv = false) {
-  const h = Math.round(w * 38 / 28), fill = (WINE[wc] || WINE.r).fill(), ink = hv ? "#1a1414" : "#fff";
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 28 38"><path d="M14 37C14 37 2 23.5 2 14a12 12 0 0 1 24 0c0 9.5-12 23-12 23z" fill="${fill}" stroke="#fff" stroke-width="1.6"/>`
-    + `<g transform="translate(8.3 6.4) scale(.95)"><path d="${LOGO_GLASS}" fill="${ink}"/><circle cx="6" cy="5.5" r="1.75" fill="${fill}"/></g></svg>`;
+// il pin è il calice del logo (la i di trip, site/index.html), pieno del colore del vino principale (bordeaux se non noto),
+// bordo bianco; il foro della coppa è nero se la cantina ha la lista dei vini (dal suo sito), bianco se no.
+// La base del calice (ax, in basso al centro) è il punto esatto.
+const LOGO_GLASS = "M1 5.5A5 5 0 0 1 11 5.5C11 8.5 9 10.8 7.65 11.7V20H9.3C9.75 20 10.1 20.4 10.1 20.8S9.75 21.6 9.3 21.6H2.7C2.25 21.6 1.9 21.2 1.9 20.8S2.25 20 2.7 20H4.35V11.7C3 10.8 1 8.5 1 5.5Z";
+const PIN_VB = [-1.4, -1.4, 14.8, 24.4]; // il calice (12×21,6) con il bordo intorno
+const pinH = (w) => Math.round(w * PIN_VB[3] / PIN_VB[2]);
+function pinSvg(w = 24, wc = "", hv = false) {
+  const fill = (WINE[wc] || WINE.r).fill(), ink = hv ? "#1a1414" : "#fff";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${pinH(w)}" viewBox="${PIN_VB.join(" ")}">`
+    + `<path d="${LOGO_GLASS}" fill="${fill}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke"/>`
+    + `<circle cx="6" cy="5.5" r="2" fill="${ink}"/></svg>`;
 }
-function markerIcon(sel, wc, hv) { const w = sel ? 36 : 28; return { svg: pinSvg(w, wc, hv), w, h: Math.round(w * 38 / 28), ax: w / 2 }; }
+function markerIcon(sel, wc, hv) { const w = sel ? 34 : 26; return { svg: pinSvg(w, wc, hv), w, h: pinH(w), ax: w / 2 }; }
 // gruppo di cantine vicine: cerchio bordeaux con il numero
 function clusterIcon(n) {
   const d = n < 10 ? 36 : n < 50 ? 42 : n < 500 ? 48 : 54, r = d / 2;
@@ -135,7 +138,7 @@ function renderList() {
     $("list").innerHTML = state.areaOk ? `<div class="empty">${esc(t("empty_radius"))}</div>`
       : `<div class="empty">${esc(t("empty_start"))}</div>`;
   } else {
-    $("list").innerHTML = v.slice(0, 300).map((x) => `<button class="item" data-id="${esc(x.id)}"><span class="mk">${pinSvg(20, x.wc, x.hv)}</span>
+    $("list").innerHTML = v.slice(0, 300).map((x) => `<button class="item" data-id="${esc(x.id)}"><span class="mk">${pinSvg(17, x.wc, x.hv)}</span>
         <span style="min-width:0"><div class="name">${esc(title(x))}</div>${x.c && x.n ? `<div class="meta">${esc(x.c)}</div>` : ""}</span>
         <span class="km">${isFinite(x.km) ? fmtKm(x.km) : ""}</span></button>`).join("");
   }
@@ -1337,7 +1340,10 @@ function ensureMap() {
     if (kind !== "free") { bindMap(); shownShape = null; drawShape(); drawMe(); drawMarkers(); }
   })();
 }
-function askWhere() { $("worldAsk").hidden = false; setStatus(t("where_go")); renderList(); showGlobe(); }
+function askWhere() {
+  $("worldAsk").hidden = false; setStatus(t("where_go")); renderList(); showGlobe();
+  loadData().then(() => { $("waCount").innerHTML = esc(t("wa_count", { n: "\u0001" })).replace("\u0001", `<b>${fmtN(state.all.length)}</b>`); }).catch(() => {});
+}
 // all'inizio, prima di posizione o ricerca: la Terra in 3D che gira piano (si ferma appena la tocchi); poi la mappa torna piana
 let globe = false;
 function showGlobe() {
