@@ -54,10 +54,17 @@ async function readSite(id, site) {
 }
 
 function sites() {
-  const list = [];
+  const list = [], seen = new Set();
   for (const f of readdirSync(join(siteData, 'det5'))) {
     const d = JSON.parse(readFileSync(join(siteData, 'det5', f), 'utf8'));
-    for (const [id, v] of Object.entries(d)) if (v.w) list.push([id, v.w]);
+    for (const [id, v] of Object.entries(d)) if (v.w) { list.push([id, v.w]); seen.add(id); }
+  }
+  // anche le cantine solo Overture che non sono (ancora) sul sito: senza vigneti vicini entrano solo con le prove dal loro sito
+  const tf = join(osmDir, 'cantine-tag.json');
+  if (existsSync(tf)) {
+    const els = JSON.parse(readFileSync(tf, 'utf8')).elements;
+    const base = els.map((e) => [e.type[0] + e.id, e.lat ?? e.center?.lat, e.lon ?? e.center?.lon, (e.tags || {}).name || '']).filter((x) => x[1] != null);
+    for (const o of ovMatch(base).extra) { const id = ovId(o[0]); if (o[6] && !seen.has(id)) list.push([id, /^https?:/i.test(o[6]) ? o[6] : 'https://' + o[6]]); }
   }
   return list;
 }
@@ -65,7 +72,7 @@ function sites() {
 // ---- punteggio ----
 const outFile = join(here, 'data', 'produttori.json');
 const NAME_PROD = /(weingut|weinhof|winzerhof|weinbau|heurig|buschenschank|stra[uß]+wirtschaft|h[äa]cker|sekt|winzer|domaine|ch[aâ]teau|tenuta|bodegas?\b|winery|vineyards?|estates?\b|cellars\b|azienda (agricola|vinicola|vitivinicola)|az\.? ?agr|quinta\b|vignobles?|vigneron|wijngaard|wijndomein|kellerei|cantina sociale|cave (coop|des vignerons)|cooperativa|vinařství|winnica|pince(szet)?\b|vinarija|vinárstvo|oinopoieio|οινοποιείο|κτήμα|vin[ií]cola|vinhos\b|ving[åa]a?rd|viinitila|\bwines\b|wine co\b|\bceller\b|kelter\b|cantina soc\b|cantine\b|tenute\b|castello|societ[àa] agricola|soc\.? ?agr|podere|fattoria|vign[ae]\b|vigneti?\b|ワイナリー)/i;
-const NAME_SHOP = /((?<!\p{L})bar(?!\p{L})|caff[eè]|(?<!\p{L})caf[eé](?!\p{L})|bibit|beverage|drinks?\b|distribu|import|ingross|wholesale|liquor|liquori|alimentari|market|\bshop\b|store\b|negozio|deli\b|gastronom|bistr|restaurant|ristorant|trattoria|osteria|pizzeri|pizza|hotel|lounge|club\b|birr|beer|brew|spirits|tabacch|coffee|kaffee|vinothek|weinhandl|caviste|cave [àa] vins?|wine ?shop|bottle ?shop|wine ?bar|weinbar|vinoteca|enoteca|merchants?\b|negoce|négoce)/iu;
+const NAME_SHOP = /((?<!\p{L})bar(?!\p{L})|caff[eè]|(?<!\p{L})caf[eé](?!\p{L})|bibit|beverage|drinks?\b|distribu|import|ingross|wholesale|liquor|liquori|alimentari|market|\bshop\b|store\b|negozio|deli\b|gastronom|bistr|restaurant|ristorant|trattoria|osteria|pizzeri|pizza|hotel|lounge|club\b|birr|beer|brew|spirits|tabacch|coffee|kaffee|vinothek|weinhandl|caviste|cave [àa] vins?|wine ?shop|bottle ?shop|wine ?bar|weinbar|vinoteca|enoteca|merchants?\b|negoce|négoce|vineria|rappresentan|agenzia|commerc|trading|enologia|mercato del vino|signorvino|vinoteka|weinkontor|weinvertrieb|vertrieb)/iu;
 const BAD_AMENITY = /^(bar|pub|restaurant|cafe|fast_food|biergarten|nightclub|food_court|ice_cream)$/;
 const BAD_SHOP = /^(wine|alcohol|beverages|deli|supermarket|convenience|general|wholesale|kiosk|department_store|gift|variety_store)$/;
 
@@ -113,13 +120,14 @@ function build() {
   // Overture Maps (tools/overture.mjs): conferma le cantine OSM (o le dice negozi/wine bar) e porta quelle che OSM non ha
   const ov = ovMatch(items), OVK = { w: [2, 'Overture: cantina'], v: [1, 'Overture: vigneto'], s: [-2, 'Overture: negozio di vini/alcolici'], b: [-2, 'Overture: wine bar'], h: [-2, 'Overture: ingrosso di vini'] };
   const ovNew = new Set(ov.extra.map((o) => ovId(o[0]))), ovWeb = new Set(ov.extra.filter((o) => o[6]).map((o) => ovId(o[0])));
-  for (const o of ov.extra) items.push([ovId(o[0]), o[1], o[2], o[3]]);
+  const ovCC = new Map(); // paese delle cantine solo Overture (anche quelle non sul sito, che luoghi.json non ha)
+  for (const o of ov.extra) { items.push([ovId(o[0]), o[1], o[2], o[3]]); if (o[5]) ovCC.set(ovId(o[0]), o[5]); }
   console.log(`Overture: ${ov.match.size} cantine OSM abbinate, ${ov.extra.length} nuove`);
   // paesi dove OSM segna bene i vigneti (almeno il 90% delle cantine del sito ha un vigneto entro 3 km, con almeno 50 cantine:
   // Italia, Francia, Germania, Austria, Svizzera…): lì una cantina senza vigneti vicini e senza altre prove non è un produttore
   // (richiesta dell'utente 2026-11-19: "La Cantina Seiterre" a Vimercate, comune senza vigneti)
   const L = existsSync(join(here, 'data', 'luoghi.json')) ? JSON.parse(readFileSync(join(here, 'data', 'luoghi.json'), 'utf8')) : { w: {}, cities: {} };
-  const ccOf = (id) => L.cities[L.w[id]]?.cc;
+  const ccOf = (id) => L.cities[L.w[id]]?.cc || ovCC.get(id);
   const cov = {};
   if (vine) for (const [id, lat, lng] of items) { if (id[0] === 'o') continue; const cc = ccOf(id), vz = cc && vine(id, lat, lng); if (!vz) continue; const o = cov[cc] ||= [0, 0]; o[0]++; if (vz[0] <= 3) o[1]++; }
   const dense = new Set(Object.entries(cov).filter(([, [n, k]]) => n >= 50 && k / n >= 0.9).map(([cc]) => cc));
@@ -165,10 +173,15 @@ function build() {
     // (+1, es. la sola lista dei vini, che hanno anche le enoteche) e nessun vigneto entro 8 km → fuori
     // ma solo fuori dalle zone del vino: in un comune pieno di vigneti (Marsala, Montaione, Forlì…) una cantina senza altre prove
     // è quasi sempre un produttore vero con i vigneti un po' più in là; a Vimercate, Milano, Opera no
-    // cantina nuova di Overture con un sito non ancora letto: la regola dei vigneti aspetta il sito (che porta le prove)
-    const attesa = ovWeb.has(id) && !crawl.has(id);
-    const fitto = !attesa && vz && dense.has(ccOf(id)) && vz[2] < 40 && ((pos === 0 && vz[0] > 3) || (pos <= 1 && vz[0] > 8));
-    if (fitto) why.push(`paese con vigneti ben segnati, nessuno entro 3 km e ${vz[2]} entro 10 km`);
+    // cantina solo Overture in un paese dove OSM segna bene i vigneti (Italia, Francia, Germania…): Overture chiama "winery" anche
+    // distributori, rappresentanti, enoteche e uffici (Milano, Monza, Cernusco: richiesta dell'utente 2026-11-20). Entra solo con
+    // una prova vera: un vigneto entro 3 km, Wikidata o le parole da produttore sul suo sito (letto anche se non è sul sito, vedi sites())
+    const sitoProd = c && c.prod && Object.keys(c.prod).length > 0;
+    const soloOv = (ovNew.has(id) && dense.has(ccOf(id)) && !(vz && vz[0] <= 3) && !wdq.has(id) && !sitoProd)
+      || (ovNew.has(id) && NAME_SHOP.test(name) && !sitoProd && !wdq.has(id)); // solo Overture con nome da negozio/locale/intermediario
+    if (soloOv) why.push('solo Overture, ' + (NAME_SHOP.test(name) ? 'nome da negozio/locale' : 'nessun vigneto entro 3 km') + (ovWeb.has(id) ? (crawl.has(id) ? ', sito senza parole da produttore' : ', sito da leggere') : ', senza sito'));
+    const fitto = soloOv || vz && dense.has(ccOf(id)) && vz[2] < 40 && ((pos === 0 && vz[0] > 3) || (pos <= 1 && vz[0] > 8));
+    if (fitto && !soloOv) why.push(`paese con vigneti ben segnati, nessuno entro 3 km e ${vz[2]} entro 10 km`);
     const s = fitto || (pos <= 1 && neg <= -2) || (pos === 0 && neg + soloVendita <= -1 && vneg < 0) ? -2 : pos === 0 && neg === -1 ? -1 : pos + neg + vneg < 0 ? 0 : pos + neg + vneg;
     out[id] = [s, name, why.join('; ')];
   }

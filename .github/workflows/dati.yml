@@ -147,7 +147,9 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          tar -czf "$RUNNER_TEMP/dati-cache.tar.gz" -C tools/.cache prod vini desc
+          # se il giro è stato fermato a metà la lettura dei siti può essere ancora viva: si ferma prima di comprimere
+          pkill -f 'tools/(produttori|vini-dai-siti|descrizioni).mjs crawl' || true; sleep 3
+          tar -czf "$RUNNER_TEMP/dati-cache.tar.gz" -C tools/.cache prod vini desc || [ $? -eq 1 ] # 1 = un file cambiato mentre lo leggeva: va bene
           cp tools/.cache/produttori-motivi.json "$RUNNER_TEMP/" 2>/dev/null || true
           cp tools/.cache/agri-aggiunte.json "$RUNNER_TEMP/" 2>/dev/null || true
           gzip -c tools/.cache/osm/vigneti.json > "$RUNNER_TEMP/vigneti.json.gz" 2>/dev/null || rm -f "$RUNNER_TEMP/vigneti.json.gz"
