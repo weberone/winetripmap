@@ -13,9 +13,8 @@ require_once dirname(__DIR__) . '/api/page.php'; // logo (WTM_WORDMARK) e h()
 
 const SITE = 'https://winetripmap.com';
 const SITE_NAME = 'WineTripMap';
-// IN PROVA: finché il sito non è lanciato le pagine dicono ai motori di ricerca di non indicizzarle (noindex).
-// Al lancio: true, e la sitemap va in robots.txt e in Google Search Console.
-const SEO_INDEX = false;
+// Sito lanciato il 2026-11-20: le pagine si indicizzano (false = noindex su tutte). Sitemap in robots.txt e in Google Search Console.
+const SEO_INDEX = true;
 const SEO_LANGS = ['en', 'it', 'es', 'pt', 'fr', 'de', 'ru', 'ja', 'zh', 'pl', 'ko', 'id'];
 const SEO_LOCALE = ['en' => 'en_GB', 'it' => 'it_IT', 'es' => 'es_ES', 'pt' => 'pt_PT', 'fr' => 'fr_FR', 'de' => 'de_DE', 'ru' => 'ru_RU', 'ja' => 'ja_JP', 'zh' => 'zh_CN', 'pl' => 'pl_PL', 'ko' => 'ko_KR', 'id' => 'id_ID'];
 const DATA = __DIR__ . '/../data';

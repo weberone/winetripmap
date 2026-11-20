@@ -9,7 +9,7 @@ Progetto separato da SkateboardMap: lavora solo in questa cartella e nel core co
 
 ## Hosting
 - Infomaniak, stesso hosting di skateboardmap.com ("Hosting Web 1"), sito PHP creato il 2026-11-13 con certificato SSL gratuito.
-- La mappa è la pagina iniziale (`site/index.html`, dal 2026-11-18; prima era in prova su `/mappa/`, che ora rimanda a `/` con un 301 in `.htaccess`). Resta noindex finché l'utente non dice di lanciare. Si lavora direttamente sul sito online.
+- La mappa è la pagina iniziale (`site/index.html`, dal 2026-11-18; prima era in prova su `/mappa/`, che ora rimanda a `/` con un 301 in `.htaccess`). Lanciata il 2026-11-20: indicizzabile (niente noindex, `SEO_INDEX = true`, `site/robots.txt` nostro con la sitemap). Si lavora direttamente sul sito online.
 - Utente FTP dedicato `5r1oeu_winetrip`, limitato a `/sites/winetripmap.com` (vede solo questo sito; server `5r1oeu.ftp.infomaniak.com`). La password la conosce solo l'utente: va nei GitHub Secrets, mai in chat o nei file.
 - Repository GitHub: `weberone/winetripmap` (questa cartella) PUBBLICO dal 2026-11-20 (i minuti gratuiti di Actions dei privati, 2.000 al mese per tutto l'account, erano finiti per l'aggiornamento dei dati e bloccavano anche SkateboardMap; i pubblici non li contano; mai segreti nei file né nella release cache-dati, che è pubblica) e `weberone/mapcore` (il core, privato).
 - Deploy automatico a ogni push su main (`.github/workflows/deploy.yml`, come SkateboardMap): scarica il core con una deploy key in sola lettura, lo copia in `site/core/`, comprime il JS, toglie i commenti e carica solo `site/` via FTPS.
@@ -17,9 +17,8 @@ Progetto separato da SkateboardMap: lavora solo in questa cartella e nel core co
 - Aggiornamento mensile dei dati (`.github/workflows/dati.yml`, il 2 del mese, sui server di GitHub, il Mac può restare spento): cantine (Overpass), luoghi (GeoNames), vigneti (file per paese di Geofabrik con osmium, `tools/vigneti-geofabrik.mjs`, in 8 macchine parallele con `--part k/8`, poi `--merge`; un giro unico superava le 2,5 ore; dove mancano i vigneti di un paese, campo `zone` di `vigneti.json`, nessuno esce per i vigneti), siti delle sole cantine nuove (produttori, vini, descrizioni), punteggio produttori, SEO; commit su main e avvio del deploy. Memoria dei siti già letti e rapporto (`rapporto.txt`: chi esce e perché; `produttori-motivi.json`) nella release privata `cache-dati`. A mano senza la spunta "applica" fa solo il rapporto.
 - Una modifica al solo core non va online da sola: serve un push su winetripmap (o rilanciare il workflow a mano).
 
-## Lancio (SEO), da fare quando l'utente lo dice
-- Togliere `noindex` da `site/index.html` e mettere `SEO_INDEX = true` in `site/seo/common.php`.
-- Aggiungere un `site/robots.txt` nostro (oggi Infomaniak ne dà uno predefinito con `Crawl-delay: 10`) con `Sitemap: https://winetripmap.com/sitemap.xml`.
+## Lancio (SEO), fatto il 2026-11-20
+- Tolto `noindex` da `site/index.html`, `SEO_INDEX = true` in `site/seo/common.php`, `site/robots.txt` nostro (chiusi admin, api, account, counter; `Sitemap: https://winetripmap.com/sitemap.xml`). Account, admin e privacy restano noindex (`api/page.php`).
 - Google Search Console: verifica del dominio con l'account Google di WTM (la fa l'utente), poi invio della sitemap.
 - Pronti dal 2026-11-18: icona (`favicon.svg`, `apple-touch-icon.png`) e anteprima social (`og.png`, 1200×630) su home, pagine SEO, account e admin; controllo a campione delle pagine SEO fatto (corretti i testi "a Lombardia" e "si trova a Via…").
 

@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Disallow: /account/
+Disallow: /counter/
+
+Sitemap: https://winetripmap.com/sitemap.xml
