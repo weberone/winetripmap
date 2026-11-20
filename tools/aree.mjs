@@ -64,6 +64,19 @@ export function aree() {
     const n = w.n.en || Object.values(w.n)[0], t = {}; for (const [l, v] of Object.entries(w.n)) if (l !== 'en' && v !== n) t[l] = v;
     z.push({ n, t: Object.keys(t).length ? t : undefined, i, k: i.length, b: bbox(p) });
   }
+  // una denominazione è un luogo: delle cantine che la nominano restano solo quelle raccolte nella sua zona (intorno al punto
+  // mediano, entro il doppio della distanza tipica, tra 25 e 120 km); fuori i negozi e le enoteche lontane che la vendono
+  const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
+  const core = (js) => {
+    let keep = js;
+    for (let k = 0; k < 2 && keep.length; k++) {
+      const c = [med(keep.map((j) => items[j][1])), med(keep.map((j) => items[j][2]))];
+      const ds = js.map((j) => distKm(c, [items[j][1], items[j][2]]));
+      const r = Math.max(25, Math.min(120, 2 * med(keep.map((j) => distKm(c, [items[j][1], items[j][2]])))));
+      keep = js.filter((j, n) => ds[n] <= r);
+    }
+    return keep;
+  };
   // denominazioni: il nome senza la sigla ("Barolo" da "Barolo DOCG") nella lista dei vini della cantina
   const idx = new Map(items.map((it, i) => [it[0], i]));
   const wines = Object.entries(V).filter(([id]) => idx.has(id)).map(([id, w]) => [idx.get(id), ' ' + w.v.map((x) => norm(x[0])).join(' | ') + ' ']);
@@ -72,7 +85,7 @@ export function aree() {
     const base = norm(d.replace(/\s+(DOCG|DOC|AOC|AOP|DOP|DOCa|DOQ|DO|AVA|DAC)$/i, ''));
     if (base.length < 4 || seen.has(norm(d))) continue;
     const re = new RegExp(`[ |]${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( |$)`);
-    const i = wines.filter(([, s]) => re.test(s)).map(([j]) => j);
+    const i = core(wines.filter(([, s]) => re.test(s)).map(([j]) => j));
     if (i.length < 2) continue;
     seen.add(norm(d));
     z.push({ n: d, i, k: i.length, b: bbox(i.map((j) => [items[j][1], items[j][2]])), d: 1 });
