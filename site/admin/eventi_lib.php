@@ -25,7 +25,7 @@ const EV_LABELS = [
   'page:seo' => 'Pagine delle cantine (stati, regioni, comuni, schede)', 'page:account' => 'Pagina account', 'page:privacy' => 'Pagina privacy',
   'err:js' => 'Errore nella mappa',
   'support:map' => 'Dona: tocca "🥂 Cin cin!" sulla mappa', 'support:header' => 'Dona: "🥂 Supporta" in alto', 'support:footer' => 'Dona: link in fondo al pannello',
-  'donate:view' => 'Dona: apre la pagina', 'donate:back' => 'Dona: torna alla mappa', 'donate:onlyview' => 'Dona: esce senza andare su Ko-fi',
+  'donate:view' => 'Dona: apre la pagina', 'donate:paid' => 'Dona: 🥂 donazione arrivata (Ko-fi)', 'donate:back' => 'Dona: torna alla mappa', 'donate:onlyview' => 'Dona: esce senza andare su Ko-fi',
   'donate:return' => 'Dona: torna da Ko-fi', 'donate:kofi-2' => 'Dona: su Ko-fi con 2 €', 'donate:kofi-5' => 'Dona: su Ko-fi con 5 €',
   'donate:kofi-10' => 'Dona: su Ko-fi con 10 €', 'donate:kofi-free' => 'Dona: su Ko-fi, importo libero',
 ];

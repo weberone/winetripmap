@@ -153,4 +153,25 @@ admin_header('Dashboard', 'dash');
       <?php foreach ($topFav as $r): ?><tr><td><a href="/?c=<?= h($r['winery']) ?>" target="_blank" rel="noopener"><?= h($r['name'] ?: $r['winery']) ?></a> <small class="muted"><?= h($r['town']) ?></small></td><td class="r"><?= num($r['n']) ?></td></tr><?php endforeach; ?>
     </tbody></table><?php endif; ?></div>
 </section>
+<?php // donazioni: clic dalla mappa e dalla pagina /dona/ (app_events support:/donate:) e donazioni vere dal webhook di Ko-fi (api/kofi.php)
+$dFrom = (new DateTime('now', new DateTimeZone('Europe/Rome')))->modify('-29 days')->format('Y-m-d');
+$dn = []; try { $st = db()->prepare("SELECT ev, SUM(n) AS t FROM app_events WHERE day >= ? AND (ev LIKE 'donate:%' OR ev LIKE 'support:%') GROUP BY ev"); $st->execute([$dFrom]); foreach ($st as $r) $dn[$r['ev']] = (int)$r['t']; } catch (Throwable $e) {}
+$dv = fn($k) => $dn[$k] ?? 0;
+$dKofi = $dv('donate:kofi-2') + $dv('donate:kofi-5') + $dv('donate:kofi-10') + $dv('donate:kofi-free');
+$dons = []; $dTot = []; try { $dons = db()->query('SELECT * FROM donations ORDER BY at DESC LIMIT 10')->fetchAll();
+  foreach (db()->query('SELECT currency, SUM(amount) AS t, COUNT(*) AS n FROM donations GROUP BY currency') as $r) $dTot[] = number_format((float)$r['t'], 2, ',', '.') . ' ' . $r['currency'] . ' (' . $r['n'] . ')'; } catch (Throwable $e) {}
+?>
+<section class="card" id="donazioni"><h2>Donazioni <small class="muted">ultimi 30 giorni</small></h2>
+  <section class="kpis" style="margin:0 0 10px">
+    <div class="kpi"><span>Tocchi su "🥂 Cin cin!" / Supporta</span><b><?= $dv('support:map') + $dv('support:header') + $dv('support:footer') ?></b><small>mappa <?= $dv('support:map') ?> · in alto <?= $dv('support:header') ?> · in fondo <?= $dv('support:footer') ?></small></div>
+    <div class="kpi"><span>Visite pagina /dona/</span><b><?= $dv('donate:view') ?></b><small>senza andare su Ko-fi <?= $dv('donate:onlyview') ?></small></div>
+    <div class="kpi"><span>Clic verso Ko-fi</span><b><?= $dKofi ?></b><small>2 € <?= $dv('donate:kofi-2') ?> · 5 € <?= $dv('donate:kofi-5') ?> · 10 € <?= $dv('donate:kofi-10') ?> · libero <?= $dv('donate:kofi-free') ?></small></div>
+    <div class="kpi"><span>Donazioni arrivate</span><b><?= $dv('donate:paid') ?></b><small>da sempre: <?= $dTot ? h(implode(' · ', $dTot)) : 'nessuna' ?></small></div>
+  </section>
+  <?php if (!$dons): ?><p class="muted">Ancora nessuna donazione. <?= empty(settings()['kofi_token']) ? 'Per riceverle qui: Impostazioni → Donazioni (link Ko-fi e token del webhook).' : '' ?></p>
+  <?php else: ?><table><thead><tr><th>Quando</th><th>Chi</th><th class="r">Importo</th><th>Messaggio</th></tr></thead><tbody>
+    <?php foreach ($dons as $r): ?><tr><td><?= h(substr($r['at'], 0, 16)) ?></td><td><?= h($r['name'] ?: '—') ?><?= $r['user_id'] ? ' <a href="user.php?id=' . (int)$r['user_id'] . '">(iscritto)</a>' : '' ?></td>
+      <td class="r"><?= h(number_format((float)$r['amount'], 2, ',', '.') . ' ' . $r['currency']) ?></td><td><?= h($r['message'] ?: '') ?></td></tr><?php endforeach; ?>
+  </tbody></table><?php endif; ?>
+</section>
 <?php admin_footer(true); ?>

@@ -156,6 +156,20 @@ CREATE TABLE IF NOT EXISTS revisioni (
   at TEXT NOT NULL,
   by_user INTEGER
 );
+-- donazioni vere, dal webhook di Ko-fi (api/kofi.php); l'email di chi dona non si salva, serve solo a riconoscere un iscritto
+CREATE TABLE IF NOT EXISTS donations (
+  kofi_id TEXT PRIMARY KEY,
+  at TEXT NOT NULL,
+  type TEXT,
+  amount REAL NOT NULL DEFAULT 0,
+  currency TEXT,
+  name TEXT,
+  message TEXT,
+  is_public INTEGER NOT NULL DEFAULT 0,
+  first_sub INTEGER NOT NULL DEFAULT 0,
+  tier TEXT,
+  user_id INTEGER
+);
 SQL;
 // colonne aggiunte dopo (le tabelle già create non le prendono da CREATE TABLE): [tabella, colonna, tipo]
 const SCHEMA_ADD = [

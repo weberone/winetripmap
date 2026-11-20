@@ -24,7 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_ok()) {
       $smtp['port'] = (int)($_POST['smtp_port'] ?? 587) ?: 587;
       if (($_POST['smtp_pass'] ?? '') !== '') $smtp['pass'] = (string)$_POST['smtp_pass']; // vuota = resta quella salvata
       if (!empty($_POST['smtp_clear'])) $smtp = [];
-      $s = ['google_client_id' => $gid, 'notify_email' => $notify, 'smtp' => $smtp,
+      $kofi = trim((string)($_POST['kofi_url'] ?? ''));
+      if ($kofi !== '' && !preg_match('~^https://ko-fi\.com/[A-Za-z0-9_]+/?$~', $kofi)) $err = 'Il link di Ko-fi ha questa forma: https://ko-fi.com/winetripmap';
+      $ktok = trim((string)($_POST['kofi_token'] ?? '')); if ($ktok === '') $ktok = (string)($s['kofi_token'] ?? ''); // vuoto = resta quello salvato
+      if (!empty($_POST['kofi_clear'])) $ktok = '';
+    }
+    if (!$err) {
+      $s = ['google_client_id' => $gid, 'notify_email' => $notify, 'smtp' => $smtp, 'kofi_url' => rtrim($kofi, '/'), 'kofi_token' => $ktok,
         'privacy_controller' => trim((string)($_POST['privacy_controller'] ?? '')), 'privacy_email' => trim((string)($_POST['privacy_email'] ?? ''))];
       jwrite('settings.json', $s);
       $flash = 'Salvato.';
@@ -110,6 +116,16 @@ admin_header('Impostazioni', 'set');
     <div class="field"><label for="sf">Mittente</label><input id="sf" name="smtp_from" value="<?= h($smtp['from'] ?? '') ?>" placeholder="noreply@winetripmap.com" autocomplete="off"></div>
   </div>
   <label class="muted"><input type="checkbox" name="smtp_clear" value="1"> Cancella la configurazione della posta</label>
+</section>
+<section class="card"><h2>Donazioni (Ko-fi)</h2>
+  <p class="muted" style="margin-top:0">Il link è quello della pagina <a href="/dona/">/dona/</a> (vuoto = "Le donazioni aprono a breve"). Su Ko-fi → Settings → API: Webhook URL
+    <code><?= h(SITE_URL) ?>/api/kofi.php</code> e qui sotto il Verification Token; poi su Ko-fi "Send Test".
+    <?php $kt = @file_get_contents(priv('kofi_test.txt')); ?><?= $kt ? 'Ultimo test ricevuto: ' . h($kt) . ' UTC.' : 'Nessun test ricevuto finora.' ?> <?= !empty($s['kofi_token']) ? 'Token salvato: lascialo vuoto per tenerlo.' : 'Nessun token salvato.' ?></p>
+  <div class="grid2" style="margin:0">
+    <div class="field"><label for="kurl">Pagina Ko-fi</label><input id="kurl" name="kofi_url" value="<?= h($s['kofi_url'] ?? '') ?>" placeholder="https://ko-fi.com/winetripmap" autocomplete="off"></div>
+    <div class="field"><label for="ktok">Verification Token</label><input id="ktok" name="kofi_token" type="password" autocomplete="new-password" placeholder="<?= !empty($s['kofi_token']) ? '••••••••' : '' ?>"></div>
+  </div>
+  <label class="muted"><input type="checkbox" name="kofi_clear" value="1"> Cancella il token</label>
 </section>
 <section class="card"><h2>Avvisi all'amministratore</h2>
   <div class="field"><label for="ne">Email dove ricevere nuovi iscritti e feedback <small>(vuoto = nessun avviso)</small></label><input id="ne" name="notify_email" type="email" value="<?= h($s['notify_email'] ?? '') ?>"></div>
