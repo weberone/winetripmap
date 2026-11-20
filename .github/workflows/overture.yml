@@ -1,0 +1,28 @@
+# Cantine da Overture Maps (tools/overture-cantine.py): scarica i luoghi "winery", enoteche e wine bar di tutto il mondo e mette
+# il file nella release cache-dati (overture-places.json.gz). Gira anche dentro l'aggiornamento mensile (dati.yml);
+# da qui si lancia a mano per avere subito il file.
+name: Cantine da Overture
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write # release cache-dati
+
+jobs:
+  overture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Overture
+        run: |
+          set -euo pipefail
+          pip install -q duckdb
+          python3 tools/overture-cantine.py | tee -a "$GITHUB_STEP_SUMMARY"
+          cp tools/.cache/overture/places.json.gz "$RUNNER_TEMP/overture-places.json.gz"
+          gh release upload cache-dati "$RUNNER_TEMP/overture-places.json.gz" --clobber -R "$GITHUB_REPOSITORY"
