@@ -7,12 +7,12 @@
 //     "sid": "…", "j": [[ms, "view:winery", "Nome"], …], "s": {schermo, lingua…}   percorso azione per azione (user_events):
 //   }                                                     solo per gli iscritti e per chi ha accettato i cookie (la mappa manda "j" solo allora)
 // Il banner dei cookie (js/consent.js) manda {"e": ["consent:yes"]} anche dalle altre pagine; le pagine SEO {"e": ["page:seo"]}.
-// Gli amministratori (account in admins.json o browser con il cookie wtm_ns dell'admin) e i robot non contano.
+// Gli amministratori (account in admins.json, browser con il cookie wtm_ns o in admin-vids.json) e i robot non contano.
 require __DIR__ . '/lib.php';
 header('Cache-Control: no-store');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_out(['error' => 'method'], 405);
 $u = current_user();
-if (is_bot() || is_admin($u) || ($_COOKIE['wtm_ns'] ?? '') === '1') json_out(['ok' => true]);
+if (is_bot() || is_admin($u) || is_admin_device()) json_out(['ok' => true]);
 $raw = (string)file_get_contents('php://input');
 if (strlen($raw) > 60000) json_out(['error' => 'size'], 413);
 $in = json_decode($raw, true) ?: [];

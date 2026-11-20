@@ -248,6 +248,32 @@ function logout_user(): void {
 // (chi è collegato lo diventa); poi solo un amministratore può aggiungerne altri (admin/users.php).
 function admin_ids(): array { return array_map('intval', jread('admins.json')['ids'] ?? []); }
 function is_admin(?array $u): bool { return $u !== null && in_array((int)$u['id'], admin_ids(), true); }
+// dispositivi dell'amministratore (cookie wtm_vid dei browser in cui è entrato con l'account admin), in admin-vids.json:
+// non contano nelle statistiche né mandano notifiche, anche quando poi apre la mappa senza essere collegato
+function admin_vids(): array { return jread('admin-vids.json')['vids'] ?? []; }
+function is_admin_device(): bool {
+  if (($_COOKIE['wtm_ns'] ?? '') === '1') return true;
+  $v = (string)($_COOKIE['wtm_vid'] ?? '');
+  return $v !== '' && in_array($v, admin_vids(), true);
+}
+// segna questo browser come dell'amministratore (cookie wtm_ns + wtm_vid in admin-vids.json) e toglie dalle statistiche
+// quello che vi aveva già registrato
+function mark_admin_device(): void {
+  if (($_COOKIE['wtm_ns'] ?? '') !== '1') setcookie('wtm_ns', '1', ['expires' => time() + 400 * 86400, 'path' => '/', 'secure' => true, 'samesite' => 'Lax']);
+  $vids = admin_vids();
+  $v = visitor_id();
+  if (!in_array($v, $vids, true)) { $vids[] = $v; jwrite('admin-vids.json', ['vids' => array_values($vids)]); purge_admin_stats(); }
+  elseif ((jread('admin-vids.json')['purged'] ?? 0) < 1) purge_admin_stats();
+}
+function purge_admin_stats(): void {
+  $vids = admin_vids(); $ids = admin_ids();
+  if (!$vids && !$ids) return;
+  $db = db();
+  $qv = implode(',', array_fill(0, count($vids), '?')) ?: "''"; $qi = implode(',', array_fill(0, count($ids), '?')) ?: '0';
+  $p = array_merge($vids, $ids);
+  foreach (['app_opens', 'user_sessions', 'user_events'] as $t) $db->prepare("DELETE FROM $t WHERE vid IN ($qv) OR user_id IN ($qi)")->execute($p);
+  jwrite('admin-vids.json', ['vids' => $vids, 'purged' => 1]);
+}
 function admin_set(int $id, bool $on): void {
   $ids = array_values(array_unique(array_filter(admin_ids(), fn($x) => $x !== $id)));
   if ($on) $ids[] = $id;

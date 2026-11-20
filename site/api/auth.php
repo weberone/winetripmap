@@ -29,7 +29,8 @@ $need = function () use ($me) { if (!$me) json_out(['error' => 'not_logged_in'],
 
 if ($a === 'me' && $method === 'GET') {
   // apertura della mappa: una riga in app_opens (non per i robot né per gli amministratori)
-  if (!empty($_GET['map']) && !is_bot() && !is_admin($me)) {
+  if (!empty($_GET['map']) && is_admin($me)) mark_admin_device(); // l'amministratore collegato: questo browser non conta più, anche senza accesso
+  if (!empty($_GET['map']) && !is_bot() && !is_admin($me) && !is_admin_device()) {
     try {
       $ua = (string)($_SERVER['HTTP_USER_AGENT'] ?? ''); $ref = mb_substr((string)($_GET['ref'] ?? ''), 0, 300);
       $map = preg_match('/^(google|mapbox|free)$/', (string)($_GET['m'] ?? '')) ? $_GET['m'] : null;
@@ -47,7 +48,7 @@ if ($a === 'me' && $method === 'GET') {
         preg_match('/^[A-Za-z_\/+-]{1,40}$/', (string)($_GET['tz'] ?? '')) ? $_GET['tz'] : null, $map, $ck, $land, $sid, now(),
         mb_substr($geo['city'] ?? '', 0, 80) ?: null, mb_substr($geo['region'] ?? '', 0, 80) ?: null, ($geo['cc'] ?? '') ?: null]);
       $openId = (int)db()->lastInsertId();
-      if (($_COOKIE['wtm_ns'] ?? '') !== '1') notify_visit($me, $row + ['id' => $openId], $geo); // notifica push all'admin (api/visit_notify.php)
+      notify_visit($me, $row + ['id' => $openId], $geo); // notifica push all'admin (api/visit_notify.php)
       if ($me) db()->prepare('UPDATE users SET visit_count = visit_count + 1, last_seen_at = ? WHERE id = ?')->execute([now(), $me['id']]);
     } catch (Throwable $e) { error_log('opens: ' . $e->getMessage()); }
   }
