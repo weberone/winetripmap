@@ -9,13 +9,20 @@ name: Aggiorna i dati
 
 on:
   schedule:
-    - cron: '17 3 2 * *' # il 2 di ogni mese, 03:17 UTC
+    # il 2 di ogni mese, 03:17 UTC; i vigneti (8 macchine per ~4 ore: quasi tutti i 2.000 minuti gratuiti al mese di GitHub
+    # per i repository privati) solo a gennaio e luglio, gli altri mesi si usano quelli già nella release cache-dati
+    - cron: '17 3 2 1,7 *'
+    - cron: '17 3 2 2-6,8-12 *'
   workflow_dispatch:
     inputs:
       applica:
         description: 'Applica al sito (commit e deploy); senza spunta solo il rapporto'
         type: boolean
         default: true
+      vigneti:
+        description: 'Riscarica anche i vigneti (8 macchine per ~4 ore: consuma quasi tutti i minuti del mese)'
+        type: boolean
+        default: false
 
 concurrency:
   group: dati
@@ -28,8 +35,9 @@ permissions:
 jobs:
   # vigneti dai file Geofabrik: troppi GB per una macchina sola (la Francia da sola ~30 minuti), 8 parti in parallelo;
   # ogni parte mette i suoi file nella release cache-dati (vigneti-parte-N.tar.gz). Se una parte non finisce resta quella
-  # del mese prima, e dove mancano i vigneti di un paese produttori.mjs non toglie nessuno per questo
+  # del giro prima, e dove mancano i vigneti di un paese produttori.mjs non toglie nessuno per questo
   vigneti:
+    if: ${{ github.event.schedule == '17 3 2 1,7 *' || inputs.vigneti }}
     runs-on: ubuntu-latest
     timeout-minutes: 300
     strategy:
