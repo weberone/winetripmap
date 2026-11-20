@@ -1,8 +1,14 @@
 <?php
-// Dashboard: aperture della mappa e visitatori, iscritti, mappe usate nel mese (Google, Mapbox, OpenFreeMap: api/counter.php),
+// Dashboard. In cima: persone al giorno a colonne divise (nuovi, di ritorno, iscritti; ultimi 30 giorni) con il confronto con ieri
+// alla stessa ora, e sotto chi ha aperto la mappa nel giorno scelto (admin/visite_giorno.php; ?list=AAAA-MM-GG = solo l'elenco, per il clic sulle colonne).
+// Poi: aperture della mappa e visitatori, iscritti, mappe usate nel mese (Google, Mapbox, OpenFreeMap: api/counter.php),
 // da dove arrivano, dispositivi, cantine più salvate. Gli amministratori non entrano nei conteggi (api/auth.php).
 require __DIR__ . '/layout.php';
 admin_me();
+require __DIR__ . '/visite_giorno.php';
+$isDay = fn($d) => is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && $d <= today_it();
+if (isset($_GET['list'])) { if (!$isDay($_GET['list'])) exit; echo visits_day_html($_GET['list']); exit; }
+$selDay = $isDay($_GET['day'] ?? null) ? $_GET['day'] : today_it();
 $today = today_it(); $from30 = (new DateTime('-29 days', new DateTimeZone('Europe/Rome')))->format('Y-m-d');
 $from7 = (new DateTime('-6 days', new DateTimeZone('Europe/Rome')))->format('Y-m-d');
 
@@ -26,6 +32,17 @@ foreach (db()->query("SELECT created_at FROM users WHERE created_at > '" . ago_d
   $d = (new DateTime($r['created_at'] . ' UTC'))->setTimezone(new DateTimeZone('Europe/Rome'))->format('Y-m-d');
   if (isset($signups[$d])) $signups[$d]++;
 }
+// persone al giorno divise per tipo (dal primo giorno con dati, al massimo 30)
+$vFrom = max($from30, (string)(one('SELECT MIN(day) FROM app_opens') ?: $today));
+$vDays = visits_by_day($vFrom);
+$vSum = fn($i) => array_sum(array_column($vDays, $i));
+// oggi fino ad adesso contro ieri fino alla stessa ora (persone)
+$people = function (string $day, ?string $until) { $st = db()->prepare('SELECT id, vid, user_id FROM app_opens WHERE day = ?' . ($until ? ' AND at <= ?' : '')); $st->execute($until ? [$day, $until] : [$day]);
+  $k = []; foreach ($st as $o) $k[visit_key($o)] = 1; return count($k); };
+$pToday = array_sum($vDays[$today] ?? [0]);
+$pYest = $people((new DateTime('-1 day', new DateTimeZone('Europe/Rome')))->format('Y-m-d'), gmdate('Y-m-d H:i:s', time() - 86400));
+$pPct = $pYest ? round(($pToday - $pYest) / $pYest * 100) : null;
+$pCls = $pPct === null ? ($pToday ? 'up' : '') : ($pPct > 0 ? 'up' : ($pPct < 0 ? 'down' : ''));
 $q = fn($sql) => db()->query($sql)->fetchAll();
 $sources = $q("SELECT source k, COUNT(*) n FROM app_opens WHERE day >= '$from30' GROUP BY source ORDER BY n DESC LIMIT 10");
 $devices = $q("SELECT device k, COUNT(*) n FROM app_opens WHERE day >= '$from30' GROUP BY device ORDER BY n DESC LIMIT 8");
@@ -37,6 +54,32 @@ $maps = json_decode((string)@file_get_contents(dirname(__DIR__) . '/counter/maps
 require_once dirname(__DIR__) . '/api/caps.php'; $caps = CAPS;
 admin_header('Dashboard', 'dash');
 ?>
+<figure class="card chart visits">
+  <figcaption><b>Persone sulla mappa al giorno</b><span class="muted">tocca una colonna per vedere chi era · ultimi <?= count($vDays) ?> giorni · <?= num(array_sum(array_map('array_sum', $vDays))) ?> in tutto</span></figcaption>
+  <div class="vtop">
+    <div class="vbadge" title="Persone di oggi fino ad adesso rispetto a ieri fino alla stessa ora">
+      <b class="<?= $pCls ?>"><?= $pPct === null ? ($pToday ? '+' . num($pToday) : '—') : ($pPct > 0 ? '▲ +' : ($pPct < 0 ? '▼ −' : '')) . ($pPct === null ? '' : abs($pPct) . '%') ?></b>
+      <small>oggi <?= num($pToday) ?> · ieri a quest'ora <?= num($pYest) ?></small></div>
+    <div class="cols labeled" id="visitsChart" data-series='<?= h(json_encode(array_map(fn($d, $v) => [$d, array_sum($v)], array_keys($vDays), $vDays))) ?>'
+      data-stack='<?= h(json_encode(array_values($vDays))) ?>' data-stack-names='["nuovi","di ritorno","iscritti"]'
+      role="img" aria-label="Persone sulla mappa al giorno: nuovi, di ritorno e iscritti"></div>
+  </div>
+  <p class="stleg"><span class="s0"></span>nuovi <b><?= num($vSum(0)) ?></b> <span class="s1"></span>di ritorno <b><?= num($vSum(1)) ?></b> <span class="s2"></span>iscritti <b><?= num($vSum(2)) ?></b>
+    <small>· una persona = un browser (o un account) al giorno, anche se apre la mappa più volte · nuovo = il suo primo giorno</small></p>
+</figure>
+<section class="card" id="dayList"><?= visits_day_html($selDay) ?></section>
+<script>
+// clic su una colonna o sui pulsanti dei giorni: l'elenco di quel giorno senza ricaricare la pagina
+(() => {
+  const box = document.getElementById("dayList");
+  const load = async (d) => { const r = await fetch("dashboard.php?list=" + d, { credentials: "same-origin" }); if (r.ok) { box.innerHTML = await r.text(); history.replaceState(null, "", d === <?= json_encode($today) ?> ? "dashboard.php" : "?day=" + d); } };
+  document.getElementById("visitsChart").addEventListener("click", (e) => { const c = e.target.closest(".col"); if (c) load(c.dataset.d); });
+  box.addEventListener("click", (e) => { const a = e.target.closest("a[data-day]"); if (a) { e.preventDefault(); load(a.dataset.day); } });
+  // la colonna del giorno scelto resta evidenziata
+  if (<?= json_encode($selDay !== $today) ?>) addEventListener("DOMContentLoaded", () => { // dopo core/admin/charts.js, che disegna le colonne
+    const c = document.querySelector('#visitsChart .col[data-d="<?= h($selDay) ?>"]'); if (c) { c.onclick && c.onclick(); } });
+})();
+</script>
 <section class="kpis">
   <a class="kpi" href="opens.php"><span>Aperture oggi</span><b><?= num($opensToday) ?></b><small><?= num($visToday) ?> visitatori</small></a>
   <a class="kpi" href="opens.php"><span>Ultimi 7 giorni</span><b><?= num($opens7) ?></b><small><?= num($vis7) ?> visitatori</small></a>

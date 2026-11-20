@@ -119,3 +119,34 @@ th{font-size:12px;color:var(--muted);font-weight:600} .r{text-align:right;font-v
 .mbar{position:relative;height:8px;background:var(--bg);border-radius:99px;overflow:hidden;margin:4px 0}
 .mbar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:99px}
 @media (max-width:520px){.kpi b{font-size:24px}.cols{height:110px}.ptitle{font-size:22px}}
+
+/* ---------- dashboard: visite al giorno a colonne divise (core/admin/charts.js, cols labeled + data-stack) ---------- */
+:root{--s0:#e3a32b;--s1:#8e1b33;--s2:#3a7bd5}
+:root[data-scheme="dark"]{--s0:#f0b84a;--s1:#d0476a;--s2:#5f9bf0}
+.cols.labeled{height:260px;padding-top:0;gap:6px;overflow-x:auto;overflow-y:hidden;border-bottom:0;scrollbar-width:thin}
+.cols.labeled .col{flex:1 0 44px;flex-direction:column;align-items:stretch}
+.cols.labeled .bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;min-height:0;border-bottom:1px solid var(--line)}
+.cols.labeled .bar b{font-size:12px;font-weight:700;text-align:center;margin-bottom:3px;line-height:1}
+.cols.labeled small{text-align:center;font-size:11px;color:var(--muted);padding-top:4px;line-height:1}
+.cols.labeled .col.now small{color:var(--accent);font-weight:700}
+.cols.labeled .col.stk .stkbar{flex:none;display:flex;flex-direction:column;max-height:calc(100% - 18px);border-radius:4px 4px 0 0;overflow:hidden}
+.cols.labeled .col.stk .stkbar i{flex-shrink:1;flex-basis:0;min-height:2px;border-radius:0;width:100%}
+.cols.labeled .col.stk .stkbar i + i{border-top:1px solid var(--card)}
+.col i.s0,.stleg .s0,.tdot.s0{background:var(--s0)} .col i.s1,.stleg .s1,.tdot.s1{background:var(--s1)} .col i.s2,.stleg .s2,.tdot.s2{background:var(--s2)}
+.cols.labeled .col.stk.now .stkbar{outline:1.5px dashed var(--accent);outline-offset:1px}
+.cols.labeled .col.stk.now i{background-image:repeating-linear-gradient(135deg,transparent 0 6px,rgb(255 255 255 / .3) 6px 12px)}
+.cols.labeled.has-on .col:not(.on){opacity:.45}
+.cols.labeled .col.on .stkbar{outline:2px solid var(--ink);outline-offset:1px}
+.cols.labeled .col.on small{color:var(--ink);font-weight:700}
+.tdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}
+.stleg{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:10px 0 0;font-size:13px;color:var(--muted)}
+.stleg span{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px} .stleg b{color:var(--ink)}
+.vtop{display:flex;gap:12px;align-items:stretch}
+.vtop .cols{flex:1;min-width:0}
+.vbadge{flex:none;display:flex;flex-direction:column;justify-content:center;gap:2px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);min-width:110px}
+.vbadge b{font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums} .vbadge small{font-size:12px;color:var(--muted)}
+.vbadge .up{color:var(--ok)} .vbadge .down{color:var(--err)}
+.vtype{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:700;color:#fff}
+.vtype.s0{background:var(--s0);color:#2a1a1d} .vtype.s1{background:var(--s1)} .vtype.s2{background:var(--s2)}
+#dayList .daynav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+@media (max-width:620px){.vtop{flex-direction:column}.vbadge{flex-direction:row;align-items:baseline;gap:10px}.cols.labeled{height:220px}}
