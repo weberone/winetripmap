@@ -512,5 +512,9 @@ form.search input:focus{border-color:var(--accent)}
 .viscard .vis-n strong{color:var(--accent);font-weight:800}
 .viscard .vis-cc{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin:0 0 10px;max-height:64px;overflow:auto}
 .viscard .vis-cc span{padding:3px 9px;border-radius:999px;font-size:12.5px;font-weight:600;background:color-mix(in srgb,#1f9d55 14%,transparent);color:#1f9d55}
+.viscard .vis-zh{margin:2px 0 6px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.viscard .vis-z{max-height:96px}
+.viscard .vis-z button{padding:4px 10px;border-radius:999px;border:0;font:600 12.5px/1.2 var(--f-body);cursor:pointer;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.viscard .vis-z button:hover{background:color-mix(in srgb,var(--accent) 24%,transparent)}
 .viscard .btn{display:inline-flex}
 .app.mob:not(.map-only) .viscard{display:none}

@@ -56,12 +56,37 @@ export function aree() {
   delete ct.XX;
 
   const z = [];
-  // regioni del vino di Wikidata: le cantine entro il raggio della zona (dalla superficie, se c'è; altrimenti 25 km)
+  const seen0 = (n) => z.some((x) => norm(x.n) === norm(n));
+  // regioni del vino di Wikidata: le cantine entro il raggio della zona (dalla superficie, se c’è; altrimenti 15 km)
   for (const w of Z.z) {
-    const km = w.km2 ? Math.max(6, Math.min(60, Math.sqrt(w.km2 / Math.PI) * 1.1)) : 25, i = [], p = [];
+    const km = w.km2 ? Math.max(6, Math.min(60, Math.sqrt(w.km2 / Math.PI) * 1.1)) : 15, i = [], p = [];
     items.forEach(([, lat, lng], j) => { if (Math.abs(lat - w.lat) < km / 100 && distKm([w.lat, w.lng], [lat, lng]) <= km) { i.push(j); p.push([lat, lng]); } });
     if (!i.length) continue;
     const n = w.n.en || Object.values(w.n)[0], t = {}; for (const [l, v] of Object.entries(w.n)) if (l !== 'en' && v !== n) t[l] = v;
+    z.push({ n, t: Object.keys(t).length ? t : undefined, i, k: i.length, b: bbox(p) });
+  }
+  // grandi zone del vino che Wikidata non ha con le coordinate (Bordeaux, Mosella…): punti e raggio scritti a mano, qui le cantine
+  // entro r km da uno dei punti (la Mosella segue il fiume). Se Wikidata le ha già (stesso nome) non si ripetono
+  const EXTRA = [
+    { n: { en: 'Bordeaux', it: 'Bordeaux', fr: 'Vignoble de Bordeaux', de: 'Bordeaux', es: 'Burdeos', pt: 'Bordéus', ru: 'Бордо', ja: 'ボルドー', zh: '波尔多', pl: 'Bordeaux', ko: '보르도', id: 'Bordeaux' }, pts: [[44.85, -0.45], [45.15, -0.8], [44.6, -0.3]], r: 35 },
+    { n: { en: 'Médoc', it: 'Médoc', fr: 'Médoc', ja: 'メドック', zh: '梅多克', ru: 'Медок', ko: '메독' }, pts: [[45.2, -0.8], [45.0, -0.68]], r: 18 },
+    { n: { en: 'Mosel', it: 'Mosella', fr: 'Moselle', de: 'Mosel', es: 'Mosela', pt: 'Mosela', ru: 'Мозель', ja: 'モーゼル', zh: '摩泽尔', pl: 'Mozela', ko: '모젤', id: 'Mosel' },
+      pts: [[49.6, 6.4], [49.75, 6.64], [49.82, 6.8], [49.88, 6.95], [49.93, 7.05], [50.0, 7.1], [50.07, 7.13], [50.15, 7.2], [50.22, 7.35], [50.3, 7.5], [50.35, 7.58]], r: 7 },
+    { n: { en: 'Rheingau', it: 'Rheingau', de: 'Rheingau', fr: 'Rheingau', ja: 'ラインガウ', zh: '莱茵高', ru: 'Рейнгау', ko: '라인가우' }, pts: [[50.0, 7.9], [50.03, 8.05], [50.02, 8.2]], r: 8 },
+    { n: { en: 'Alsace', it: 'Alsazia', fr: 'Alsace', de: 'Elsass', es: 'Alsacia', pt: 'Alsácia', ru: 'Эльзас', ja: 'アルザス', zh: '阿尔萨斯', pl: 'Alzacja', ko: '알자스', id: 'Alsace' }, pts: [[48.75, 7.45], [48.5, 7.42], [48.25, 7.35], [48.05, 7.3], [47.85, 7.25]], r: 12 },
+    { n: { en: 'Loire Valley', it: 'Valle della Loira', fr: 'Vallée de la Loire', de: 'Loiretal', es: 'Valle del Loira', pt: 'Vale do Loire', ru: 'Долина Луары', ja: 'ロワール渓谷', zh: '卢瓦尔河谷', pl: 'Dolina Loary', ko: '루아르 밸리', id: 'Lembah Loire' }, pts: [[47.3, 2.85], [47.4, 1.0], [47.3, 0.4], [47.25, -0.4], [47.2, -1.4]], r: 22 },
+    { n: { en: 'Rhône Valley', it: 'Valle del Rodano', fr: 'Vallée du Rhône', de: 'Rhônetal', es: 'Valle del Ródano', pt: 'Vale do Ródano', ru: 'Долина Роны', ja: 'ローヌ渓谷', zh: '罗讷河谷', pl: 'Dolina Rodanu', ko: '론 밸리', id: 'Lembah Rhône' }, pts: [[45.4, 4.8], [45.05, 4.85], [44.6, 4.75], [44.2, 4.8], [44.05, 4.9]], r: 18 },
+    { n: { en: 'Beaujolais', it: 'Beaujolais', fr: 'Beaujolais', ja: 'ボージョレ', zh: '博若莱', ru: 'Божоле', ko: '보졸레' }, pts: [[46.15, 4.65], [45.95, 4.6]], r: 14 },
+    { n: { en: 'Chablis', it: 'Chablis', fr: 'Chablis', ja: 'シャブリ', zh: '夏布利', ru: 'Шабли', ko: '샤블리' }, pts: [[47.81, 3.8]], r: 12 },
+    { n: { en: 'Provence', it: 'Provenza', fr: 'Provence', de: 'Provence', es: 'Provenza', pt: 'Provença', ru: 'Прованс', ja: 'プロヴァンス', zh: '普罗旺斯', pl: 'Prowansja', ko: '프로방스', id: 'Provence' }, pts: [[43.5, 5.6], [43.4, 6.2], [43.6, 6.6]], r: 35 },
+    { n: { en: 'Langhe', it: 'Langhe', fr: 'Langhe', de: 'Langhe' }, pts: [[44.6, 8.0], [44.5, 8.1]], r: 15 },
+  ];
+  for (const w of EXTRA) {
+    const n = w.n.en; if (seen0(n)) continue;
+    const i = [], p = [];
+    items.forEach(([, lat, lng], j) => { if (w.pts.some(([a, b]) => Math.abs(lat - a) < w.r / 90 && distKm([a, b], [lat, lng]) <= w.r)) { i.push(j); p.push([lat, lng]); } });
+    if (!i.length) continue;
+    const t = {}; for (const [l, v] of Object.entries(w.n)) if (l !== 'en' && v !== n) t[l] = v;
     z.push({ n, t: Object.keys(t).length ? t : undefined, i, k: i.length, b: bbox(p) });
   }
   // una denominazione è un luogo: delle cantine che la nominano restano solo quelle raccolte nella sua zona (intorno al punto
@@ -85,8 +110,15 @@ export function aree() {
     const base = norm(d.replace(/\s+(DOCG|DOC|AOC|AOP|DOP|DOCa|DOQ|DO|AVA|DAC)$/i, ''));
     if (base.length < 4 || seen.has(norm(d))) continue;
     const re = new RegExp(`[ |]${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( |$)`);
-    const i = core(wines.filter(([, s]) => re.test(s)).map(([j]) => j));
-    if (i.length < 2) continue;
+    const k0 = core(wines.filter(([, s]) => re.test(s)).map(([j]) => j));
+    if (k0.length < 2) continue;
+    // e tutte le cantine dentro l'area dove stanno quelle che la nominano (intorno al punto mediano, entro 1,3 volte la distanza
+    // tipica, tra 4 e 40 km): Anselmi a Monteforte d'Alpone è nel Soave anche senza la lista dei vini
+    const c = [med(k0.map((j) => items[j][1])), med(k0.map((j) => items[j][2]))];
+    const r = Math.max(4, Math.min(40, 1.3 * med(k0.map((j) => distKm(c, [items[j][1], items[j][2]])))));
+    const inK = new Set(k0);
+    items.forEach(([, lat, lng], j) => { if (!inK.has(j) && Math.abs(lat - c[0]) < r / 100 && distKm(c, [lat, lng]) <= r) inK.add(j); });
+    const i = [...inK].sort((a, b) => a - b);
     seen.add(norm(d));
     z.push({ n: d, i, k: i.length, b: bbox(i.map((j) => [items[j][1], items[j][2]])), d: 1 });
   }

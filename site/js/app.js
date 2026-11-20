@@ -1187,6 +1187,7 @@ async function showVisited() {
     d = await r.json();
   } catch (e) { d = { items: [] }; }
   await loadData().catch(() => {});
+  await loadAree().catch(() => {}); // prima di aggiungere le visitate che non sono più nei dati (gli indici di aree.json valgono per i dati del giorno)
   const idx = [];
   for (const v of d.items || []) {
     let x = state.byId.get(v.id);
@@ -1197,17 +1198,34 @@ async function showVisited() {
   state.area = { name: t("my_visits"), idx, mid: null, shape: null }; state.center = null;
   showGlobe(); renderList(); drawMarkers();
   // paesi: dalle regioni di aree.json (indici validi solo per i dati dello stesso giorno)
-  let cc = [];
+  let cc = [], zones = [];
   try { await loadAree(); const reg = new Map(); for (const [k, v] of Object.entries(AR.a.r)) for (const i of v.i) reg.set(i, k.split(".")[0]);
-    cc = [...new Set(idx.map((i) => reg.get(i)).filter(Boolean))]; } catch (e) {}
+    cc = [...new Set(idx.map((i) => reg.get(i)).filter(Boolean))];
+    // le zone del vino e le denominazioni dove sei stato (Soave DOC, Borgogna, Champagne, Mosella, Napa Valley…): le stesse della ricerca
+    // per ogni cantina: la zona più precisa (la più piccola che la contiene, es. Rutherford, Beaune), la grande regione (la più grande
+    // sotto i ~400 km, es. Napa Valley, Borgogna, Bordeaux) e tutte le denominazioni della sua zona (Soave DOC, Recioto di Soave DOCG…)
+    const Z = AREE.filter((h) => h.ak === "z"), den = new Set(AR.a.z.filter((z) => z.d).map((z) => z.n));
+    const size = (h) => (h.b[2] - h.b[0]) * (h.b[3] - h.b[1]), wide = (h) => Math.hypot(h.b[2] - h.b[0], h.b[3] - h.b[1]) * 111 < 400;
+    const pick = new Set();
+    for (const i of idx) {
+      const all = Z.filter((h) => (h._s ||= new Set(h.idx())).has(i)); if (!all.length) continue;
+      const geo = all.filter((h) => !den.has(h.alt[0])).sort((a, b) => size(a) - size(b)), d2 = all.filter((h) => den.has(h.alt[0]));
+      if (geo.length) { pick.add(geo[0]); const big = geo.filter(wide).pop(); if (big) pick.add(big); }
+      d2.forEach((h) => pick.add(h));
+    }
+    zones = [...pick].sort((a, b) => a.name.localeCompare(b.name, LOC));
+  } catch (e) {}
   const CN = new Intl.DisplayNames([I18N.lang], { type: "region" }), name = (c) => { try { return CN.of(c); } catch (e) { return c; } };
   const box = document.createElement("div"); box.className = "viscard"; box.id = "visCard";
   box.innerHTML = `<b>🍷 ${esc(t("my_visits"))}</b>`
     + (idx.length ? `<p class="vis-n"><strong>${esc(nW(idx.length))}</strong>${cc.length ? ` ${esc(t("vis_in"))} <strong>${esc(I18N.n("cn", cc.length, fmtN(cc.length)))}</strong>` : ""}</p>`
       + (cc.length ? `<p class="vis-cc">${cc.map((c) => `<span>${esc(name(c))}</span>`).join("")}</p>` : "")
+      + (zones.length ? `<p class="vis-zh">${esc(t("wine_zones"))} · ${fmtN(zones.length)}</p><p class="vis-cc vis-z">${zones.map((h, i) => `<button type="button" data-z="${i}">${esc(h.name)}</button>`).join("")}</p>` : "")
       : `<p class="vis-n">${esc(t("vis_empty"))}</p>`)
     + `<a class="btn" href="/">${esc(t("vis_close"))}</a>`;
   $("map").parentElement.appendChild(box);
+  // tocco su una zona: la mappa passa a quella zona con tutte le sue cantine
+  box.querySelectorAll("button[data-z]").forEach((b) => b.onclick = () => { box.remove(); history.replaceState(null, "", "/"); setArea(zones[+b.dataset.z]); });
   setStatus(t("my_visits"));
 }
 
