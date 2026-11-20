@@ -187,7 +187,11 @@ function setSheet(open) {
   document.querySelector("aside.panel").inert = !open && isMobile();
   if (!state.mapsReady) return;
   // il pannello sale in 0,3 s: a movimento finito la mappa prende la nuova misura
-  setTimeout(() => { M.resize(); M.setBottomPadding(mapPad(), 0); }, 320);
+  setTimeout(() => {
+    const p0 = getComputedStyle(document.documentElement).getPropertyValue("--mobpad"), p = mapPad();
+    if (p0.trim() !== p + "px") tipFly = Date.now(); // la mappa si sposta di poco per il pannello: non è una zona nuova
+    M.resize(); M.setBottomPadding(p, 0);
+  }, 320);
 }
 // telefono a mappa intera: il centro sale un poco, sopra l'onda e i pulsanti in basso (puntino e cerchio restano al centro del visibile)
 function mapPad() {
@@ -267,15 +271,23 @@ function updatePreview() {
 // dopo ogni spostamento: zona nuova? Allora "Cerca in questa zona" e, col radar acceso, ricerca da sola dopo 3 s di mappa ferma
 function checkArea() {
   if (!state.center) return;
-  if (tipFly && Date.now() - tipFly < 1500) { tipFly = 0; return; } // spostamento fatto dall'app su una cantina
+  if (tipFly && Date.now() - tipFly < 2000) return; // spostamento fatto dall'app su una cantina (Google può dare più di un "fermo")
   tipFly = 0;
-  const moved = distKm(state.center, M.getCenter());
-  $("searchHere").hidden = radarHold || !$("detail").hidden || moved < Math.max(1.5, state.radiusKm * 0.08);
+  $("searchHere").hidden = radarHold || !$("detail").hidden || !newZone();
   updatePreview();
   $("previewBtn").classList.toggle("idle", $("searchHere").hidden || !state.showPreview);
   radarLabel();
   clearTimeout(autoTimer);
   if (state.showPreview && !$("searchHere").hidden) autoTimer = setTimeout(searchHere, 3000);
+}
+// la vista mostra una zona non ancora cercata? Se hai solo ingrandito (es. per guardare da vicino un pin) no, finché il centro
+// resta dentro il cerchio della ricerca; alla misura normale sì, appena ti sposti di un poco
+function newZone() {
+  const c = M.getCenter(), moved = distKm(state.center, c), R = state.radiusKm;
+  let half = Infinity;
+  try { const b = M.getBounds(); half = Math.min(distKm(c, { lat: b.north, lng: c.lng }), distKm(c, { lat: c.lat, lng: b.east })); } catch (e) {}
+  if (half < R * 0.75) return moved > R;
+  return moved >= Math.max(1.5, R * 0.08);
 }
 // scritta del radar sulla mappa: Cerco… / Nessuna cantina qui / Radar attivo / Radar spento
 function radarLabel() {
@@ -517,7 +529,7 @@ async function openDetail(id, fly = true) {
   if (fly) { tipFly = Date.now(); M.flyTo({ lat: x.lat, lng: x.lng }, 14); }
   // telefono: sopra la scheda resta una striscia di mappa; a pannello salito (0,3 s) la cantina va al centro, da vicino
   else if (isMobile()) setTimeout(() => { if (state.sel === id && state.mapsReady) { tipFly = Date.now(); M.flyTo({ lat: x.lat, lng: x.lng }, 13); } }, 360);
-  $("searchHere").hidden = true; updatePreview();
+  clearTimeout(autoTimer); $("searchHere").hidden = true; updatePreview(); // con la scheda aperta niente ricerca automatica
   const d = await loadDetails(x);
   if (state.sel !== id) return; // nel frattempo ne hai aperta un'altra
   const tel = d.p ? d.p.split(/[;,]/)[0].trim() : "";
