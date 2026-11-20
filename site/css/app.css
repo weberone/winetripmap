@@ -34,7 +34,7 @@ header.top{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding-bloc
 /* logo: scritta minuscola, la i di trip è il calice a forma di pin (coppa in alto, gambo e base sulla riga) */
 .wm{font:800 1em/1 var(--f-body);letter-spacing:-.03em;white-space:nowrap}
 .wm b{color:var(--accent);font-weight:800}
-.wm .wi{display:inline-block;width:.5em;height:.92em;margin:0 .01em;vertical-align:-.01em;fill:currentColor;overflow:visible} /* la i di trip è il calice: coppa a pin, gambo, base */
+.wm .wi{display:inline-block;width:.56em;height:.75em;margin:0 .005em;vertical-align:-.01em;fill:currentColor;overflow:visible} /* la i di trip è il calice: coppa a pin, gambo, base */
 .hstat{margin-left:auto;display:flex;align-items:center;gap:6px;min-width:0}
 /* account: omino da ospite, iniziale del nome su sfondo bordeaux da collegato */
 .acct{text-decoration:none}
@@ -95,6 +95,18 @@ aside.panel{grid-row:3;background:var(--surface);border-top:1px solid var(--line
 .dline{margin:6px 0;font-size:15px;line-height:1.45}
 .dline small{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
 .dbtns{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
+/* pulsanti della scheda: griglia di 3 colonne, quadrotti con icona sopra e scritta sotto */
+.dgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0}
+.dgrid .btn{flex-direction:column;justify-content:center;gap:6px;min-height:76px;padding:10px 6px;border-radius:14px;text-align:center;text-decoration:none;
+  font-size:13px;font-weight:600;line-height:1.15;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);transition:border-color .15s,background .15s,transform .1s}
+.dgrid .btn span{overflow-wrap:anywhere}
+.dgrid .btn svg{flex:none;width:22px;height:22px;margin:0;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:0}
+.dgrid .btn:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+.dgrid .btn:active{transform:scale(.97)}
+.dgrid .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.dgrid .btn.primary svg{stroke:var(--accent-ink)}
+.dgrid .btn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--surface))}
+.dgrid .btn.fav[aria-pressed="true"] svg{fill:var(--accent)}
 .dsrc{font-size:12px;color:var(--muted);margin-top:16px}
 .x{width:34px;height:34px;border-radius:50%;border:0;background:transparent;color:var(--accent);font-size:20px;cursor:pointer;display:grid;place-items:center;padding:0}
 .app.has-detail .controls{display:none}
@@ -170,7 +182,7 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
   box-shadow:0 22px 60px -12px rgb(40 8 16 / .45),0 2px 6px rgb(0 0 0 / .12);animation:waIn .6s cubic-bezier(.2,.9,.3,1.15) both}
 .wa-ico{display:grid;place-items:center;width:58px;height:58px;margin:-56px auto 10px;border-radius:50%;background:var(--accent);
   box-shadow:0 8px 22px -4px color-mix(in srgb,var(--accent) 70%,transparent),0 0 0 5px var(--surface)}
-.wa-ico svg{width:20px;height:36px;fill:#fff;animation:waBob 3.2s ease-in-out .7s infinite}
+.wa-ico svg{width:26px;height:34px;fill:#fff;animation:waBob 3.2s ease-in-out .7s infinite}
 .wa-title{display:block;font:800 clamp(24px,6.4vw,30px)/1.1 var(--f-display);letter-spacing:-.03em;color:var(--ink);margin:0 0 6px}
 .wa-card p{margin:0 auto 16px;max-width:30ch;font-size:14.5px;line-height:1.45;color:var(--muted)}
 .wa-search,.wa-gps,.wa-browse{display:flex;align-items:center;gap:10px;width:100%;font:inherit;cursor:pointer;border:0}

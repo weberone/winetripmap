@@ -73,8 +73,8 @@ const WINE = {
 // il pin è il calice del logo (la i di trip, site/index.html), pieno del colore del vino principale (bordeaux se non noto),
 // bordo bianco; il foro della coppa è nero se la cantina ha la lista dei vini (dal suo sito), bianco se no.
 // La base del calice (ax, in basso al centro) è il punto esatto.
-const LOGO_GLASS = "M1 5.5A5 5 0 0 1 11 5.5C11 8.5 9 10.8 7.65 11.7V20H9.3C9.75 20 10.1 20.4 10.1 20.8S9.75 21.6 9.3 21.6H2.7C2.25 21.6 1.9 21.2 1.9 20.8S2.25 20 2.7 20H4.35V11.7C3 10.8 1 8.5 1 5.5Z";
-const PIN_VB = [-1.4, -1.4, 14.8, 24.4]; // il calice (12×21,6) con il bordo intorno
+const LOGO_GLASS = "M1 5.5A5 5 0 0 1 11 5.5C11 8.9 8.4 11.3 6.9 12V14.3H8.6C9.1 14.3 9.4 14.6 9.4 14.95S9.1 15.6 8.6 15.6H3.4C2.9 15.6 2.6 15.3 2.6 14.95S2.9 14.3 3.4 14.3H5.1V12C3.6 11.3 1 8.9 1 5.5Z";
+const PIN_VB = [-1.4, -1.4, 14.8, 18.4]; // il calice (12×15,6) con il bordo intorno
 const pinH = (w) => Math.round(w * PIN_VB[3] / PIN_VB[2]);
 function pinSvg(w = 24, wc = "", hv = false) {
   const fill = (WINE[wc] || WINE.r).fill(), ink = hv ? "#1a1414" : "#fff";
@@ -545,14 +545,14 @@ async function openDetail(id, fly = true) {
     ${tel ? `<p class="dline"><small>${esc(t("phone"))}</small><a href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">${esc(tel)}</a></p>` : ""}
     ${host ? `<p class="dline"><small>${esc(t("site"))}</small><a href="${esc(d.w)}" target="_blank" rel="noopener nofollow">${esc(host)}</a></p>` : ""}
     ${wineList(d)}
-    <div class="dbtns">
-      <a class="btn primary" href="${directionsUrl(x)}" target="_blank" rel="noopener">${esc(t("directions"))}</a>
-      ${tel ? `<a class="btn" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">${esc(t("call"))}</a>` : ""}
-      ${d.w ? `<a class="btn" href="${esc(d.w)}" target="_blank" rel="noopener nofollow">${esc(t("site_btn"))}</a>` : ""}
-      <button class="btn fav" id="dFav" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg><span>${esc(t("save"))}</span></button>
-      <button class="btn trip" id="dTrip" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="6" r="2.4"/><path d="M8.4 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.6"/></svg><span>${esc(t("add_trip"))}</span></button>
-      ${MAPS.googleKey ? `<button class="btn" id="dSv" type="button"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="5" r="2.6"/><path d="M9.2 9h5.6l1 6h-2.2l-.6 6h-2l-.6-6H8.2z"/></svg>${esc(t("sview"))}</button>` : ""}
-      <button class="btn" id="dShare" type="button">${esc(t("share"))}</button>
+    <div class="dgrid">
+      <a class="btn primary" href="${directionsUrl(x)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2.5 21.5 12 12 21.5 2.5 12z"/><path d="M9 14v-2.5a1.5 1.5 0 0 1 1.5-1.5H15m-2-2 2 2-2 2"/></svg><span>${esc(t("directions"))}</span></a>
+      ${tel ? `<a class="btn" href="tel:${esc(tel.replace(/[^\d+]/g, ""))}"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 3.5h3.2l1.6 4.2-2.1 1.4a11 11 0 0 0 5.2 5.2l1.4-2.1 4.2 1.6V17a2.5 2.5 0 0 1-2.7 2.5A15.5 15.5 0 0 1 2.5 6.2 2.5 2.5 0 0 1 5 3.5z"/></svg><span>${esc(t("call"))}</span></a>` : ""}
+      ${d.w ? `<a class="btn" href="${esc(d.w)}" target="_blank" rel="noopener nofollow"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/></svg><span>${esc(t("site_btn"))}</span></a>` : ""}
+      <button class="btn fav" id="dFav" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg><span>${esc(t("save"))}</span></button>
+      <button class="btn trip" id="dTrip" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="6" r="2.4"/><path d="M8.4 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.6"/></svg><span>${esc(t("add_trip"))}</span></button>
+      ${MAPS.googleKey ? `<button class="btn" id="dSv" type="button"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="5" r="2.6"/><path d="M9.2 9h5.6l1 6h-2.2l-.6 6h-2l-.6-6H8.2z"/></svg><span>${esc(t("sview"))}</span></button>` : ""}
+      <button class="btn" id="dShare" type="button"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 15V3.5m-4 4 4-4 4 4"/><path d="M8 10.5H6.5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H16"/></svg><span>${esc(t("share"))}</span></button>
     </div>
     <p class="dsrc">${esc(x.id[0] === "q" ? t("osm").replace("OpenStreetMap", "Wikidata") : t("osm"))} · <a href="${osmUrl(x)}" target="_blank" rel="noopener">${esc(t("fix"))}</a></p>`;
   $("dClose").onclick = () => closeDetail();

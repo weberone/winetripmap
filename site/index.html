@@ -26,13 +26,13 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#8e1b33">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/app.css?v=35">
+<link rel="stylesheet" href="/css/app.css?v=36">
 </head>
 <body>
 <div class="app map-only">
   <h1 class="sr-only" data-i18n="h1">WineTripMap: le cantine vicino a te, in tutto il mondo</h1>
   <header class="top">
-    <a class="logo" href="./" aria-label="WineTripMap, torna all'inizio" data-i18n-aria="home"><span class="wm">wine<b>tr<svg class="wi" viewBox="0 0 12 22" role="img" aria-label="i"><path fill-rule="evenodd" d="M1 5.5A5 5 0 0 1 11 5.5C11 8.5 9 10.8 7.65 11.7V20H9.3C9.75 20 10.1 20.4 10.1 20.8S9.75 21.6 9.3 21.6H2.7C2.25 21.6 1.9 21.2 1.9 20.8S2.25 20 2.7 20H4.35V11.7C3 10.8 1 8.5 1 5.5ZM7.8 5.5A1.8 1.8 0 1 0 4.2 5.5A1.8 1.8 0 1 0 7.8 5.5Z"/></svg>p</b>map</span></a>
+    <a class="logo" href="./" aria-label="WineTripMap, torna all'inizio" data-i18n-aria="home"><span class="wm">wine<b>tr<svg class="wi" viewBox="0 0 12 16" role="img" aria-label="i"><path fill-rule="evenodd" d="M1 5.5A5 5 0 0 1 11 5.5C11 8.9 8.4 11.3 6.9 12V14.3H8.6C9.1 14.3 9.4 14.6 9.4 14.95S9.1 15.6 8.6 15.6H3.4C2.9 15.6 2.6 15.3 2.6 14.95S2.9 14.3 3.4 14.3H5.1V12C3.6 11.3 1 8.9 1 5.5ZM7.8 5.5A1.8 1.8 0 1 0 4.2 5.5A1.8 1.8 0 1 0 7.8 5.5Z"/></svg>p</b>map</span></a>
     <div class="hstat">
       <span class="status" id="status" role="status" data-i18n="starting">Avvio…</span>
       <a class="donatehdr" id="donateHdr" href="/dona/?from=header" data-i18n-aria="sup_aria" aria-label="Supporta WineTripMap"><span class="glass" aria-hidden="true">🥂</span><span data-i18n="sup_link">Supporta</span></a>
@@ -62,11 +62,11 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
   </aside>
 
   <main class="mapwrap">
-    <div class="map-logo" aria-hidden="true"><span class="wm">wine<b>tr<svg class="wi" viewBox="0 0 12 22" role="img" aria-label="i"><path fill-rule="evenodd" d="M1 5.5A5 5 0 0 1 11 5.5C11 8.5 9 10.8 7.65 11.7V20H9.3C9.75 20 10.1 20.4 10.1 20.8S9.75 21.6 9.3 21.6H2.7C2.25 21.6 1.9 21.2 1.9 20.8S2.25 20 2.7 20H4.35V11.7C3 10.8 1 8.5 1 5.5ZM7.8 5.5A1.8 1.8 0 1 0 4.2 5.5A1.8 1.8 0 1 0 7.8 5.5Z"/></svg>p</b>map</span></div>
+    <div class="map-logo" aria-hidden="true"><span class="wm">wine<b>tr<svg class="wi" viewBox="0 0 12 16" role="img" aria-label="i"><path fill-rule="evenodd" d="M1 5.5A5 5 0 0 1 11 5.5C11 8.9 8.4 11.3 6.9 12V14.3H8.6C9.1 14.3 9.4 14.6 9.4 14.95S9.1 15.6 8.6 15.6H3.4C2.9 15.6 2.6 15.3 2.6 14.95S2.9 14.3 3.4 14.3H5.1V12C3.6 11.3 1 8.9 1 5.5ZM7.8 5.5A1.8 1.8 0 1 0 4.2 5.5A1.8 1.8 0 1 0 7.8 5.5Z"/></svg>p</b>map</span></div>
     <div id="map" aria-label="Mappa delle cantine" data-i18n-aria="map_aria"></div>
     <!-- primo accesso senza posizione: invito a dire dove si è -->
     <div class="worldask" id="worldAsk" hidden><div class="wa-card">
-      <span class="wa-ico" aria-hidden="true"><svg viewBox="0 0 12 22"><path fill-rule="evenodd" d="M1 5.5A5 5 0 0 1 11 5.5C11 8.5 9 10.8 7.65 11.7V20H9.3C9.75 20 10.1 20.4 10.1 20.8S9.75 21.6 9.3 21.6H2.7C2.25 21.6 1.9 21.2 1.9 20.8S2.25 20 2.7 20H4.35V11.7C3 10.8 1 8.5 1 5.5ZM7.8 5.5A1.8 1.8 0 1 0 4.2 5.5A1.8 1.8 0 1 0 7.8 5.5Z"/></svg></span>
+      <span class="wa-ico" aria-hidden="true"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M1 5.5A5 5 0 0 1 11 5.5C11 8.9 8.4 11.3 6.9 12V14.3H8.6C9.1 14.3 9.4 14.6 9.4 14.95S9.1 15.6 8.6 15.6H3.4C2.9 15.6 2.6 15.3 2.6 14.95S2.9 14.3 3.4 14.3H5.1V12C3.6 11.3 1 8.9 1 5.5ZM7.8 5.5A1.8 1.8 0 1 0 4.2 5.5A1.8 1.8 0 1 0 7.8 5.5Z"/></svg></span>
       <b class="wa-title" data-i18n="where_go">Dove vuoi andare?</b>
       <p data-i18n="ask_text">Cerca un luogo o usa la tua posizione: ti mostriamo subito le cantine intorno.</p>
       <button type="button" class="wa-search" id="worldAskBtn" aria-label="Cerca un luogo" data-i18n-aria="search_place"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg><span data-i18n="search_ph">Stato, regione, zona del vino, città o cantina</span></button>
@@ -149,6 +149,6 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 
 <!-- la mappa (Google, Mapbox o MapLibre + OpenFreeMap) la carica app.js: vedi createMap -->
 <script src="/js/i18n.js?v=9"></script>
-<script src="/js/app.js?v=40"></script>
+<script src="/js/app.js?v=41"></script>
 </body>
 </html>

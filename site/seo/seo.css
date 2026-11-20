@@ -9,7 +9,7 @@ a{color:var(--accent);text-underline-offset:2px}
 .topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
 .logo{display:flex;align-items:center;text-decoration:none;color:var(--ink);font-size:22px;line-height:1;padding-top:4px}
 .wm{font:800 1em/1 var(--f-body);letter-spacing:-.03em;white-space:nowrap} .wm b{color:var(--accent);font-weight:800}
-.wm .wi{display:inline-block;width:.5em;height:.92em;margin:0 .01em;vertical-align:-.01em;fill:currentColor;overflow:visible} /* la i di trip è il calice: coppa a pin, gambo, base */
+.wm .wi{display:inline-block;width:.56em;height:.75em;margin:0 .005em;vertical-align:-.01em;fill:currentColor;overflow:visible} /* la i di trip è il calice: coppa a pin, gambo, base */
 .topbar-r{margin-left:auto}
 .btn{display:inline-block;padding:9px 16px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);text-decoration:none;font-weight:600;white-space:nowrap}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
