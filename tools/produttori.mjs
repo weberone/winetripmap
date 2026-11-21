@@ -197,8 +197,13 @@ function build() {
     if (fitto && !soloOv) why.push(`paese con vigneti ben segnati, nessuno entro 3 km e ${vz[2]} entro 10 km`);
     // relais/agriturismo/ristorante (solo Overture, zona del vino): entra solo se il sito dice che produce vino ("i nostri vini",
     // "produciamo", vinificazione, winemaking…), non basta la vista sulle vigne
-    const forte = c && c.prod && (Object.keys(c.prod).some((w) => STRONG_PROD.test(w))
-      || (Object.keys(c.prod).some((w) => /^(vign|vineyard|weinberg|vignoble|viñedo)/.test(w)) && c.vin && Object.keys(c.vin).length > 0));
+    // (dopo il primo giro: entravano hotel e ristoranti che offrono degustazioni, es. Hotel Carignano a Lucca, Trattoria nelle Vigne)
+    // nome da albergo/ristorante: solo con frasi da produttore ("produciamo", "i nostri vini", vinificazione…), non basta la vendemmia
+    // altrimenti: frasi da produttore, o vigne + una sezione dei propri vini ("I nostri vini", "Vini & Vigneti", "La nostra cantina")
+    const P0 = c && c.prod ? Object.keys(c.prod) : [], V0 = c && c.vin ? Object.keys(c.vin) : [];
+    const frasi = P0.some((w) => /^(produciamo|produzione propria|nostra produzione|our wines|nos vins|unsere weine|nuestros vinos|i nostri vini|vinifica\w*|vinification|winemak\w*|weinbau\w*|kellerei|vigneron|propri[ée]taire[- ]r[ée]coltant|cuverie|chai|family[- ]owned winery)$/i.test(w));
+    const ospite = /hotel|h[oô]tel|b&b|bed ?(and|&) ?breakfast|ristorante|restaurant|trattoria|osteria|pizz|grill|village|\binn\b|resort|room|suite|apart|appartament|residence|residenz|locanda|albergo|pension|gasthof|gasthaus|camping|spa\b/i.test(name);
+    const forte = ospite ? frasi : frasi || (P0.some((w) => /^(vign|vineyard|weinberg|vignoble|viñedo)/.test(w)) && V0.some((w) => !/degust|tasting|weinprobe|cata/.test(w)));
     if (ovCand.has(id)) { if (!forte) { why.push('relais/agriturismo/ristorante senza prove di produzione dal sito'); out[id] = [-2, name, why.join('; ')]; continue; } add(2, 'sito: produce vino'); }
     const s = fitto || (pos <= 1 && neg <= -2) || (pos === 0 && neg + soloVendita <= -1 && vneg < 0) ? -2 : pos === 0 && neg === -1 ? -1 : pos + neg + vneg < 0 ? 0 : pos + neg + vneg;
     out[id] = [s, name, why.join('; ')];
