@@ -1274,7 +1274,7 @@ function toggleTrip(x) {
     ga("add_to_trip", gaW(x));
   }
   tripChanged();
-  setStatus(t(tripHas(x.id) ? "trip_added" : "trip_removed", { n: state.trip.stops.length }));
+  setStatus(t(tripHas(x.id) ? "trip_added" : "trip_removed", { n: state.trip.stops.length }) + (state.trip.id ? " · " + t("trip_unsaved") : ""));
 }
 // ordine più corto (la prima tappa resta la prima): il più vicino ogni volta, poi si sciolgono gli incroci (2-opt)
 function optimizeTrip() {
@@ -1325,13 +1325,15 @@ function renderTrip() {
   const loginUrl = "/account/?next=" + encodeURIComponent("/?trip=draft");
   const legs = s.map((x, i) => i ? fmtKm(distKm(s[i - 1], x)) : "");
   box.innerHTML = `
+    ${tr.id && state.user ? `<p class="tedit">✏️ ${esc(t("trip_editing"))}${tr.dirty ? ` <b>· ${esc(t("trip_unsaved"))}</b>` : ""}</p>` : ""}
     <div class="field"><input id="tripName" maxlength="80" value="${esc(tr.name)}" placeholder="${esc(t("trip_name_ph"))}" aria-label="${esc(t("trip_name"))}"></div>
     ${s.length ? `<ol class="stops">${s.map((x, i) => `<li data-i="${i}">
         <span class="no">${i + 1}</span>
         <button class="sname" type="button" data-open="${esc(x.id)}"><b>${esc(x.n)}</b><small>${esc([x.c, legs[i] && t("leg", { d: legs[i] })].filter(Boolean).join(" · "))}</small></button>
         <span class="ops"><button class="info" data-up="${i}" ${i ? "" : "disabled"} aria-label="${esc(t("move_up"))}">↑</button><button class="info" data-down="${i}" ${i < s.length - 1 ? "" : "disabled"} aria-label="${esc(t("move_down"))}">↓</button><button class="info" data-del="${i}" aria-label="${esc(t("remove"))}">✕</button></span>
       </li>`).join("")}</ol>
-      <p class="tsum">${esc(I18N.n("stop", s.length, fmtN(s.length)))}${s.length > 1 ? ` · ${esc(t("trip_km", { d: fmtKm(tripKm()) }))}` : ""}</p>`
+      <p class="tsum">${esc(I18N.n("stop", s.length, fmtN(s.length)))}${s.length > 1 ? ` · ${esc(t("trip_km", { d: fmtKm(tripKm()) }))}` : ""}</p>
+      <p class="muted small">➕ ${esc(t("trip_add_hint"))}</p>`
     : `<p class="muted tempty">${esc(t("trip_empty"))}</p>`}
     ${state.user && s.length > 1 ? `<label class="tpub"><input type="checkbox" id="tripPub"${tr.pub !== false ? " checked" : ""}> ${esc(t("pt_public"))}</label>` : ""}
     <div class="dbtns">
@@ -1348,7 +1350,7 @@ function renderTrip() {
       : myTrips.length ? `<ul class="mytrips">${myTrips.map((x) => `<li${x.id === tr.id ? ' class="cur"' : ""}><button class="sname" type="button" data-load="${x.id}"><b>${esc(x.name)}</b><small>${esc(I18N.n("stop", x.n, fmtN(x.n)))}</small></button><button class="info" data-rm="${x.id}" aria-label="${esc(t("trip_delete"))}">✕</button></li>`).join("")}</ul>`
       : `<p class="muted">${esc(t("no_trips"))}</p>`}` : `<p class="muted">${esc(t("trip_why_login"))}</p>`}`;
   const msg = (m) => { $("tripMsg").textContent = m; };
-  $("tripName").oninput = (e) => { tr.name = e.target.value; tr.dirty = true; store.set("trip", tr); };
+  $("tripName").oninput = (e) => { tr.name = e.target.value; tr.dirty = true; store.set("trip", tr); const h = box.querySelector(".tedit"); if (h && !h.querySelector("b")) h.insertAdjacentHTML("beforeend", ` <b>· ${esc(t("trip_unsaved"))}</b>`); };
   if ($("tripPub")) $("tripPub").onchange = (e) => { tr.pub = e.target.checked; tr.dirty = true; store.set("trip", tr); };
   box.querySelectorAll("[data-up],[data-down]").forEach((b) => b.onclick = () => {
     const i = +(b.dataset.up ?? b.dataset.down), j = b.dataset.up != null ? i - 1 : i + 1;
@@ -1376,7 +1378,7 @@ function renderTrip() {
   };
   box.querySelectorAll("[data-load]").forEach((b) => b.onclick = async () => {
     if (tr.dirty && s.length && +b.dataset.load !== tr.id && !confirm(t("trip_discard"))) return;
-    await openTrip(+b.dataset.load); closeTrip(); showTripOnMap();
+    if (await openTrip(+b.dataset.load)) { showTripOnMap(); box.scrollTop = 0; $("tripModal").querySelector(".card").scrollTop = 0; } // resta aperto: si modifica qui
   });
   box.querySelectorAll("[data-rm]").forEach((b) => b.onclick = async () => {
     if (!confirm(t("trip_delete_q"))) return;
@@ -1553,7 +1555,7 @@ async function start() {
   // un trip (?trip=12, dall'account) o la bozza dopo l'accesso (?trip=draft): le tappe sulla mappa
   if (tq) {
     await ensureMap(); await loadData().catch(() => {}); drawTrip();
-    if ((tq === "draft" || await openTrip(+tq)) && state.trip.stops.length) { showTripOnMap(); if (tq === "draft") showTrip(); return; }
+    if ((tq === "draft" || await openTrip(+tq)) && state.trip.stops.length) { showTripOnMap(); if (tq === "draft" || qs.has("edit")) showTrip(); return; }
   }
   // link di una cantina (?c=n123): si apre lei, con il raggio intorno
   if (shared) {

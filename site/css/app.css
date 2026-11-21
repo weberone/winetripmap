@@ -599,3 +599,7 @@ form.search input:focus{border-color:var(--accent)}
 .guide li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.4;color:var(--muted)}
 .guide li b{color:var(--ink)}
 .guide .gi{flex:none;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-size:15px;background:color-mix(in srgb,var(--accent) 9%,transparent)}
+
+/* trip salvato in modifica */
+.tedit{margin:0 0 10px;padding:8px 10px;border-radius:10px;font-size:13px;line-height:1.4;background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--ink)}
+.tedit b{color:var(--accent)}

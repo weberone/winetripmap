@@ -102,7 +102,7 @@ if ($("favs")) {
     try {
       const d = await api("", undefined, "/api/trip.php");
       $("trips").innerHTML = d.items.length ? d.items.map((x) => `<li><a href="/?trip=${x.id}"><b>${esc(x.name)}</b><small>${x.n === 1 ? "1 tappa" : x.n + " tappe"}</small></a>
-        <button class="btn small" data-trip="${x.id}">Elimina</button></li>`).join("")
+        <a class="btn small" href="/?trip=${x.id}&edit=1">Modifica</a> <button class="btn small" data-trip="${x.id}">Elimina</button></li>`).join("")
         : `<li class="muted">Ancora nessuno: nella mappa apri una cantina e tocca «Aggiungi al trip».</li>`;
       $("trips").querySelectorAll("button[data-trip]").forEach((b) => b.onclick = async () => {
         if (!confirm("Eliminare questo trip?")) return;

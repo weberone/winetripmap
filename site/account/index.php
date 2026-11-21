@@ -116,5 +116,5 @@ $cfg = ['next' => $next, 'google' => $gid ?: null, 'verify' => $verify, 'reset' 
 <?php endif; ?>
 </main>
 <script>window.WTM_ACCOUNT = <?= json_encode($cfg, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
-<script src="/account/account.js?v=3"></script>
+<script src="/account/account.js?v=4"></script>
 </body></html>
