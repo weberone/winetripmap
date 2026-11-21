@@ -1408,9 +1408,13 @@ const stars = (r, rc) => rc ? `★ ${String(r).replace(".", I18N.lang === "en" ?
 async function pubPin(id) {
   const p = state.pub.find((x) => x.id === id); if (!p) return;
   $("worldAsk").hidden = true; M.spin && M.spin(false); // il fumetto non resta sotto l'invito iniziale
-  const head = `<b>🏅 ${esc(p.zone || t("pt_trip"))}</b><small>${esc([p.name, I18N.n("stop", p.n, fmtN(p.n)), stars(p.r, p.rc)].filter(Boolean).join(" · "))}</small>`;
   if (!state.user) {
-    M.showPopup({ lat: p.lat, lng: p.lng }, `<div class="ptpop">${head}<p>${esc(t("pt_login"))}</p><a class="btn primary" href="/account/?next=${encodeURIComponent("/?pt=" + id)}">${esc(t("pt_loginbtn"))}</a></div>`);
+    // come il fumetto dei pin normali: al centro della mappa, con il pin sotto
+    M.showPopup({ lat: p.lat, lng: p.lng }, `<div class="ptpop ptlogin">${goldPin()}<span class="ptk">${esc(t("pt_trip"))}</span><b>${esc(p.zone || t("pt_trip"))}</b>`
+      + `<span class="ptmeta"><span>${esc(I18N.n("stop", p.n, fmtN(p.n)))}</span><span>${esc(stars(p.r, p.rc))}</span></span>`
+      + `<p>${esc(t("pt_login"))}</p><a class="btn primary" href="/account/?next=${encodeURIComponent("/?pt=" + id)}">${esc(t("pt_loginbtn"))}</a></div>`);
+    const box = document.querySelector(".ptlogin");
+    tipFly = Date.now(); M.flyTo({ lat: p.lat, lng: p.lng }, null, Math.round(((box ? box.offsetHeight : 200) + 50) / 2));
     return;
   }
   await viewTrip(id);
