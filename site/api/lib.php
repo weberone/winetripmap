@@ -101,6 +101,14 @@ CREATE TABLE IF NOT EXISTS trips (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS trips_user ON trips (user_id, updated_at);
+-- voti (1-5 stelle) degli iscritti agli itinerari pubblici degli altri (api/trips.php)
+CREATE TABLE IF NOT EXISTS trip_ratings (
+  trip_id    INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL,
+  stars      INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (trip_id, user_id)
+);
 -- consigli e malfunzionamenti mandati dagli iscritti (admin/feedback.php)
 CREATE TABLE IF NOT EXISTS feedback (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -191,6 +199,8 @@ const SCHEMA_ADD = [
   ['app_opens', 'land', 'TEXT'], ['app_opens', 'sid', 'TEXT'], ['app_opens', 'last_at', 'TEXT'],
   // luogo approssimato dall'IP (api/geoip.php, l'IP non si salva): città, regione, codice del paese
   ['app_opens', 'city', 'TEXT'], ['app_opens', 'region', 'TEXT'], ['app_opens', 'cc', 'TEXT'],
+  // itinerari sulla mappa per tutti: zona del vino (denominazione con più tappe, calcolata dalla mappa), punto del pin d'oro, pubblico sì/no
+  ['trips', 'zone', 'TEXT'], ['trips', 'zlat', 'REAL'], ['trips', 'zlng', 'REAL'], ['trips', 'pub', 'INTEGER NOT NULL DEFAULT 0'],
 ];
 function db(): PDO {
   static $pdo = null;

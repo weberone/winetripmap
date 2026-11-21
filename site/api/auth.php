@@ -161,7 +161,7 @@ switch ($a) {
   case 'delete':
     $u = $need();
     if (($in['confirm'] ?? '') !== 'DELETE') json_out(['error' => 'confirm'], 400);
-    foreach (['user_tokens', 'favorites', 'visits', 'trips', 'feedback'] as $t) db()->prepare("DELETE FROM $t WHERE user_id = ?")->execute([$u['id']]);
+    foreach (['user_tokens', 'favorites', 'visits', 'trips', 'trip_ratings', 'feedback'] as $t) db()->prepare("DELETE FROM $t WHERE user_id = ?")->execute([$u['id']]);
     db()->prepare('UPDATE app_opens SET user_id = NULL WHERE user_id = ?')->execute([$u['id']]);
     db()->prepare('DELETE FROM users WHERE id = ?')->execute([$u['id']]);
     admin_set((int)$u['id'], false);

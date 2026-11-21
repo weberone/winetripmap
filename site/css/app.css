@@ -518,3 +518,28 @@ form.search input:focus{border-color:var(--accent)}
 .viscard .vis-z button:hover{background:color-mix(in srgb,var(--accent) 24%,transparent)}
 .viscard .btn{display:inline-flex}
 .app.mob:not(.map-only) .viscard{display:none}
+
+/* itinerari pubblici: pin d'oro nella zona del vino, tappe d'oro dell'itinerario aperto, pannello con elenco e voto */
+.xm.ptpin,.xm.vtno{cursor:pointer}
+.xm.ptpin{z-index:6} .xm.vtno{z-index:7}
+.gp{position:relative;display:block;transform:translateY(-50%);filter:drop-shadow(0 2px 4px rgb(0 0 0 / .4))}
+.gp svg{display:block}
+.xm.ptpin .gp svg{width:30px;height:auto;animation:gpGlow 2.6s ease-in-out infinite}
+.gp b,.gp i{position:absolute;right:-8px;top:-6px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;display:grid;place-items:center;
+  background:#1a1414;color:#f6d77a;border:1.5px solid #f6d77a;font:700 10.5px/1 var(--f-mono);font-style:normal}
+@keyframes gpGlow{50%{filter:drop-shadow(0 0 6px rgb(246 215 122 / .9))}}
+@media (prefers-reduced-motion:reduce){.xm.ptpin .gp svg{animation:none}}
+.ptpop{display:flex;flex-direction:column;gap:4px;max-width:240px;text-align:left}
+.ptpop b{font-size:15px}
+.ptpop small{color:var(--muted)}
+.ptpop p{margin:4px 0;font-size:13.5px}
+.ptpop .btn{align-self:flex-start}
+.ptname{margin:2px 0 0}
+.ptr{margin:2px 0 8px;font:700 14px var(--f-mono);color:#b8860b}
+.stops.gold .no{background:#c9971c;color:#1a1414}
+.rate{display:flex;align-items:center;gap:4px;margin:12px 0 4px}
+.rate span{margin-right:6px;font-weight:600}
+.rate button{border:0;background:none;font-size:26px;line-height:1;cursor:pointer;color:var(--line);padding:0 2px}
+.rate button[aria-pressed="true"]{color:#e0a82e}
+.tpub{display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:13.5px;color:var(--muted)}
+.tpub input{margin-top:2px;accent-color:var(--accent)}

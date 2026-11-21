@@ -2,7 +2,7 @@
 // Itinerari (trip) dell'account: tappe in ordine, con un nome.
 //   GET  api/trip.php                       → { items: [{ id, name, n, updated_at }] }   (i più recenti prima)
 //   GET  api/trip.php?id=12                 → { trip: { id, name, stops: [{ id, n, c, lat, lng }] } }
-//   POST api/trip.php { id?, name, stops }  → { id }   (senza id: nuovo trip; con id: lo aggiorna)
+//   POST api/trip.php { id?, name, stops, zone?, zlat?, zlng?, pub? }  → { id }   (senza id: nuovo trip; con id: lo aggiorna; pub: pin d'oro sulla mappa per tutti)
 //   POST api/trip.php { id, del: true }     → { ok }
 require __DIR__ . '/lib.php';
 $u = current_user();
@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   if (isset($_GET['id'])) {
     $t = $mine((int)$_GET['id']);
     if (!$t) json_out(['error' => 'not_found'], 404);
-    json_out(['trip' => ['id' => (int)$t['id'], 'name' => $t['name'], 'stops' => json_decode($t['stops'], true) ?: []]]);
+    json_out(['trip' => ['id' => (int)$t['id'], 'name' => $t['name'], 'stops' => json_decode($t['stops'], true) ?: [], 'pub' => (int)($t['pub'] ?? 0)]]);
   }
   $st = db()->prepare('SELECT id, name, stops, updated_at FROM trips WHERE user_id = ? ORDER BY updated_at DESC'); $st->execute([$u['id']]);
   json_out(['items' => array_map(fn($r) => ['id' => (int)$r['id'], 'name' => $r['name'], 'n' => count(json_decode($r['stops'], true) ?: []), 'updated_at' => $r['updated_at']], $st->fetchAll())]);
@@ -27,6 +27,7 @@ $id = (int)($in['id'] ?? 0);
 if ($id && !$mine($id)) json_out(['error' => 'not_found'], 404);
 if (!empty($in['del'])) {
   db()->prepare('DELETE FROM trips WHERE id = ? AND user_id = ?')->execute([$id, $u['id']]);
+  db()->prepare('DELETE FROM trip_ratings WHERE trip_id = ?')->execute([$id]);
   json_out(['ok' => true]);
 }
 $name = mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($in['name'] ?? ''))), 0, 80);
@@ -40,11 +41,17 @@ foreach (array_slice(is_array($in['stops'] ?? null) ? $in['stops'] : [], 0, STOP
   $stops[] = ['id' => $sid, 'n' => mb_substr(trim((string)($s['n'] ?? '')), 0, 120), 'c' => mb_substr(trim((string)($s['c'] ?? '')), 0, 80), 'lat' => round($lat, 6), 'lng' => round($lng, 6)];
 }
 $json = json_encode($stops, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+// zona del vino (dalla mappa) e pin d'oro per tutti: solo se pubblico e con almeno 2 tappe
+$zone = mb_substr(trim((string)($in['zone'] ?? '')), 0, 120) ?: null;
+$zl = fn($k, $lim) => is_numeric($in[$k] ?? null) && abs((float)$in[$k]) <= $lim ? round((float)$in[$k], 5) : null;
+$pub = !empty($in['pub']) && count($stops) >= 2 ? 1 : 0;
 if ($id) {
-  db()->prepare('UPDATE trips SET name = ?, stops = ?, updated_at = ? WHERE id = ? AND user_id = ?')->execute([$name, $json, now(), $id, $u['id']]);
+  db()->prepare('UPDATE trips SET name = ?, stops = ?, zone = ?, zlat = ?, zlng = ?, pub = ?, updated_at = ? WHERE id = ? AND user_id = ?')
+    ->execute([$name, $json, $zone, $zl('zlat', 90), $zl('zlng', 180), $pub, now(), $id, $u['id']]);
 } else {
   if ((int)one('SELECT COUNT(*) FROM trips WHERE user_id = ?', [$u['id']]) >= TRIP_MAX) json_out(['error' => 'too_many'], 429);
-  db()->prepare('INSERT INTO trips (user_id, name, stops, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')->execute([$u['id'], $name, $json, now(), now()]);
+  db()->prepare('INSERT INTO trips (user_id, name, stops, zone, zlat, zlng, pub, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    ->execute([$u['id'], $name, $json, $zone, $zl('zlat', 90), $zl('zlng', 180), $pub, now(), now()]);
   $id = (int)db()->lastInsertId();
 }
 json_out(['id' => $id]);
