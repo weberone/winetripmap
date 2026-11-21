@@ -551,8 +551,8 @@ form.search input:focus{border-color:var(--accent)}
 .ptlogin .ptk{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#b8860b}
 .ptlogin b{font:800 17px/1.2 var(--f-display);letter-spacing:-.01em}
 .ptlogin .ptmeta{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin:2px 0 4px}
-.ptlogin .ptmeta span{padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:color-mix(in srgb,#c9971c 16%,transparent);color:#8a6510}
-:root[data-scheme="dark"] .ptlogin .ptmeta span{color:#f0cd6a}
+.ptlogin .ptmeta>span{display:inline-flex;align-items:center;height:22px;box-sizing:border-box;padding:0 9px;border-radius:999px;font-size:12px;font-weight:600;line-height:1;background:color-mix(in srgb,#c9971c 16%,transparent);color:#8a6510}
+:root[data-scheme="dark"] .ptlogin .ptmeta>span{color:#f0cd6a}
 .ptlogin p{margin:2px 0 8px;font-size:13.5px;line-height:1.4;color:var(--muted)}
 .ptlogin .btn{align-self:stretch;justify-content:center}
 
@@ -560,6 +560,7 @@ form.search input:focus{border-color:var(--accent)}
 .st path{fill:#fff;stroke:#c9971c;stroke-width:1.6;stroke-linejoin:round}
 .st.on path{fill:#e0a82e;stroke:#c9971c}
 .stars3{display:inline-flex;align-items:center;gap:2px;vertical-align:-3px}
+.ptmeta .stars3{vertical-align:0}
+.ptmeta .st{width:14px;height:14px}
 .stars3 small{margin-left:4px;font:600 12px var(--f-mono);color:var(--muted)}
-.ptlogin .ptmeta span:has(.stars3){padding:2px 8px 1px}
 .ptr .st{width:20px;height:20px}
