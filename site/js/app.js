@@ -1082,7 +1082,7 @@ function bind() {
   { let x0 = null; $("lightbox").addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });
     $("lightbox").addEventListener("touchend", (e) => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) stepLightbox(dx < 0 ? 1 : -1); }, { passive: true }); }
   $("tripBtn").onclick = showTrip;
-  $("tripClose").onclick = closeTrip;
+  $("tripClose").onclick = () => closeTrip();
   $("tripModal").onclick = (e) => { if (e.target === $("tripModal")) closeTrip(); };
   $("ptClose").onclick = closeView;
   $("statsBtn").onclick = openStats; $("statsClose").onclick = closeStats;
@@ -1363,9 +1363,9 @@ function renderTrip() {
     [s[i], s[j]] = [s[j], s[i]]; tripChanged();
   });
   box.querySelectorAll("[data-del]").forEach((b) => b.onclick = () => { s.splice(+b.dataset.del, 1); tripChanged(); });
-  box.querySelectorAll("[data-open]").forEach((b) => b.onclick = () => { closeTrip(); openDetail(b.dataset.open); });
+  box.querySelectorAll("[data-open]").forEach((b) => b.onclick = () => { closeTrip(true); openDetail(b.dataset.open); });
   if ($("tripSort")) $("tripSort").onclick = optimizeTrip;
-  if ($("tripShow")) $("tripShow").onclick = () => { closeTrip(); showTripOnMap(); };
+  if ($("tripShow")) $("tripShow").onclick = () => { closeTrip(true); showTripOnMap(); };
   if ($("tripNew")) $("tripNew").onclick = () => {
     if (tr.dirty && s.length && !confirm(t("trip_discard"))) return;
     state.trip = { id: null, name: "", stops: [], dirty: false }; tripChanged(); state.trip.dirty = false; store.set("trip", state.trip);
@@ -1402,7 +1402,17 @@ async function openTrip(id) {
   } catch (e) { setStatus(t(e.status === 401 ? "trip_login" : "trip_not_found")); return false; }
 }
 function showTrip() { $("tripModal").hidden = false; pushLayer("trip"); renderTrip(); loadMyTrips(); }
-function closeTrip() { if ($("tripModal").hidden) return; $("tripModal").hidden = true; popLayer("trip"); }
+// chiudendo il pannello dopo aver salvato (nessuna modifica in sospeso) il trip in lavorazione torna vuoto, pronto per uno nuovo:
+// un trip salvato si modifica solo riaprendolo da "I miei trip" (richiesta dell'utente 2026-11-21). keep: chiusura per vedere la mappa o una cantina
+function closeTrip(keep) {
+  if ($("tripModal").hidden) return; $("tripModal").hidden = true; popLayer("trip");
+  if (keep !== true && state.trip.id && !state.trip.dirty) {
+    state.trip = { id: null, name: "", stops: [], dirty: false }; store.set("trip", state.trip);
+    // l'indirizzo senza ?trip=: dopo il passo indietro della cronologia fatto da popLayer (che lo rimetterebbe)
+    setTimeout(() => { if (/[?&]trip=/.test(location.search)) history.replaceState(history.state, "", location.pathname); }, 350);
+    drawTrip(); syncTripBtn();
+  }
+}
 
 // ---------- itinerari pubblici: pin d'oro nella zona del vino (api/trips.php) ----------
 let pubClusters = [], pubZ = null;
