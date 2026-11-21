@@ -539,8 +539,8 @@ form.search input:focus{border-color:var(--accent)}
 .stops.gold .no{background:#c9971c;color:#1a1414}
 .rate{display:flex;align-items:center;gap:4px;margin:12px 0 4px}
 .rate span{margin-right:6px;font-weight:600}
-.rate button{border:0;background:none;font-size:26px;line-height:1;cursor:pointer;color:var(--line);padding:0 2px}
-.rate button[aria-pressed="true"]{color:#e0a82e}
+.rate button{border:0;background:none;line-height:0;cursor:pointer;padding:0 2px}
+.rate button .st{width:30px;height:30px}
 .tpub{display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:13.5px;color:var(--muted)}
 .tpub input{margin-top:2px;accent-color:var(--accent)}
 
@@ -555,3 +555,11 @@ form.search input:focus{border-color:var(--accent)}
 :root[data-scheme="dark"] .ptlogin .ptmeta span{color:#f0cd6a}
 .ptlogin p{margin:2px 0 8px;font-size:13.5px;line-height:1.4;color:var(--muted)}
 .ptlogin .btn{align-self:stretch;justify-content:center}
+
+/* stelle da 1 a 3: bordate d'oro, bianche dentro; piene d'oro fino al voto */
+.st path{fill:#fff;stroke:#c9971c;stroke-width:1.6;stroke-linejoin:round}
+.st.on path{fill:#e0a82e;stroke:#c9971c}
+.stars3{display:inline-flex;align-items:center;gap:2px;vertical-align:-3px}
+.stars3 small{margin-left:4px;font:600 12px var(--f-mono);color:var(--muted)}
+.ptlogin .ptmeta span:has(.stars3){padding:2px 8px 1px}
+.ptr .st{width:20px;height:20px}

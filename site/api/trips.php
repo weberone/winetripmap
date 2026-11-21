@@ -1,8 +1,8 @@
 <?php
-// Itinerari pubblici sulla mappa (pin d'oro nella loro zona del vino), richiesta dell'utente 2026-11-21.
+// Itinerari pubblici sulla mappa (voto da 1 a 3 stelle) (pin d'oro nella loro zona del vino), richiesta dell'utente 2026-11-21.
 //   GET  api/trips.php            → { items: [{ id, lat, lng, name, n, r, rc, zone? }] }  per tutti; la zona solo agli iscritti
 //   GET  api/trips.php?id=12      → { trip: { id, name, zone, stops, r, rc, my, mine } }   solo iscritti (tappe, voto medio, il tuo voto)
-//   POST api/trips.php { id, stars: 1-5 } → { r, rc }   voto di un iscritto (non al proprio itinerario)
+//   POST api/trips.php { id, stars: 1-3 } → { r, rc }   voto di un iscritto (non al proprio itinerario)
 //   POST api/trips.php { id, copy: true } → { id }      copia nei propri trip
 // Mai il nome o l'email di chi l'ha fatto.
 require __DIR__ . '/lib.php';
@@ -42,7 +42,7 @@ if (!empty($in['copy'])) {
   json_out(['id' => (int)db()->lastInsertId()]);
 }
 $stars = (int)($in['stars'] ?? 0);
-if ($stars < 1 || $stars > 5) json_out(['error' => 'stars'], 400);
+if ($stars < 1 || $stars > 3) json_out(['error' => 'stars'], 400); // da 1 a 3 stelle (richiesta dell'utente 2026-11-21)
 if ((int)$t['user_id'] === (int)$u['id']) json_out(['error' => 'own'], 400);
 db()->prepare('INSERT OR REPLACE INTO trip_ratings (trip_id, user_id, stars, created_at) VALUES (?, ?, ?, ?)')->execute([$t['id'], $u['id'], $stars, now()]);
 json_out($rating((int)$t['id']));

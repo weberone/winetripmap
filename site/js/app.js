@@ -1404,7 +1404,10 @@ async function loadPublicTrips() {
   try { const d = await fetch("/api/trips.php", { credentials: "same-origin" }).then((r) => r.json()); state.pub = d.items || []; } catch (e) { state.pub = []; }
   drawTrip();
 }
-const stars = (r, rc) => rc ? `★ ${String(r).replace(".", I18N.lang === "en" ? "." : ",")} (${fmtN(rc)})` : t("pt_novotes");
+// voto da 1 a 3 stelle: tre stelle bordate d'oro, piene quante il voto medio (arrotondato); senza voti tutte vuote
+const STAR = "M12 2.8l2.75 5.9 6.45.75-4.8 4.4 1.3 6.4L12 17l-5.7 3.25 1.3-6.4-4.8-4.4 6.45-.75z";
+const starSvg = (on) => `<svg class="st${on ? " on" : ""}" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="${STAR}"/></svg>`;
+const starsHtml = (r, rc) => { const k = rc ? Math.max(0, Math.min(3, Math.round(r))) : 0; return `<span class="stars3" role="img" aria-label="${k}/3">${[1, 2, 3].map((i) => starSvg(i <= k)).join("")}${rc ? `<small>(${fmtN(rc)})</small>` : ""}</span>`; };
 async function pubPin(id) {
   const p = state.pub.find((x) => x.id === id); if (!p) return;
   $("worldAsk").hidden = true; M.spin && M.spin(false); // il fumetto non resta sotto l'invito iniziale
@@ -1412,7 +1415,7 @@ async function pubPin(id) {
     // come il fumetto dei pin normali: al centro della mappa, con il pin sotto
     // per chi non è iscritto: il titolo che gli ha dato chi l'ha salvato, numero di tappe e voto
     M.showPopup({ lat: p.lat, lng: p.lng }, `<div class="ptpop ptlogin">${goldPin()}<span class="ptk">${esc(t("pt_trip"))}</span><b>${esc(p.name || t("pt_trip"))}</b>`
-      + `<span class="ptmeta"><span>${esc(I18N.n("stop", p.n, fmtN(p.n)))}</span><span>${esc(stars(p.r, p.rc))}</span></span>`
+      + `<span class="ptmeta"><span>${esc(I18N.n("stop", p.n, fmtN(p.n)))}</span><span>${starsHtml(p.r, p.rc)}</span></span>`
       + `<p>${esc(t("pt_login"))}</p><a class="btn primary" href="/account/?next=${encodeURIComponent("/?pt=" + id)}">${esc(t("pt_loginbtn"))}</a></div>`);
     const box = document.querySelector(".ptlogin");
     tipFly = Date.now(); M.flyTo({ lat: p.lat, lng: p.lng }, null, Math.round(((box ? box.offsetHeight : 200) + 50) / 2));
@@ -1431,7 +1434,7 @@ async function viewTrip(id) {
   if (d.stops.length) M.fitBounds({ north: Math.max(...lat) + m, south: Math.min(...lat) - m, east: Math.max(...lng) + m, west: Math.min(...lng) - m }, isMobile() ? 40 : 70, null, 600);
   setStatus(t("pt_tap"));
   const f = d.stops[0];
-  if (f) M.showPopup({ lat: f.lat, lng: f.lng }, `<button class="pintip ptpop" type="button"><b>🏅 ${esc(d.zone || t("pt_trip"))}</b><small>${esc([d.name, I18N.n("stop", d.stops.length, fmtN(d.stops.length)), stars(d.r, d.rc)].join(" · "))}</small><em>${esc(t("pt_tap"))}</em></button>`, () => openView());
+  if (f) M.showPopup({ lat: f.lat, lng: f.lng }, `<button class="pintip ptpop" type="button"><b>🏅 ${esc(d.zone || t("pt_trip"))}</b><small>${esc([d.name, I18N.n("stop", d.stops.length, fmtN(d.stops.length))].join(" · "))} ${starsHtml(d.r, d.rc)}</small><em>${esc(t("pt_tap"))}</em></button>`, () => openView());
 }
 function openView() {
   const d = state.view; if (!d) return;
@@ -1439,9 +1442,9 @@ function openView() {
   if ($("ptModal").hidden) { $("ptModal").hidden = false; pushLayer("pt"); }
   const box = $("ptBody");
   box.innerHTML = `<p class="ptname"><b>${esc(d.name)}</b> · ${esc(I18N.n("stop", d.stops.length, fmtN(d.stops.length)))}</p>
-    <p class="ptr" id="ptR">${esc(stars(d.r, d.rc))}</p>
+    <p class="ptr" id="ptR">${starsHtml(d.r, d.rc)}</p>
     <ol class="stops gold">${d.stops.map((x, i) => `<li><span class="no">${i + 1}</span><button class="sname" type="button" data-open="${esc(x.id)}"><b>${esc(x.n)}</b><small>${esc(x.c || "")}</small></button></li>`).join("")}</ol>
-    ${d.mine ? `<p class="muted">${esc(t("pt_mine"))}</p>` : `<div class="rate"><span>${esc(t("pt_rate"))}</span>${[1, 2, 3, 4, 5].map((k) => `<button type="button" data-st="${k}" aria-label="${k}" aria-pressed="${d.my >= k}">★</button>`).join("")}</div>`}
+    ${d.mine ? `<p class="muted">${esc(t("pt_mine"))}</p>` : `<div class="rate"><span>${esc(t("pt_rate"))}</span>${[1, 2, 3].map((k) => `<button type="button" data-st="${k}" aria-label="${k}/3" aria-pressed="${d.my >= k}">${starSvg(d.my >= k)}</button>`).join("")}</div>`}
     <div class="dbtns">${d.mine ? "" : `<button class="btn primary" id="ptSave" type="button">${esc(t("pt_save"))}</button>`}<button class="btn" id="ptEnd" type="button">${esc(t("pt_close"))}</button></div>
     <p class="tmsg" id="ptMsg" role="status"></p>`;
   $("ptTitle").textContent = "🏅 " + (d.zone || t("pt_trip"));
@@ -1456,8 +1459,8 @@ function openView() {
       const r = await fetch("/api/trips.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: d.id, stars: k }) });
       if (!r.ok) throw new Error(r.status);
       const o = await r.json(); d.my = k; d.r = o.r; d.rc = o.rc;
-      box.querySelectorAll("[data-st]").forEach((x) => x.setAttribute("aria-pressed", String(+x.dataset.st <= k)));
-      $("ptR").textContent = stars(d.r, d.rc); msg(t("pt_thanks")); ga("rate_trip", { item: String(k) });
+      box.querySelectorAll("[data-st]").forEach((x) => { const on = +x.dataset.st <= k; x.setAttribute("aria-pressed", String(on)); x.querySelector(".st").classList.toggle("on", on); });
+      $("ptR").innerHTML = starsHtml(d.r, d.rc); msg(t("pt_thanks")); ga("rate_trip", { item: String(k) });
       const p = state.pub.find((x) => x.id === d.id); if (p) { p.r = o.r; p.rc = o.rc; }
     } catch (e) { msg(t("failed")); }
   });
