@@ -603,3 +603,12 @@ form.search input:focus{border-color:var(--accent)}
 /* trip salvato in modifica */
 .tedit{margin:0 0 10px;padding:8px 10px;border-radius:10px;font-size:13px;line-height:1.4;background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--ink)}
 .tedit b{color:var(--accent)}
+
+/* gruppi di pin d'oro sovrapposti: cerchio d'oro con il numero di itinerari */
+.xm.ptclu{cursor:pointer;z-index:6}
+.gpc{display:grid;place-items:center;min-width:34px;height:34px;padding:0 6px;border-radius:17px;box-sizing:border-box;background:#c9971c;color:#1a1414;border:2px solid #fff;font:800 13px/1 var(--f-mono);box-shadow:0 2px 6px rgb(0 0 0 / .35)}
+.ptpick{gap:6px;width:220px;max-width:220px}
+.ptpick button{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;padding:7px 8px;border:1.5px solid var(--line);border-radius:10px;background:none;font:inherit;color:inherit;cursor:pointer}
+.ptpick button:hover{border-color:#c9971c}
+.ptpick button b{font-size:14.5px}
+.ptpick button span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}

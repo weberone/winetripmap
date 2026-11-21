@@ -1255,8 +1255,14 @@ function drawTrip() {
   M.setRoute((V ? V.stops : s).map((x) => ({ lat: x.lat, lng: x.lng })), V ? GOLD : undefined);
   if (V) V.stops.forEach((x, i) => ex.push({ id: "vt:" + x.id, lat: x.lat, lng: x.lng, cls: "vtno", html: goldPin(i + 1) }));
   else s.forEach((x, i) => ex.push({ id: x.id, lat: x.lat, lng: x.lng, cls: "tripno", html: `<b>${i + 1}</b>` }));
-  // itinerari salvati dagli iscritti: un pin d'oro nella loro zona del vino, per tutti
-  for (const p of state.pub) if (!V || p.id !== V.id) ex.push({ id: "pt:" + p.id, lat: p.lat, lng: p.lng, cls: "ptpin", html: goldPin("", p.rc ? "★" : "") });
+  // itinerari salvati dagli iscritti: un pin d'oro nella loro zona del vino, per tutti; badge = itinerari con le stesse tappe;
+  // pin vicini sullo schermo uniti in un cerchio d'oro con il numero, come i gruppi dei pin della ricerca
+  pubClusters = [];
+  for (const g of goldGroups(state.pub.filter((p) => !V || p.id !== V.id))) {
+    if (g.length === 1) { const p = g[0]; ex.push({ id: "pt:" + p.id, lat: p.lat, lng: p.lng, cls: "ptpin", html: goldPin("", p.c > 1 ? p.c : "") }); continue; }
+    const i = pubClusters.push(g) - 1, n = g.reduce((t, p) => t + (p.c || 1), 0);
+    ex.push({ id: "pc:" + i, lat: g.reduce((t, p) => t + p.lat, 0) / g.length, lng: g.reduce((t, p) => t + p.lng, 0) / g.length, cls: "ptclu", html: `<span class="gpc">${n}</span>` });
+  }
   M.setExtras(ex);
   drawMarkers();
 }
@@ -1399,10 +1405,31 @@ function showTrip() { $("tripModal").hidden = false; pushLayer("trip"); renderTr
 function closeTrip() { if ($("tripModal").hidden) return; $("tripModal").hidden = true; popLayer("trip"); }
 
 // ---------- itinerari pubblici: pin d'oro nella zona del vino (api/trips.php) ----------
+let pubClusters = [], pubZ = null;
+// gruppi di pin d'oro che sullo schermo stanno a meno di ~44 px (proiezione di Mercatore allo zoom attuale)
+function goldGroups(list) {
+  const z = state.mapsReady && M.getZoom ? M.getZoom() : 2, W = 256 * 2 ** z, R = 44, out = [];
+  const px = (p) => { const r = p.lat * Math.PI / 180; return [(p.lng + 180) / 360 * W, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * W]; };
+  for (const p of list) {
+    const [x, y] = px(p); let g = out.find((o) => Math.hypot(o.x - x, o.y - y) < R);
+    if (g) { g.m.push(p); } else out.push({ x, y, m: [p] });
+  }
+  pubZ = Math.round(z * 2) / 2;
+  return out.map((o) => o.m);
+}
+// cerchio d'oro: se i pin sono in punti diversi la mappa si avvicina; se sono nello stesso punto, l'elenco per sceglierne uno
+function pubCluster(i) {
+  const g = pubClusters[i]; if (!g) return;
+  const lat = g.map((p) => p.lat), lng = g.map((p) => p.lng), span = distKm({ lat: Math.min(...lat), lng: Math.min(...lng) }, { lat: Math.max(...lat), lng: Math.max(...lng) });
+  $("worldAsk").hidden = true; M.spin && M.spin(false);
+  if (span > 0.05) { const m = 0.02; M.fitBounds({ north: Math.max(...lat) + m, south: Math.min(...lat) - m, east: Math.max(...lng) + m, west: Math.min(...lng) - m }, isMobile() ? 50 : 90, null, 600); return; }
+  M.showPopup({ lat: lat[0], lng: lng[0] }, `<div class="ptpop ptlogin ptpick"><span class="ptk">${esc(t("pt_trip"))}</span>${g.map((p) => `<button type="button" data-pt="${p.id}"><b>${esc(p.name || t("pt_trip"))}</b><span>${esc(I18N.n("stop", p.n, fmtN(p.n)))} ${starsHtml(p.r, p.rc)}</span></button>`).join("")}</div>`);
+  document.querySelectorAll(".ptpick [data-pt]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); pubPin(+b.dataset.pt); });
+}
 // tutti vedono il pin e la zona; gli iscritti aprono l'itinerario (tappe d'oro sulla mappa), lo votano e lo salvano nel profilo
 const GOLD = "#c9971c";
 function goldPin(no = "", badge = "") {
-  return `<span class="gp"><svg viewBox="${PIN_VB.join(" ")}" width="28" height="${pinH(28)}" aria-hidden="true"><path d="${LOGO_GLASS}" fill="${GOLD}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke"/><circle cx="6" cy="5.5" r="2" fill="#fff"/></svg>${no !== "" ? `<b>${no}</b>` : badge ? `<i>${badge}</i>` : ""}</span>`;
+  return `<span class="gp"><svg viewBox="${PIN_VB.join(" ")}" width="28" height="${pinH(28)}" aria-hidden="true"><path d="${LOGO_GLASS}" fill="${GOLD}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke"/><circle cx="6" cy="5.5" r="2" fill="#fff"/></svg>${no !== "" ? `<b>${no}</b>` : badge !== "" ? `<i>${badge}</i>` : ""}</span>`;
 }
 async function loadPublicTrips() {
   try { const d = await fetch("/api/trips.php", { credentials: "same-origin" }).then((r) => r.json()); state.pub = d.items || []; } catch (e) { state.pub = []; }
@@ -1571,9 +1598,9 @@ async function start() {
 function bindMap() {
   drawTrip();
   // numero di una tappa del tuo trip; pin d'oro di un itinerario pubblico (pt:); tappa d'oro dell'itinerario aperto (vt:) = elenco
-  M.on("extraclick", (id) => id.startsWith("pt:") ? pubPin(+id.slice(3)) : id.startsWith("vt:") ? openView() : openDetail(id));
+  M.on("extraclick", (id) => id.startsWith("pt:") ? pubPin(+id.slice(3)) : id.startsWith("pc:") ? pubCluster(+id.slice(3)) : id.startsWith("vt:") ? openView() : openDetail(id));
   M.setBottomPadding(mapPad(), 0);
-  M.on("moveend", () => { syncMeBtn(); checkArea(); });
+  M.on("moveend", () => { syncMeBtn(); checkArea(); if (state.pub.length > 1 && M.getZoom && Math.round(M.getZoom() * 2) / 2 !== pubZ) drawTrip(); }); // i gruppi d'oro cambiano con lo zoom
   M.on("movestart", () => clearTimeout(autoTimer));
   M.on("dragstart", () => { state.userMoved = true; toggleKm(false); $("meBtn").setAttribute("aria-pressed", "false"); });
   M.on("pinclick", (id) => ($("detail").hidden ? pinTip(id) : openDetail(id, false))); // scheda già aperta: si passa subito a quella del pin toccato
