@@ -120,7 +120,7 @@ admin_header('Impostazioni', 'set');
 <section class="card"><h2>Donazioni (Ko-fi)</h2>
   <p class="muted" style="margin-top:0">Il link è quello della pagina <a href="/dona/">/dona/</a> (vuoto = "Le donazioni aprono a breve"). Su Ko-fi → Settings → API: Webhook URL
     <code><?= h(SITE_URL) ?>/api/kofi.php</code> e qui sotto il Verification Token; poi su Ko-fi "Send Test".
-    <?php $kt = @file_get_contents(priv('kofi_test.txt')); ?><?= $kt ? 'Ultimo test ricevuto: ' . h($kt) . ' UTC.' : 'Nessun test ricevuto finora.' ?> <?= !empty($s['kofi_token']) ? 'Token salvato: lascialo vuoto per tenerlo.' : 'Nessun token salvato.' ?></p>
+    <?php $kt = @file_get_contents(priv('kofi_test.txt')); ?><?= $kt ? 'Ultimo test ricevuto: ' . h($kt) . ' UTC.' : 'Nessun test ricevuto finora.' ?> <?php $kl = @file_get_contents(priv('kofi_last.txt')); ?><?= $kl ? 'Ultimo messaggio da Ko-fi: ' . h($kl) . ' (UTC).' : '' ?> <?= !empty($s['kofi_token']) ? 'Token salvato: lascialo vuoto per tenerlo.' : 'Nessun token salvato.' ?></p>
   <div class="grid2" style="margin:0">
     <div class="field"><label for="kurl">Pagina Ko-fi</label><input id="kurl" name="kofi_url" value="<?= h($s['kofi_url'] ?? '') ?>" placeholder="https://ko-fi.com/winetripmap" autocomplete="off"></div>
     <div class="field"><label for="ktok">Verification Token</label><input id="ktok" name="kofi_token" type="password" autocomplete="new-password" placeholder="<?= !empty($s['kofi_token']) ? '••••••••' : '' ?>"></div>

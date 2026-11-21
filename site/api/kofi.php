@@ -8,7 +8,12 @@ header('Cache-Control: no-store');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_out(['error' => 'method'], 405);
 $tok = (string)(settings()['kofi_token'] ?? '');
 $d = json_decode((string)($_POST['data'] ?? ''), true);
-if (!is_array($d) || $tok === '' || !hash_equals($tok, (string)($d['verification_token'] ?? ''))) json_out(['error' => 'token'], 403);
+// ultimo messaggio arrivato e com'è andato (Impostazioni → Donazioni), per capire se Ko-fi arriva e se il token coincide; il token non si scrive
+$last = fn($r) => @file_put_contents(priv('kofi_last.txt'), gmdate('Y-m-d H:i:s') . ' ' . $r, LOCK_EX);
+if (!is_array($d)) { $last('dati mancanti o non leggibili (' . strlen((string)($_POST['data'] ?? '')) . ' caratteri, ' . substr(preg_replace('/[^\w\/.+-]/', '', (string)($_SERVER['CONTENT_TYPE'] ?? '')), 0, 60) . ')'); json_out(['error' => 'data'], 400); }
+if ($tok === '') { $last('nessun token salvato nel sito'); json_out(['error' => 'token'], 403); }
+if (!hash_equals($tok, trim((string)($d['verification_token'] ?? '')))) { $last('token diverso da quello salvato (salvato ' . strlen($tok) . ' caratteri, arrivato ' . strlen((string)($d['verification_token'] ?? '')) . ')'); json_out(['error' => 'token'], 403); }
+$last('ok');
 $kid = substr((string)($d['kofi_transaction_id'] ?? $d['message_id'] ?? ''), 0, 80);
 if ($kid === '') json_out(['error' => 'id'], 400);
 // pulsante "Send Test" di Ko-fi: id finto fisso, non è una donazione; si segna solo che il collegamento funziona (Impostazioni)
