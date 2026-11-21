@@ -612,3 +612,11 @@ form.search input:focus{border-color:var(--accent)}
 .ptpick button:hover{border-color:#c9971c}
 .ptpick button b{font-size:14.5px}
 .ptpick button span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+
+/* trip salvato in modifica con il pannello chiuso: barra sulla mappa */
+.teditbar{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:6px;max-width:calc(100% - 90px);padding:5px 5px 5px 12px;border-radius:999px;
+  background:var(--surface);border:1.5px solid var(--accent);box-shadow:0 6px 20px -6px rgb(0 0 0 / .35)}
+.teditbar .tebname{border:0;background:none;font:600 13px var(--f-body);color:var(--ink);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.teditbar .btn{min-height:30px;padding:4px 12px;border-radius:999px;flex:none}
+.app.mob:not(.map-only) .teditbar{display:none}
+.btn.tadd{margin:8px 0 0}

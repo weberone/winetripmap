@@ -1249,6 +1249,7 @@ function drawTrip() {
   const s = state.trip.stops, n = s.length;
   $("tripBtn").classList.toggle("on", n > 0);
   $("tripBtn").querySelector(".tn").textContent = n || "";
+  editBar();
   if (!state.mapsReady) return;
   // un itinerario pubblico aperto (pin d'oro) prende il posto del tuo sulla mappa: linea e tappe numerate d'oro
   const V = state.view, ex = [];
@@ -1265,6 +1266,16 @@ function drawTrip() {
   }
   M.setExtras(ex);
   drawMarkers();
+}
+// barra sulla mappa mentre un trip salvato è in modifica col pannello chiuso: "Stai modificando «nome» · N tappe · Fine"
+function editBar() {
+  let b = $("tripEditBar"); const tr = state.trip, on = !!(tr.id && state.user && $("tripModal").hidden);
+  if (!on) { if (b) b.hidden = true; return; }
+  if (!b) { b = document.createElement("div"); b.id = "tripEditBar"; b.className = "teditbar"; $("map").parentElement.appendChild(b); }
+  b.hidden = false;
+  b.innerHTML = `<button type="button" class="tebname">✏️ ${esc(t("trip_editbar", { n: tr.name || t("pt_trip") }))} · ${esc(I18N.n("stop", tr.stops.length, fmtN(tr.stops.length)))}</button><button type="button" class="btn primary tebdone">${esc(t("trip_done"))}</button>`;
+  b.querySelector(".tebname").onclick = showTrip;
+  b.querySelector(".tebdone").onclick = finishTrip;
 }
 function syncTripBtn() {
   const b = $("dTrip"); if (!b || !state.sel) return;
@@ -1339,7 +1350,7 @@ function renderTrip() {
         <span class="ops"><button class="info" data-up="${i}" ${i ? "" : "disabled"} aria-label="${esc(t("move_up"))}">↑</button><button class="info" data-down="${i}" ${i < s.length - 1 ? "" : "disabled"} aria-label="${esc(t("move_down"))}">↓</button><button class="info" data-del="${i}" aria-label="${esc(t("remove"))}">✕</button></span>
       </li>`).join("")}</ol>
       <p class="tsum">${esc(I18N.n("stop", s.length, fmtN(s.length)))}${s.length > 1 ? ` · ${esc(t("trip_km", { d: fmtKm(tripKm()) }))}` : ""}</p>
-      <p class="muted small">➕ ${esc(t("trip_add_hint"))}</p>`
+      ${tr.id && state.user ? `<button class="btn tadd" id="tripAddMap" type="button">➕ ${esc(t("trip_add_map"))}</button>` : `<p class="muted small">➕ ${esc(t("trip_add_hint"))}</p>`}`
     : `<p class="muted tempty">${esc(t("trip_empty"))}</p>`}
     ${state.user && s.length > 1 ? `<label class="tpub"><input type="checkbox" id="tripPub"${tr.pub !== false ? " checked" : ""}> ${esc(t("pt_public"))}</label>` : ""}
     <div class="dbtns">
@@ -1374,14 +1385,10 @@ function renderTrip() {
     tr.name = $("tripName").value.trim();
     if (!tr.name) { msg(t("trip_need_name")); $("tripName").focus(); return; }
     $("tripSave").disabled = true;
-    try {
-      const z = await tripZone(s);
-      const d = await tripApi({ id: tr.id || undefined, name: tr.name, stops: s, pub: tr.pub !== false, ...z });
-      tr.id = d.id; tr.dirty = false; store.set("trip", tr);
-      history.replaceState(history.state, "", "?trip=" + tr.id);
-      await loadMyTrips(); $("tripMsg").textContent = t("trip_saved", { n: tr.name }); loadPublicTrips();
-    } catch (e) { msg(t(e.status === 401 ? "trip_login" : "failed")); if ($("tripSave")) $("tripSave").disabled = false; }
+    try { await persistTrip(); await loadMyTrips(); $("tripMsg").textContent = t("trip_saved", { n: tr.name }); }
+    catch (e) { msg(t(e.status === 401 ? "trip_login" : "failed")); if ($("tripSave")) $("tripSave").disabled = false; }
   };
+  if ($("tripAddMap")) $("tripAddMap").onclick = () => closeTrip(true);
   box.querySelectorAll("[data-load]").forEach((b) => b.onclick = async () => {
     if (tr.dirty && s.length && +b.dataset.load !== tr.id && !confirm(t("trip_discard"))) return;
     if (await openTrip(+b.dataset.load)) { showTripOnMap(); box.scrollTop = 0; $("tripModal").querySelector(".card").scrollTop = 0; } // resta aperto: si modifica qui
@@ -1404,14 +1411,26 @@ async function openTrip(id) {
 function showTrip() { $("tripModal").hidden = false; pushLayer("trip"); renderTrip(); loadMyTrips(); }
 // chiudendo il pannello dopo aver salvato (nessuna modifica in sospeso) il trip in lavorazione torna vuoto, pronto per uno nuovo:
 // un trip salvato si modifica solo riaprendolo da "I miei trip" (richiesta dell'utente 2026-11-21). keep: chiusura per vedere la mappa o una cantina
+// la logica del trip (2026-11-21): un trip nuovo resta finché non lo salvi (le tappe si aggiungono dalla mappa); un trip salvato,
+// alla chiusura del pannello o con "Fine" nella barra sulla mappa, salva da solo le modifiche e la lista si svuota, pronta per un trip
+// nuovo. "Aggiungi tappe dalla mappa" chiude il pannello tenendo il trip in modifica (barra "Stai modificando… · Fine")
+async function persistTrip() {
+  const tr = state.trip; if (!tr.name.trim()) tr.name = t("pt_trip");
+  const z = await tripZone(tr.stops);
+  const d = await tripApi({ id: tr.id || undefined, name: tr.name, stops: tr.stops, pub: tr.pub !== false, ...z });
+  tr.id = d.id; tr.dirty = false; store.set("trip", tr); loadPublicTrips();
+}
+async function finishTrip() {
+  const tr = state.trip; if (!tr.id) return;
+  if (tr.dirty && state.user && tr.stops.length) { try { await persistTrip(); setStatus(t("trip_saved", { n: tr.name })); } catch (e) { setStatus(t("failed")); return; } }
+  state.trip = { id: null, name: "", stops: [], dirty: false }; store.set("trip", state.trip);
+  // l'indirizzo senza ?trip=, dopo il passo indietro della cronologia fatto da popLayer (che lo rimetterebbe)
+  setTimeout(() => { if (/[?&]trip=/.test(location.search)) history.replaceState(history.state, "", location.pathname); }, 350);
+  drawTrip(); syncTripBtn();
+}
 function closeTrip(keep) {
   if ($("tripModal").hidden) return; $("tripModal").hidden = true; popLayer("trip");
-  if (keep !== true && state.trip.id && !state.trip.dirty) {
-    state.trip = { id: null, name: "", stops: [], dirty: false }; store.set("trip", state.trip);
-    // l'indirizzo senza ?trip=: dopo il passo indietro della cronologia fatto da popLayer (che lo rimetterebbe)
-    setTimeout(() => { if (/[?&]trip=/.test(location.search)) history.replaceState(history.state, "", location.pathname); }, 350);
-    drawTrip(); syncTripBtn();
-  }
+  if (keep !== true && state.trip.id) finishTrip(); else editBar();
 }
 
 // ---------- itinerari pubblici: pin d'oro nella zona del vino (api/trips.php) ----------
