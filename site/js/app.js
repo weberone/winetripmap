@@ -1474,7 +1474,7 @@ async function pubPin(id) {
   if (!state.user) {
     // come il fumetto dei pin normali: al centro della mappa, con il pin sotto
     // per chi non è iscritto: il titolo che gli ha dato chi l'ha salvato, numero di tappe e voto
-    M.showPopup({ lat: p.lat, lng: p.lng }, `<div class="ptpop ptlogin">${goldPin()}<b>${esc(p.name || t("pt_trip"))}</b><span class="ptk">${esc(t("pt_trip"))}</span>`
+    M.showPopup({ lat: p.lat, lng: p.lng }, `<div class="ptpop ptlogin">${goldPin()}<span class="ptk">${esc(t("pt_trip"))}</span><b>${esc(p.name || t("pt_trip"))}</b>`
       + `<span class="ptmeta"><span>${esc(I18N.n("stop", p.n, fmtN(p.n)))}</span><span>${starsHtml(p.r, p.rc)}</span></span>`
       + `<p>${esc(t("pt_login"))}</p><a class="btn primary" href="/account/?next=${encodeURIComponent("/?pt=" + id)}">${esc(t("pt_loginbtn"))}</a></div>`);
     const box = document.querySelector(".ptlogin");
@@ -1494,10 +1494,16 @@ async function viewTrip(id) {
   if (d.stops.length) M.fitBounds({ north: Math.max(...lat) + m, south: Math.min(...lat) - m, east: Math.max(...lng) + m, west: Math.min(...lng) - m }, isMobile() ? 40 : 70, null, 600);
   setStatus(t("pt_tap"));
   const f = d.stops[0];
-  // fumetto: titolo dato da chi l'ha salvato, "Itinerario" in piccolo, tappe e stelle, la frase sulle tappe d'oro e "Apri l'itinerario"
-  if (f) M.showPopup({ lat: f.lat, lng: f.lng }, `<div class="ptpop ptlogin">${goldPin()}<b>${esc(d.name || t("pt_trip"))}</b><span class="ptk">${esc(t("pt_trip"))}</span>`
-    + `<span class="ptmeta"><span>${esc(I18N.n("stop", d.stops.length, fmtN(d.stops.length)))}</span><span>${starsHtml(d.r, d.rc)}</span></span>`
-    + `<p>${esc(t("pt_tap"))}</p><button type="button" class="btn primary">${esc(t("pt_open"))}</button></div>`, () => openView());
+  // fumetto: calice e "Itinerario" in piccolo, titolo dato da chi l'ha salvato, tappe, stelle e una "i" (tooltip: tocca un pin d'oro…),
+  // poi "Apri l'itinerario"
+  if (f) {
+    M.showPopup({ lat: f.lat, lng: f.lng }, `<div class="ptpop ptlogin">${goldPin()}<span class="ptk">${esc(t("pt_trip"))}</span><b>${esc(d.name || t("pt_trip"))}</b>`
+      + `<span class="ptmeta"><span>${esc(I18N.n("stop", d.stops.length, fmtN(d.stops.length)))}</span><span>${starsHtml(d.r, d.rc)}</span>`
+      + `<button type="button" class="pti" aria-label="${esc(t("pt_tap"))}" aria-expanded="false">i</button></span>`
+      + `<span class="pttip" hidden>${esc(t("pt_tap"))}</span><button type="button" class="btn primary">${esc(t("pt_open"))}</button></div>`, () => openView());
+    const ib = document.querySelector(".ptlogin .pti"), tip = document.querySelector(".ptlogin .pttip");
+    if (ib && tip) ib.onclick = (e) => { e.stopPropagation(); tip.hidden = !tip.hidden; ib.setAttribute("aria-expanded", String(!tip.hidden)); };
+  }
 }
 function openView() {
   const d = state.view; if (!d) return;
