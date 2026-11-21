@@ -1,6 +1,6 @@
 <?php
 // Itinerari pubblici sulla mappa (pin d'oro nella loro zona del vino), richiesta dell'utente 2026-11-21.
-//   GET  api/trips.php            → { items: [{ id, zone, lat, lng, n, r, rc, name? }] }  per tutti; il nome solo agli iscritti
+//   GET  api/trips.php            → { items: [{ id, lat, lng, name, zone?, n?, r?, rc? }] }  per tutti punto e titolo; zona, tappe e voto solo agli iscritti
 //   GET  api/trips.php?id=12      → { trip: { id, name, zone, stops, r, rc, my, mine } }   solo iscritti (tappe, voto medio, il tuo voto)
 //   POST api/trips.php { id, stars: 1-5 } → { r, rc }   voto di un iscritto (non al proprio itinerario)
 //   POST api/trips.php { id, copy: true } → { id }      copia nei propri trip
@@ -26,8 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   header('Cache-Control: private, max-age=60');
   $rows = db()->query("SELECT t.id, t.name, t.zone, t.zlat, t.zlng, t.stops, (SELECT AVG(stars) FROM trip_ratings WHERE trip_id = t.id) r,
     (SELECT COUNT(*) FROM trip_ratings WHERE trip_id = t.id) rc FROM trips t WHERE t.pub = 1 AND t.zlat IS NOT NULL ORDER BY t.updated_at DESC LIMIT 2000")->fetchAll();
-  json_out(['items' => array_map(fn($x) => ['id' => (int)$x['id'], 'zone' => $x['zone'] ?: '', 'lat' => (float)$x['zlat'], 'lng' => (float)$x['zlng'],
-    'n' => count(json_decode($x['stops'], true) ?: []), 'r' => $x['rc'] ? round((float)$x['r'], 1) : null, 'rc' => (int)$x['rc']] + ($u ? ['name' => $x['name']] : []), $rows)]);
+  // ai non iscritti solo il punto del pin e il titolo dato da chi l'ha salvato (richiesta dell'utente 2026-11-21); il resto agli iscritti
+  json_out(['items' => array_map(fn($x) => ['id' => (int)$x['id'], 'lat' => (float)$x['zlat'], 'lng' => (float)$x['zlng'], 'name' => $x['name']]
+    + ($u ? ['zone' => $x['zone'] ?: '', 'n' => count(json_decode($x['stops'], true) ?: []), 'r' => $x['rc'] ? round((float)$x['r'], 1) : null, 'rc' => (int)$x['rc']] : []), $rows)]);
 }
 if (!$u) json_out(['error' => 'not_logged_in'], 401);
 if (stripos((string)($_SERVER['CONTENT_TYPE'] ?? ''), 'application/json') !== 0) json_out(['error' => 'content_type'], 415);
