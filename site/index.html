@@ -26,7 +26,7 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#8e1b33">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/css/app.css?v=45">
+<link rel="stylesheet" href="/css/app.css?v=47">
 </head>
 <body>
 <div class="app map-only">
@@ -36,6 +36,7 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
     <div class="hstat">
       <span class="status" id="status" role="status" data-i18n="starting">Avvio…</span>
       <a class="donatehdr" id="donateHdr" href="/dona/?from=header" data-i18n-aria="sup_aria" aria-label="Supporta WineTripMap"><span class="glass" aria-hidden="true">🥂</span><span data-i18n="sup_link">Supporta</span></a>
+      <button class="info stats" id="statsBtn" aria-label="Le cantine nella mappa" title="Le cantine nella mappa" data-i18n-aria="stats_title" data-i18n-title="stats_title" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 20V12M10 20V5M15 20v-9M20 20v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
       <a class="info acct" id="acctBtn" href="/account/" aria-label="Accedi o registrati" title="Accedi o registrati" data-i18n-aria="login" data-i18n-title="login"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8" fill="none" stroke="currentColor" stroke-width="2.1"/><path d="M4.8 20c.9-3.6 3.7-5.6 7.2-5.6s6.3 2 7.2 5.6" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg><b class="ini"></b></a>
       <button class="info trip" id="tripBtn" aria-label="Il tuo trip" title="Il tuo trip" data-i18n-aria="your_trip" data-i18n-title="your_trip"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="6" cy="18" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8.4 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><b class="tn"></b></button>
     </div>
@@ -147,6 +148,14 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
   </div>
 </div>
 
+<div class="modal" id="statsModal" hidden role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+  <div class="card stats">
+    <button class="x" id="statsClose" aria-label="Chiudi" data-i18n-aria="close">✕</button>
+    <h3 id="statsTitle" data-i18n="stats_title">Le cantine nella mappa</h3>
+    <div id="statsBody"></div>
+  </div>
+</div>
+
 <div class="modal" id="ptModal" hidden role="dialog" aria-modal="true" aria-labelledby="ptTitle">
   <div class="card">
     <button class="x" id="ptClose" aria-label="Chiudi" data-i18n-aria="close">✕</button>
@@ -156,7 +165,7 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 </div>
 
 <!-- la mappa (Google, Mapbox o MapLibre + OpenFreeMap) la carica app.js: vedi createMap -->
-<script src="/js/i18n.js?v=11"></script>
-<script src="/js/app.js?v=52"></script>
+<script src="/js/i18n.js?v=12"></script>
+<script src="/js/app.js?v=54"></script>
 </body>
 </html>

@@ -564,3 +564,29 @@ form.search input:focus{border-color:var(--accent)}
 .ptmeta .st{width:14px;height:14px}
 .stars3 small{margin-left:4px;font:600 12px var(--f-mono);color:var(--muted)}
 .ptr .st{width:20px;height:20px}
+
+/* statistiche (pulsante con le barre in alto): totale, vino principale, paesi, zone, continenti, fonti */
+.card.stats{max-height:88dvh;overflow-y:auto;overscroll-behavior:contain}
+.stats section{padding:12px 0;border-top:1px solid var(--line)}
+.stats section:first-of-type{border-top:0;padding-top:4px}
+.stats h4{margin:0 0 10px;font:700 12.5px var(--f-body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.stats .num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.sttotal b{font-size:32px;font-weight:700;color:var(--accent)}
+.sttotal span{color:var(--muted);font-size:14.5px}
+.stnote{margin:4px 0 0;font-size:13px;color:var(--muted);line-height:1.45}
+.stnote b{color:var(--ink)}
+.sttiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.sttile span:not(.stpin){white-space:nowrap}
+.sttile{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1.5px solid var(--line);border-radius:12px;font-size:13.5px;font-weight:600}
+.sttile .stpin{flex:none;display:grid;place-items:center;width:18px}
+.sttile b{margin-left:auto}
+.stlist{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.stlist button{display:grid;grid-template-columns:1fr auto;gap:2px 10px;width:100%;padding:6px 4px;border:0;border-radius:8px;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.stlist button:hover{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.stlist .stn{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stlist b{font-size:13px}
+.stbar{grid-column:1/-1;height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.stbar i{display:block;height:100%;border-radius:inherit;background:var(--accent)}
+.stchips{display:flex;flex-wrap:wrap;gap:6px;margin:0}
+.stchips button{padding:5px 11px;border-radius:999px;border:1.5px solid var(--line);background:none;font:600 13px var(--f-body);color:var(--ink);cursor:pointer}
+.stchips button b{color:var(--accent);margin-left:3px}

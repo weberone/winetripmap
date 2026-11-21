@@ -47,7 +47,7 @@ function distKm(a, b) {
 }
 const fmtKm = (k) => k < 1 ? Math.round(k * 1000) + " m" : k >= 100 ? Math.round(k).toLocaleString(LOC) + " km"
   : k.toLocaleString(LOC, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " km";
-function fmtN(n) { return Number(n || 0).toLocaleString(LOC); }
+function fmtN(n) { return Number(n || 0).toLocaleString(LOC, { useGrouping: "always" }); } // 6.980 come 17.523 (in italiano di solito 6980)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const norm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 function offsetLatLng(c, m, deg) {
@@ -179,7 +179,7 @@ addEventListener("popstate", () => {
   if (ignorePop > 0) { ignorePop--; return; }
   const n = layers.pop(); if (!n) return;
   fromHistory = true;
-  try { if (n === "sheet") setSheet(false); else if (n === "detail") closeDetail(); else if (n === "search") closeSearch(); else if (n === "trip") closeTrip(); else if (n === "lightbox") closeLightbox(); else if (n === "browse") closeBrowse(); else if (n === "sview") closeStreetView(); else if (n === "pt") closeView(); }
+  try { if (n === "sheet") setSheet(false); else if (n === "detail") closeDetail(); else if (n === "search") closeSearch(); else if (n === "trip") closeTrip(); else if (n === "lightbox") closeLightbox(); else if (n === "browse") closeBrowse(); else if (n === "sview") closeStreetView(); else if (n === "pt") closeView(); else if (n === "stats") closeStats(); }
   finally { fromHistory = false; }
 });
 function setSheet(open) {
@@ -1085,6 +1085,8 @@ function bind() {
   $("tripClose").onclick = closeTrip;
   $("tripModal").onclick = (e) => { if (e.target === $("tripModal")) closeTrip(); };
   $("ptClose").onclick = closeView;
+  $("statsBtn").onclick = openStats; $("statsClose").onclick = closeStats;
+  $("statsModal").onclick = (e) => { if (e.target === $("statsModal")) closeStats(); };
   $("ptModal").onclick = (e) => { if (e.target === $("ptModal")) closeView(); };
   matchMedia(MOB_MQ).addEventListener("change", () => setSheet(!mapOnly() && isMobile()));
   $("footYear").textContent = new Date().getFullYear();
@@ -1488,6 +1490,35 @@ async function tripZone(stops) {
     return { zone: best ? best[0].name : "", zlat: avg("lat"), zlng: avg("lng") };
   } catch (e) { const avg = (k) => stops.reduce((t, x) => t + x[k], 0) / stops.length; return { zone: "", zlat: avg("lat"), zlng: avg("lng") }; }
 }
+
+// ---------- statistiche (come SkateboardMap): quante cantine ci sono nella mappa, per vino, paese, zona, continente, fonte ----------
+// tutto dai dati già caricati (cantine.json, aree.json); tocco su un paese o una zona = la mappa va lì
+async function openStats() {
+  ga("open_stats");
+  if ($("statsModal").hidden) { $("statsModal").hidden = false; pushLayer("stats"); }
+  const box = $("statsBody"); box.innerHTML = `<p class="muted">${esc(t("loading_short"))}</p>`;
+  let d = {};
+  try { d = await loadData(); await loadAree(); } catch (e) {}
+  const all = state.all, N = all.length;
+  if (!N) { box.innerHTML = `<p class="muted">${esc(t("load_fail"))}</p>`; return; }
+  const by = (f) => { const m = {}; for (const x of all) { const k = f(x); m[k] = (m[k] || 0) + 1; } return m; };
+  const col = by((x) => x.wc || ""), src = by((x) => x.id[0] === "q" ? "q" : x.id[0] === "o" ? "o" : "n"), lists = all.filter((x) => x.hv).length;
+  const A = AREE || [], top = (ak, k) => A.filter((h) => h.ak === ak).sort((a, b) => b.k - a.k).slice(0, k);
+  const cs = top("c", 12), zs = top("z", 12), ct = top("ct", 6);
+  const bars = (list) => { const max = list.length ? list[0].k : 1; return `<ol class="stlist">${list.map((h) => `<li><button type="button" data-a="${A.indexOf(h)}"><span class="stn">${esc(h.name)}</span><b class="num">${fmtN(h.k)}</b><span class="stbar"><i style="width:${Math.max(2, Math.round(h.k / max * 100))}%"></i></span></button></li>`).join("")}</ol>`; };
+  const tile = (wc, label) => `<div class="sttile"><span class="stpin">${pinSvg(18, wc, false)}</span><span>${esc(label)}</span><b class="num">${fmtN(col[wc] || 0)}</b></div>`;
+  const day = d.updated ? new Date(d.updated + "T12:00:00").toLocaleDateString(LOC, { day: "numeric", month: "long", year: "numeric" }) : "";
+  box.innerHTML = `<section><div class="sttotal"><b class="num">${fmtN(N)}</b> <span>${esc(t("stats_total"))}</span></div>
+      <p class="stnote"><b class="num">${fmtN(lists)}</b> ${esc(t("stats_lists"))}${state.pub.length ? ` · <b class="num">${fmtN(state.pub.length)}</b> ${esc(t("stats_trips").toLowerCase())}` : ""}</p></section>
+    <section><h4>${esc(t("stats_colors"))}</h4><div class="sttiles">${tile("r", t("red"))}${tile("b", t("white"))}${tile("o", t("rose"))}${tile("s", t("spark"))}${tile("", t("stats_unknown"))}</div></section>
+    ${cs.length ? `<section><h4>${esc(t("stats_countries"))}</h4>${bars(cs)}</section>` : ""}
+    ${zs.length ? `<section><h4>${esc(t("stats_zones"))}</h4>${bars(zs)}</section>` : ""}
+    ${ct.length ? `<section><h4>${esc(t("stats_conts"))}</h4><p class="stchips">${ct.map((h) => `<button type="button" data-a="${A.indexOf(h)}">${esc(h.name)} <b class="num">${fmtN(h.k)}</b></button>`).join("")}</p></section>` : ""}
+    <section><h4>${esc(t("stats_sources"))}</h4><p class="stnote">OpenStreetMap <b class="num">${fmtN(src.n || 0)}</b> · Overture Maps <b class="num">${fmtN(src.o || 0)}</b> · Wikidata <b class="num">${fmtN(src.q || 0)}</b></p>
+      ${day ? `<p class="stnote">${esc(t("stats_upd", { d: day }))}</p>` : ""}<p class="stnote">${esc(t("stats_tap"))}</p></section>`;
+  box.querySelectorAll("[data-a]").forEach((b) => b.onclick = () => { const h = A[+b.dataset.a]; if (!h) return; closeStats(); state.userMoved = true; setArea(h); });
+}
+function closeStats() { if ($("statsModal").hidden) return; $("statsModal").hidden = true; popLayer("stats"); }
 
 // ---------- avvio ----------
 async function start() {
