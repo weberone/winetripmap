@@ -590,3 +590,12 @@ form.search input:focus{border-color:var(--accent)}
 .stchips{display:flex;flex-wrap:wrap;gap:6px;margin:0}
 .stchips button{padding:5px 11px;border-radius:999px;border:1.5px solid var(--line);background:none;font:600 13px var(--f-body);color:var(--ink);cursor:pointer}
 .stchips button b{color:var(--accent);margin-left:3px}
+
+/* pulsante informazioni: "i" bianca su sfondo rosso, l'ultimo a destra dell'intestazione */
+.info.infobtn{background:var(--accent);border-color:var(--accent);color:#fff}
+.info.infobtn:hover{filter:brightness(1.1)}
+/* mini guida nella finestra informazioni */
+.guide ol{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.guide li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.4;color:var(--muted)}
+.guide li b{color:var(--ink)}
+.guide .gi{flex:none;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-size:15px;background:color-mix(in srgb,var(--accent) 9%,transparent)}

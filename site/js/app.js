@@ -1491,7 +1491,7 @@ async function tripZone(stops) {
   } catch (e) { const avg = (k) => stops.reduce((t, x) => t + x[k], 0) / stops.length; return { zone: "", zlat: avg("lat"), zlng: avg("lng") }; }
 }
 
-// ---------- statistiche (come SkateboardMap): quante cantine ci sono nella mappa, per vino, paese, zona, continente, fonte ----------
+// ---------- informazioni (pulsante "i" in alto a destra): mini guida e statistiche come SkateboardMap: quante cantine ci sono nella mappa, per vino, paese, zona, continente, fonte ----------
 // tutto dai dati già caricati (cantine.json, aree.json); tocco su un paese o una zona = la mappa va lì
 async function openStats() {
   ga("open_stats");
@@ -1500,7 +1500,10 @@ async function openStats() {
   let d = {};
   try { d = await loadData(); await loadAree(); } catch (e) {}
   const all = state.all, N = all.length;
-  if (!N) { box.innerHTML = `<p class="muted">${esc(t("load_fail"))}</p>`; return; }
+  // mini guida: le funzioni principali in otto righe (icona, titolo, una frase)
+  const GI = ["📍", "🎯", "🍷", "📋", "🗺️", "🧭", "🏅", "✅"];
+  const guide = `<section class="guide"><h4>${esc(t("guide_title"))}</h4><ol>${GI.map((ic, i) => { const [a, b] = t("g" + (i + 1)).split("|"); return `<li><span class="gi" aria-hidden="true">${ic}</span><span><b>${esc(a)}</b> ${esc(b || "")}</span></li>`; }).join("")}</ol></section>`;
+  if (!N) { box.innerHTML = guide + `<p class="muted">${esc(t("load_fail"))}</p>`; return; }
   const by = (f) => { const m = {}; for (const x of all) { const k = f(x); m[k] = (m[k] || 0) + 1; } return m; };
   const col = by((x) => x.wc || ""), src = by((x) => x.id[0] === "q" ? "q" : x.id[0] === "o" ? "o" : "n"), lists = all.filter((x) => x.hv).length;
   const A = AREE || [], top = (ak, k) => A.filter((h) => h.ak === ak).sort((a, b) => b.k - a.k).slice(0, k);
@@ -1508,7 +1511,7 @@ async function openStats() {
   const bars = (list) => { const max = list.length ? list[0].k : 1; return `<ol class="stlist">${list.map((h) => `<li><button type="button" data-a="${A.indexOf(h)}"><span class="stn">${esc(h.name)}</span><b class="num">${fmtN(h.k)}</b><span class="stbar"><i style="width:${Math.max(2, Math.round(h.k / max * 100))}%"></i></span></button></li>`).join("")}</ol>`; };
   const tile = (wc, label) => `<div class="sttile"><span class="stpin">${pinSvg(18, wc, false)}</span><span>${esc(label)}</span><b class="num">${fmtN(col[wc] || 0)}</b></div>`;
   const day = d.updated ? new Date(d.updated + "T12:00:00").toLocaleDateString(LOC, { day: "numeric", month: "long", year: "numeric" }) : "";
-  box.innerHTML = `<section><div class="sttotal"><b class="num">${fmtN(N)}</b> <span>${esc(t("stats_total"))}</span></div>
+  box.innerHTML = guide + `<section><h4>${esc(t("stats_title"))}</h4><div class="sttotal"><b class="num">${fmtN(N)}</b> <span>${esc(t("stats_total"))}</span></div>
       <p class="stnote"><b class="num">${fmtN(lists)}</b> ${esc(t("stats_lists"))}${state.pub.length ? ` · <b class="num">${fmtN(state.pub.length)}</b> ${esc(t("stats_trips").toLowerCase())}` : ""}</p></section>
     <section><h4>${esc(t("stats_colors"))}</h4><div class="sttiles">${tile("r", t("red"))}${tile("b", t("white"))}${tile("o", t("rose"))}${tile("s", t("spark"))}${tile("", t("stats_unknown"))}</div></section>
     ${cs.length ? `<section><h4>${esc(t("stats_countries"))}</h4>${bars(cs)}</section>` : ""}
