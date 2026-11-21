@@ -220,16 +220,19 @@ function startRadar() {
   const period = 3000, t0 = performance.now() - radarAngle / 360 * period, start = performance.now();
   const tick = (now) => {
     radarAngle = ((now - t0) % period) / period * 360;
-    M.setSweep(M.getCenter(), state.radiusKm, radarAngle, Math.min(1, (now - start) / 250));
+    M.setSweep(sweepCenter(), state.radiusKm, radarAngle, Math.min(1, (now - start) / 250));
     radarRaf = requestAnimationFrame(tick);
   };
   radarRaf = requestAnimationFrame(tick);
 }
+// durante una ricerca la lancetta gira sul punto cercato (fisso anche se sposti la mappa: prima si staccava dal cerchio);
+// in anteprima ("Cerca in questa zona") sul centro della mappa, con il cerchio che la segue
+const sweepCenter = () => radarHold && state.center ? state.center : M.getCenter();
 // risultati pronti: un ultimo giro veloce (1,5 s) e ogni pin compare quando la lancetta ci passa sopra
 function radarReveal() {
   if (!radarRaf) return null;
   cancelAnimationFrame(radarRaf); radarRaf = 0; revealing = true;
-  const c = M.getCenter(), a0 = radarAngle, km = state.radiusKm, ms = 1500;
+  const c = sweepCenter(), a0 = radarAngle, km = state.radiusKm, ms = 1500;
   M.revealStart(c, a0);
   return () => new Promise((done) => {
     const t0 = performance.now();
@@ -249,7 +252,7 @@ function radarBegin(delay = 0) {
   radarHold = true;
   radarWait = delay ? new Promise((ok) => setTimeout(() => { startRadar(); ok(); }, delay)) : (startRadar(), null);
   M.setRadiusAccent(true);
-  M.revealStart(M.getCenter(), radarAngle);
+  M.revealStart(sweepCenter(), radarAngle);
   radarLabel();
   return true;
 }
@@ -1640,6 +1643,8 @@ function bindMap() {
   M.setBottomPadding(mapPad(), 0);
   M.on("moveend", () => { syncMeBtn(); checkArea(); if (state.pub.length > 1 && M.getZoom && Math.round(M.getZoom() * 2) / 2 !== pubZ) drawTrip(); }); // i gruppi d'oro cambiano con lo zoom
   M.on("movestart", () => clearTimeout(autoTimer));
+  // anteprima del radar: il cerchio segue la mappa mentre la trascini, insieme alla lancetta
+  M.on("move", () => { if (!radarHold && !$("searchHere").hidden && state.showPreview) M.setCircle("preview", M.getCenter(), state.radiusKm); });
   M.on("dragstart", () => { state.userMoved = true; toggleKm(false); $("meBtn").setAttribute("aria-pressed", "false"); });
   M.on("pinclick", (id) => ($("detail").hidden ? pinTip(id) : openDetail(id, false))); // scheda già aperta: si passa subito a quella del pin toccato
   M.on("click", () => {
