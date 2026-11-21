@@ -548,7 +548,7 @@ form.search input:focus{border-color:var(--accent)}
 .ptpop.ptlogin{align-items:center;text-align:center;gap:3px;width:200px;max-width:200px;box-sizing:border-box;padding:4px 6px 6px}
 .ptlogin .gp{transform:none;filter:none;margin-bottom:2px}
 .ptlogin .gp svg{width:24px;height:auto}
-.ptlogin .ptk{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#b8860b}
+.ptlogin .ptk{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#b8860b;margin-top:-1px}
 .ptlogin b{font:800 17px/1.2 var(--f-display);letter-spacing:-.01em}
 .ptlogin .ptmeta{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin:2px 0 4px}
 .ptlogin .ptmeta>span{display:inline-flex;align-items:center;height:22px;box-sizing:border-box;padding:0 9px;border-radius:999px;font-size:12px;font-weight:600;line-height:1;background:color-mix(in srgb,#c9971c 16%,transparent);color:#8a6510}
