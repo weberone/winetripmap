@@ -69,7 +69,9 @@ function setStatus(msg) { $("status").textContent = msg; }
 
 // ---------- segnaposto ----------
 const dark = () => document.documentElement.dataset.scheme === "dark";
-const pinColor = () => dark() ? "#c23a55" : "#8e1b33";
+// mappa chiara o scura, come SkateboardMap: segue il tema del sito finché non la scegli col pulsante sotto + e − (wtm.mapTheme)
+const mapDark = () => { const m = store.get("mapTheme"); return m === "dark" || (m !== "light" && dark()); };
+const pinColor = () => mapDark() ? "#c23a55" : "#8e1b33";
 // colore del vino principale della cantina (letto dal suo sito: tools/vini-dai-siti.mjs): r rosso, b bianco, o rosato, s bollicine
 const WINE = {
   r: { name: t("red"), fill: () => pinColor() },
@@ -1030,8 +1032,25 @@ function toggleKm(open) {
 function applyScheme() {
   const d = document.documentElement, t = d.dataset.theme;
   d.dataset.scheme = t === "light" || (t === "auto" && !matchMedia("(prefers-color-scheme: dark)").matches) ? "light" : "dark";
-  d.dataset.mapscheme = d.dataset.scheme;
-  if (state.mapsReady) { M.setDark(d.dataset.scheme === "dark"); M.redrawPins(); drawMarkers(); }
+  syncMapThemeBtn();
+  if (state.mapsReady && window.SkateMapKind !== "google") { M.setDark(mapDark()); M.redrawPins(); drawMarkers(); }
+}
+// pulsante sotto + e −: luna = passa alla mappa scura, sole = alla chiara (data-mapscheme: scritte sulla mappa del colore giusto)
+const MT_SUN = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>';
+const MT_MOON = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
+function syncMapThemeBtn() {
+  const md = mapDark(); document.documentElement.dataset.mapscheme = md ? "dark" : "light";
+  const b = $("mapThemeBtn"); if (b) { b.innerHTML = md ? MT_SUN : MT_MOON; b.setAttribute("aria-pressed", String(md)); }
+}
+async function setMapTheme(m) {
+  store.set("mapTheme", m); syncMapThemeBtn();
+  if (!state.mapsReady) return;
+  if (window.SkateMapKind !== "google") { M.setDark(mapDark()); M.redrawPins(); drawMarkers(); return; }
+  // Google cambia chiaro/scuro solo con una mappa nuova (un caricamento in più, contato da api/counter.php): stesso punto e zoom
+  const c = M.getCenter(), z = M.getZoom();
+  const kind = await createMap({ ...mapOpts, dark: mapDark(), center: c, zoom: z, bounds: null }).catch(() => "free");
+  bindMap(); shownShape = null; drawShape(); drawMe(); drawMarkers();
+  if (kind === "free") M.setDark(mapDark());
 }
 
 // ---------- pulsanti ----------
@@ -1054,10 +1073,7 @@ function bind() {
   $("radius").onchange = () => setRadius(+$("radius").value);
   $("list").onclick = (e) => { const b = e.target.closest(".item"); if (b) openDetail(b.dataset.id); };
   $("zoomIn").onclick = () => M.zoomBy(1); $("zoomOut").onclick = () => M.zoomBy(-1);
-  $("mapThemeBtn").onclick = () => {
-    const d = document.documentElement; d.dataset.theme = d.dataset.scheme === "dark" ? "light" : "dark";
-    store.set("theme", d.dataset.theme); applyScheme();
-  };
+  $("mapThemeBtn").onclick = () => setMapTheme(mapDark() ? "light" : "dark"); syncMapThemeBtn();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyScheme);
   $("shareBtn").onclick = () => share(t("share_text"), location.origin + location.pathname);
   // Invio: il comune o la cantina con esattamente quel nome, altrimenti la ricerca del luogo
@@ -1616,7 +1632,7 @@ async function start() {
   // senza posizione né link: prima la Terra in 3D che gira (OpenFreeMap, gratuita e non contata); la mappa vera
   // (Google se c'è quota, poi Mapbox) parte quando si sceglie un luogo, una posizione, un'area o un trip (ensureMap)
   globeOnly = vq || (!startAt && !tq && !shared); // le tue cantine visitate (?visited=1): sempre sul globo
-  mapOpts = { dark: dark(), center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 30, lng: 10 },
+  mapOpts = { dark: mapDark(), center: startAt ? { lat: startAt.lat, lng: startAt.lng } : { lat: 30, lng: 10 },
     bounds: startAt ? boundsAround(startAt, state.radiusKm * 1000) : WORLD, padding: 12, language: I18N.lang };
   const mapKind = await createMap({ ...mapOpts, free: globeOnly });
   state.mapsReady = true; app.classList.add("mapready");
@@ -1667,7 +1683,7 @@ function ensureMap() {
   globeOnly = false;
   return mapSwitch = (async () => {
     leaveGlobe();
-    const kind = await createMap({ ...mapOpts, keepFree: true }).catch(() => "free");
+    const kind = await createMap({ ...mapOpts, dark: mapDark(), keepFree: true }).catch(() => "free");
     if (kind !== "free") { bindMap(); shownShape = null; drawShape(); drawMe(); drawMarkers(); }
   })();
 }
