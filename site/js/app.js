@@ -1741,7 +1741,7 @@ async function createMap(o) {
       } else if (use === "mapbox") {
         await Promise.all([load("https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js"), load("https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css", true)]);
         await useModule("gl");
-        await M.create($("map"), { ...o, lib: "mapbox", token: MAPS.mapboxToken });
+        await M.create($("map"), { ...o, lib: "mapbox", token: MAPS.mapboxToken, palette: PALETTE });
       } else {
         await Promise.all([load("https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.js"), load("https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.css", true)]);
         await useModule("gl");
@@ -1767,10 +1767,12 @@ const PALETTE = {
     wood: "rgba(206,214,186,0.45)", pitch: "#efe8d8", soft: "#f2ece2", school: "#f4ece6", hospital: "#f5e9e6", aero: "#f1ebe6",
     water: "#c9dde6", river: "#b3cfdc", building: "#eadbd2", border: "#d9b9b0", border3: "#e8d3cb", rail: "#dcc6bc", relief: 0.3,
     motorway: ["#e7b9a6", "#d49a86"], major: ["#f0cdbd", "#dcae9c"], medium: ["#f6e0d5", "#e8c8b8"], minor: ["#ffffff", "#efdcd2"] },
-  dark: { paper: "#16110f", text: "#6b5f5a", halo: "#16110f", residential: "rgba(48,36,36,0.8)", park: "#1a1715", parkLine: "#231f1c",
-    wood: "rgba(28,24,22,0.9)", pitch: "#211c1a", soft: "#1a1715", school: "#1f1a18", hospital: "#1f1a18", aero: "#1d1816",
-    water: "#14222b", river: "#1d3340", building: "#3a2e2c", border: "#5a4643", border3: "#352a28", rail: "#463936", relief: 0,
-    motorway: ["#4a2630", "#2b1a1e"], major: ["#3d232a", "#241a1c"], medium: ["#30212a", "#1e1719"], minor: ["#241c1c", "#181213"] }
+  // scura: bordeaux molto scuro (come lo sfondo intorno al globo, css/app.css), acqua quasi nera sul vinaccia, strade appena accennate,
+  // nomi dei luoghi a basso contrasto (vinaccia spento con alone del colore dello sfondo): si leggono senza staccare dalla mappa
+  dark: { paper: "#1e0b11", text: "#6e4853", halo: "#1e0b11", residential: "rgba(74,28,42,0.5)", park: "#220d14", parkLine: "#2a1219",
+    wood: "rgba(38,14,22,0.9)", pitch: "#29111a", soft: "#220d14", school: "#26101a", hospital: "#26101a", aero: "#241017",
+    water: "#13060a", river: "#1c0a10", ice: "#2a141b", building: "#3a1a24", border: "#5c3140", border3: "#3a1c26", rail: "#43212b", relief: 0,
+    motorway: ["#55212f", "#34131c"], major: ["#471c28", "#2d1119"], medium: ["#381722", "#28101a"], minor: ["#2b1118", "#230d13"] }
 };
 
 // Ondata di robot dalla Cina (come SkateboardMap, nov 2026: migliaia di aperture l'ora da computer col fuso di Shanghai, senza link):

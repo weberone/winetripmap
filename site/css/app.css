@@ -114,6 +114,7 @@ aside.panel{grid-row:3;background:var(--surface);border-top:1px solid var(--line
 /* ---------- mappa ---------- */
 main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 #map{position:absolute;inset:0}
+:root[data-mapscheme="dark"] main.mapwrap{background:#16080d} /* mappa scura: bordeaux molto scuro anche intorno al globo (PALETTE.dark in app.js) */
 .map-logo{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(28px,6.5vw,48px);color:var(--ink);opacity:.35;pointer-events:none}
 .mapbtn{position:absolute;top:12px;right:12px;z-index:2;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
   background:var(--surface);color:var(--ink);border:1.5px solid var(--line);box-shadow:0 3px 10px rgb(0 0 0 / .25);padding:0}
@@ -253,7 +254,7 @@ main.mapwrap{position:relative;min-height:0;grid-row:2;overflow:hidden}
 .pinwrap .pin{display:block;filter:drop-shadow(0 2px 3px rgb(0 0 0 / .3))}
 .plabel{position:absolute;top:100%;transform:translateX(-50%);margin-top:1px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 11px/1.2 var(--f-body);pointer-events:none}
 :root[data-mapscheme="light"] .plabel{color:#2a1a1d;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 4px #fff}
-:root[data-mapscheme="dark"] .plabel{color:#f2f1ed;text-shadow:0 0 2px #000,0 0 2px #000,0 0 3px #000,0 0 4px #000}
+:root[data-mapscheme="dark"] .plabel{color:#c9a3ad;text-shadow:0 0 2px #1e0b11,0 0 2px #1e0b11,0 0 3px #1e0b11,0 0 4px #1e0b11} /* mappa scura bordeaux: nomi rosa spento, contrasto leggero */
 .pin-nolabels .plabel{display:none}
 .me-dot{width:16px;height:16px;border-radius:50%;background:#4dabf7;border:2.5px solid #fff;box-shadow:0 0 0 6px rgba(77,171,247,.25),0 1px 4px rgba(0,0,0,.5)}
 .rv-hide{opacity:0!important;pointer-events:none}
