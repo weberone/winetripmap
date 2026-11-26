@@ -10,6 +10,10 @@
 // Ogni pagina dichiara le sue versioni nelle altre lingue (hreflang). Regole degli indirizzi in /.htaccess.
 // Dati: site/data/seo/ (tools/seo-dati.mjs, da OpenStreetMap e GeoNames) e site/data/det5/ (dettagli e vini delle cantine).
 require_once dirname(__DIR__) . '/api/page.php'; // logo (WTM_WORDMARK) e h()
+require_once dirname(__DIR__) . '/api/lib.php';
+// protezione dai robot (api/bots.php): indirizzi bloccati (troppe richieste o trappola) senza pagine per qualche ora; limite di
+// pagine al minuto per indirizzo (una persona ne legge poche, Google e Bing hanno un limite 4 volte più largo e mai il blocco)
+if (PHP_SAPI !== 'cli') bot_guard('seo', 60, true);
 
 const SITE = 'https://winetripmap.com';
 const SITE_NAME = 'WineTripMap';
@@ -164,6 +168,7 @@ function seo_head(string $title, string $desc, string $path, array $jsonld = [],
 function seo_foot(string $path): void { $base = base_path($path); $T = seo_texts(); ?>
 </main>
 <footer>
+  <a href="/wineries-archive-all/" rel="nofollow" tabindex="-1" aria-hidden="true" style="display:none">wineries archive</a><!-- trappola per robot (api/trap.php) -->
   <p><a href="/"><?= h(L('f_map')) ?></a> · <a href="<?= h(lp('/wineries/')) ?>"><?= h(L('f_countries')) ?></a></p>
   <p class="langs"><?= h(L('f_langs')) ?>: <?php foreach (SEO_LANGS as $i => $l): ?><?= $i ? ' · ' : '' ?><a href="<?= h(lp($base, $l)) ?>" hreflang="<?= $l ?>" lang="<?= $l ?>"<?= $l === seo_lang() ? ' aria-current="page"' : '' ?>><?= h($T[$l]['lang_name']) ?></a><?php endforeach; ?></p>
   <p><?= str_replace(['OpenStreetMap', 'GeoNames'], ['<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>', '<a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>)'], h(L('f_data'))) ?></p>

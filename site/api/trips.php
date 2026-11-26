@@ -6,6 +6,7 @@
 //   POST api/trips.php { id, copy: true } → { id }      copia nei propri trip
 // Mai il nome o l'email di chi l'ha fatto.
 require __DIR__ . '/lib.php';
+bot_guard('trips', 30); // limite di richieste al minuto per indirizzo e blocco dei robot (api/bots.php)
 $u = current_user();
 // firma delle tappe: le stesse cantine (in qualunque ordine) = lo stesso itinerario
 function trip_sig(string $stops): string { $ids = array_map(fn($x) => (string)($x['id'] ?? ''), json_decode($stops, true) ?: []); sort($ids); return implode(',', $ids); }

@@ -3,6 +3,7 @@
 //   GET  api/fav.php                                   → { items: [{ id, name, town, lat, lng }] }
 //   POST api/fav.php { id, on, name?, town?, lat?, lng? } → aggiunge (on: true) o toglie (on: false)
 require __DIR__ . '/lib.php';
+bot_guard('fav', 60); // limite di richieste al minuto per indirizzo e blocco dei robot (api/bots.php)
 $u = current_user();
 if (!$u) json_out(['error' => 'not_logged_in'], 401);
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {

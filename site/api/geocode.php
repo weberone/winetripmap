@@ -6,6 +6,9 @@
 // al massimo una richiesta al secondo (lock condiviso), user agent riconoscibile, solo all'invio, risultati tenuti 30 giorni.
 header('Content-Type: application/json; charset=utf-8');
 function out(array $r, int $code = 200): never { http_response_code($code); echo json_encode($r, JSON_UNESCAPED_UNICODE); exit; }
+require __DIR__ . '/lib.php';
+// limite per indirizzo e blocco dei robot (api/bots.php): ogni ricerca nuova tiene occupato il server ~1 s (regola di Nominatim)
+bot_guard('geocode', 20);
 
 $q = trim(mb_substr((string)($_GET['q'] ?? ''), 0, 120));
 if (mb_strlen($q) < 2) out(['error' => 'q'], 400);

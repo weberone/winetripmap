@@ -6,6 +6,8 @@
 // da dove arrivano, dispositivi, cantine più salvate. Gli amministratori non entrano nei conteggi (api/auth.php).
 require __DIR__ . '/layout.php';
 admin_me();
+// «Sblocca tutti» (protezione dai robot, api/bots.php)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_ok() && isset($_POST['unban'])) { db()->exec('DELETE FROM bot_bans'); header('Location: dashboard.php#robot'); exit; }
 require __DIR__ . '/visite_giorno.php';
 $isDay = fn($d) => is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && $d <= today_it();
 if (isset($_GET['list'])) { if (!$isDay($_GET['list'])) exit; echo visits_day_html($_GET['list']); exit; }
@@ -173,5 +175,26 @@ $dons = []; $dTot = []; try { $dons = db()->query('SELECT * FROM donations ORDER
     <?php foreach ($dons as $r): ?><tr><td><?= h(substr($r['at'], 0, 16)) ?></td><td><?= h($r['name'] ?: '—') ?><?= $r['user_id'] ? ' <a href="user.php?id=' . (int)$r['user_id'] . '">(iscritto)</a>' : '' ?></td>
       <td class="r"><?= h(number_format((float)$r['amount'], 2, ',', '.') . ' ' . $r['currency']) ?></td><td><?= h($r['message'] ?: '') ?></td></tr><?php endforeach; ?>
   </tbody></table><?php endif; ?>
+</section>
+<?php // protezione dai robot (api/bots.php, api/trap.php): indirizzi bloccati adesso, numeri del giorno in app_events (bot:…)
+$bn = []; try { $st = db()->prepare("SELECT ev, SUM(n) AS t, SUM(CASE WHEN day = ? THEN n ELSE 0 END) AS o FROM app_events WHERE day >= ? AND ev LIKE 'bot:%' GROUP BY ev"); $st->execute([today_it(), $dFrom]); foreach ($st as $r) $bn[$r['ev']] = [(int)$r['t'], (int)$r['o']]; } catch (Throwable $e) {}
+$bv = fn($k, $i = 0) => $bn[$k][$i] ?? 0;
+$bans = []; try { $st = db()->prepare('SELECT reason, until, hits, at FROM bot_bans WHERE until > ? ORDER BY at DESC'); $st->execute([now()]); $bans = $st->fetchAll(); } catch (Throwable $e) {}
+$rome = fn($t) => (new DateTime($t . ' UTC'))->setTimezone(new DateTimeZone('Europe/Rome'))->format('d/m H:i');
+?>
+<section class="card" id="robot"><h2>Protezione dai robot <small class="muted">ultimi 30 giorni</small></h2>
+  <p class="muted">Limite di richieste al minuto per indirizzo su API e pagine delle cantine (sopra il limite: «riprova tra un minuto»; 4 volte oltre: blocco per 6 ore),
+    trappola invisibile alle persone (chi la apre: blocco per 24 ore), robot maleducati respinti dal server (Bytespider, PetalBot, SemrushBot, AhrefsBot…).
+    I robot che si fingono browser non entrano nelle statistiche e hanno la mappa gratuita, senza consumare Google e Mapbox.
+    Google, Bing, DuckDuckGo, Apple e i robot di ricerca di ChatGPT e Perplexity non vengono mai bloccati.</p>
+  <section class="kpis" style="margin:0 0 10px">
+    <div class="kpi"><span>Bloccati adesso</span><b><?= num(count($bans)) ?></b><small>blocchi oggi <?= num($bv('bot:ban', 1)) ?> · in 30 giorni <?= num($bv('bot:ban')) ?></small></div>
+    <div class="kpi"><span>Aperture di robot escluse</span><b><?= num($bv('bot:open')) ?></b><small>oggi <?= num($bv('bot:open', 1)) ?> · browser automatici, raffiche dalla stessa rete, ondate</small></div>
+    <div class="kpi"><span>🇨🇳 Fermati prima della mappa</span><b><?= num($bv('bot:cn')) ?></b><small>oggi <?= num($bv('bot:cn', 1)) ?> · computer col fuso della Cina senza link</small></div>
+    <div class="kpi"><span>Nella trappola</span><b><?= num($bv('bot:trap')) ?></b><small>oggi <?= num($bv('bot:trap', 1)) ?></small></div>
+  </section>
+  <?php if ($bans): ?><ul><?php foreach (array_slice($bans, 0, 10) as $b): ?><li><?= h($rome($b['at'])) ?> · <?= $b['reason'] === 'trappola' ? 'trappola' : 'troppe richieste' ?><?= $b['hits'] > 1 ? ' · ' . num($b['hits']) . ' volte' : '' ?> · fino alle <?= h($rome($b['until'])) ?></li><?php endforeach; ?></ul>
+  <form method="post" onsubmit="return confirm('Sbloccare tutti gli indirizzi bloccati?')"><?= csrf_field() ?><input type="hidden" name="unban" value="1"><button class="btn">Sblocca tutti</button></form><?php endif; ?>
+  <p class="muted">Una persona vera col fuso della Cina tocca «Apri la mappa» e usa il sito normalmente. Le notifiche sul telefono (ondata di robot, robot bloccato) arrivano ai dispositivi iscritti in Impostazioni, al massimo una ogni 3 ore.</p>
 </section>
 <?php admin_footer(true); ?>

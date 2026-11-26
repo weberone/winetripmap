@@ -1,6 +1,7 @@
 <?php
 // Consigli e malfunzionamenti dagli iscritti: POST api/feedback.php { kind: "idea" | "bug", message, context? } → si leggono in admin/feedback.php
 require __DIR__ . '/lib.php';
+bot_guard('feedback', 10); // limite di richieste al minuto per indirizzo e blocco dei robot (api/bots.php)
 $u = current_user();
 if (!$u) json_out(['error' => 'not_logged_in'], 401);
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || stripos((string)($_SERVER['CONTENT_TYPE'] ?? ''), 'application/json') !== 0) json_out(['error' => 'method'], 405);

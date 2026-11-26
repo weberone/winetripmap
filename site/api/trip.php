@@ -5,6 +5,7 @@
 //   POST api/trip.php { id?, name, stops, zone?, zlat?, zlng?, pub? }  → { id }   (senza id: nuovo trip; con id: lo aggiorna; pub: pin d'oro sulla mappa per tutti)
 //   POST api/trip.php { id, del: true }     → { ok }
 require __DIR__ . '/lib.php';
+bot_guard('trip', 30); // limite di richieste al minuto per indirizzo e blocco dei robot (api/bots.php)
 $u = current_user();
 if (!$u) json_out(['error' => 'not_logged_in'], 401);
 const TRIP_MAX = 300, STOP_MAX = 60;

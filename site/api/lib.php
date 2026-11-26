@@ -136,6 +136,14 @@ CREATE TABLE IF NOT EXISTS app_opens (
 CREATE INDEX IF NOT EXISTS app_opens_day ON app_opens (day, id);
 CREATE INDEX IF NOT EXISTS app_opens_vid ON app_opens (vid);
 -- clic e azioni nella mappa (api/track.php): solo totali per giorno, nome dell'evento e ospite/iscritto, nessun identificativo
+-- indirizzi bloccati per qualche ora (api/bots.php: bot_guard, trappola api/trap.php): hash dell'IP accorciato, mai l'IP in chiaro
+CREATE TABLE IF NOT EXISTS bot_bans (
+  ip     TEXT PRIMARY KEY,
+  until  TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  hits   INTEGER NOT NULL DEFAULT 1,
+  at     TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS app_events (
   day  TEXT NOT NULL,
   ev   TEXT NOT NULL,
@@ -199,6 +207,8 @@ const SCHEMA_ADD = [
   ['app_opens', 'land', 'TEXT'], ['app_opens', 'sid', 'TEXT'], ['app_opens', 'last_at', 'TEXT'],
   // luogo approssimato dall'IP (api/geoip.php, l'IP non si salva): città, regione, codice del paese
   ['app_opens', 'city', 'TEXT'], ['app_opens', 'region', 'TEXT'], ['app_opens', 'cc', 'TEXT'],
+  // rete dell'indirizzo (hash, api/bots.php: ip_net): le aperture di una rete che diventa robot si tolgono
+  ['app_opens', 'net', 'TEXT'],
   // itinerari sulla mappa per tutti: zona del vino (denominazione con più tappe, calcolata dalla mappa), punto del pin d'oro, pubblico sì/no
   ['trips', 'zone', 'TEXT'], ['trips', 'zlat', 'REAL'], ['trips', 'zlng', 'REAL'], ['trips', 'pub', 'INTEGER NOT NULL DEFAULT 0'],
 ];
@@ -459,3 +469,4 @@ function device_info(string $ua): string {
   return "$type · $os · $br";
 }
 function is_bot(): bool { return (bool)preg_match('/bot|crawl|spider|slurp|preview|headless/i', (string)($_SERVER['HTTP_USER_AGENT'] ?? '')); }
+require_once __DIR__ . '/bots.php'; // protezione dai robot (limiti, blocchi, trappola)

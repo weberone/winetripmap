@@ -28,9 +28,10 @@ const EV_LABELS = [
   'donate:view' => 'Dona: apre la pagina', 'donate:paid' => 'Dona: 🥂 donazione arrivata (Ko-fi)', 'donate:back' => 'Dona: torna alla mappa', 'donate:onlyview' => 'Dona: esce senza andare su Ko-fi',
   'donate:return' => 'Dona: torna da Ko-fi', 'donate:kofi-2' => 'Dona: su Ko-fi con 2 €', 'donate:kofi-5' => 'Dona: su Ko-fi con 5 €',
   'donate:kofi-10' => 'Dona: su Ko-fi con 10 €', 'donate:kofi-free' => 'Dona: su Ko-fi, importo libero',
+  'bot:open' => 'Robot: aperture della mappa escluse', 'bot:cn' => 'Robot: fermati prima della mappa (fuso della Cina)', 'bot:ban' => 'Robot: indirizzi bloccati', 'bot:trap' => 'Robot: caduti nella trappola',
 ];
 const EV_GROUPS = ['app' => 'Mappa aperta e chiusa', 'consent' => 'Cookie', 'gps' => 'GPS', 'view' => 'Schede delle cantine', 'list' => 'Elenco',
-  'search' => 'Ricerche', 'act' => 'Azioni', 'btn' => 'Pulsanti', 'link' => 'Link', 'page' => 'Altre pagine del sito', 'support' => 'Bottone dona', 'donate' => 'Pagina Dona', 'err' => 'Errori'];
+  'search' => 'Ricerche', 'act' => 'Azioni', 'btn' => 'Pulsanti', 'link' => 'Link', 'page' => 'Altre pagine del sito', 'support' => 'Bottone dona', 'donate' => 'Pagina Dona', 'bot' => 'Robot (esclusi)', 'err' => 'Errori'];
 function ev_label(string $e): string {
   if (isset(EV_LABELS[$e])) return EV_LABELS[$e];
   [$g, $k] = explode(':', $e, 2) + ['', ''];

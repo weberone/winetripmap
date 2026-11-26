@@ -22,6 +22,13 @@ const MAPS = {
 const I18N = window.WTM_I18N, t = I18N.t, LOC = I18N.locale;
 const nW = (n) => I18N.n("w", n, fmtN(n));
 const $ = (id) => document.getElementById(id);
+// protezione dai robot (api/bots.php), come SkateboardMap: browser pilotato da un programma (navigator.webdriver, senza finestra)
+// → ab=1; il fuso orario serve al server per riconoscere le ondate dai computer col fuso della Cina; cnok = ha toccato «Apri la mappa».
+// Il server dà ai robot la mappa gratuita, nessuna chiamata a Google e nessuna riga nelle statistiche.
+const BOTQ = (() => { let q = ""; try { if (navigator.webdriver === true || /HeadlessChrome/.test(navigator.userAgent) || (outerWidth === 0 && outerHeight === 0)) q += "&ab=1"; } catch (e) {}
+  try { q += "&tz=" + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || ""); } catch (e) {}
+  try { if (sessionStorage.getItem("wtm-cn-ok") === "1") q += "&cnok=1"; } catch (e) {}
+  return q; })();
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem("wtm." + k)); } catch { return null; } },
@@ -593,7 +600,7 @@ async function openDetail(id, fly = true) {
 // Google Places: ricerca della cantina (nome + comune, vicino al punto) e una foto, con l'autore e "Google Maps" come chiede Google.
 // Mapbox Static Images: satellite-v9 come SkateboardMap, con "© Mapbox © Maxar". Senza chiavi in MAPS: nessuna immagine.
 async function allowApi(kind, n = 1) {
-  try { const r = await fetch(`/api/counter.php?api=${kind}&n=${n}`, { cache: "no-store" }); return r.ok && (await r.json()).ok === true; } catch (e) { return false; }
+  try { const r = await fetch(`/api/counter.php?api=${kind}&n=${n}${BOTQ}`, { cache: "no-store" }); return r.ok && (await r.json()).ok === true; } catch (e) { return false; }
 }
 let gPlaces = null;
 async function gmapsJs() {
@@ -1128,11 +1135,11 @@ async function loadMe(mapKind) {
       utm: (new URLSearchParams(location.search).get("utm_source") || "").slice(0, 40), ck, sid: trk.sid,
       land: (location.pathname + location.search).slice(0, 120) });
     try { q.set("tz", Intl.DateTimeFormat().resolvedOptions().timeZone || ""); } catch (e) {}
-    const r = await fetch("/api/auth.php?" + q, { credentials: "same-origin" });
+    const r = await fetch("/api/auth.php?" + q + BOTQ.replace(/&tz=[^&]*/, ""), { credentials: "same-origin" });
     if (!r.ok) return;
     const d = await r.json(); // in locale senza PHP non è JSON: si resta senza account
     state.user = d.user || null;
-    trk.open = d.open || 0; trk.ready = true; // da qui le statistiche partono (api/track.php)
+    trk.open = d.open || 0; trk.ready = !!(d.open || d.user); // da qui le statistiche partono (api/track.php); robot (open nullo, senza account): niente
     track("app:open", location.pathname + location.search); trackFlush(false);
     if (!$("tripModal").hidden) { renderTrip(); loadMyTrips(); }
     const b = $("acctBtn");
@@ -1700,7 +1707,7 @@ function load(url, css) {
 const MODULE = { google: "/core/js/map/map-google.js?v=6", gl: "/core/js/map/map-gl.js?v=8" };
 async function useModule(m) { if (window.SkateMapKind !== m) { delete loaded[MODULE[m]]; await load(MODULE[m]); window.SkateMapKind = m; } }
 async function counter(have, skip) {
-  try { const r = await fetch(`/api/counter.php?have=${have.join(",")}&skip=${skip.join(",")}`, { cache: "no-store" }); if (r.ok) return (await r.json()).use; } catch (e) {}
+  try { const r = await fetch(`/api/counter.php?have=${have.join(",")}&skip=${skip.join(",")}${BOTQ}`, { cache: "no-store" }); if (r.ok) return (await r.json()).use; } catch (e) {}
   return "free"; // senza contatore (anche in locale) non si rischia: mappa gratuita
 }
 async function createMap(o) {
@@ -1750,5 +1757,25 @@ const PALETTE = {
     motorway: ["#4a2630", "#2b1a1e"], major: ["#3d232a", "#241a1c"], medium: ["#30212a", "#1e1719"], minor: ["#241c1c", "#181213"] }
 };
 
-start().catch((e) => { console.error(e); setStatus(t("map_fail")); });
+// Ondata di robot dalla Cina (come SkateboardMap, nov 2026: migliaia di aperture l'ora da computer col fuso di Shanghai, senza link):
+// con quella impronta l'app non parte da sola. Compare solo «Apri la mappa»: una persona lo tocca e usa il sito come tutti; un robot
+// non tocca niente e non chiede dati, mappe e statistiche al server, che conta solo quante volte (api/bot_hit.php).
+const CN_TZ = ["Asia/Shanghai", "Asia/Chongqing", "Asia/Chungking", "Asia/Harbin", "Asia/Urumqi", "Asia/Kashgar", "PRC"];
+function cnGate() {
+  try {
+    if (sessionStorage.getItem("wtm-cn-ok") === "1") return false;
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    return CN_TZ.includes(tz) && !/Mobi|iPhone|iPad|Android/i.test(navigator.userAgent) && !document.referrer && !/[?&](c|trip|pt|visited|utm_source|edit)=/.test(location.search);
+  } catch (e) { return false; }
+}
+const go = () => start().catch((e) => { console.error(e); setStatus(t("map_fail")); });
+if (cnGate()) {
+  try { navigator.sendBeacon("/api/bot_hit.php"); } catch (e) {}
+  const g = document.createElement("div");
+  g.id = "cnGate";
+  g.style.cssText = "position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#16110f;color:#f3ece8;font:600 16px/1.4 system-ui,sans-serif;text-align:center;padding:24px";
+  g.innerHTML = `<b style="font-size:28px;color:#e8b4bf">WineTripMap</b><span>Wineries and wine routes around the world<br>世界各地的酒庄和葡萄酒之旅</span><button type="button" style="padding:12px 26px;font:600 17px system-ui,sans-serif;border:0;border-radius:999px;background:#8e1b33;color:#fff;cursor:pointer">Open the map · 打开地图</button>`;
+  document.body.appendChild(g);
+  g.querySelector("button").onclick = () => { try { sessionStorage.setItem("wtm-cn-ok", "1"); } catch (e) {} location.reload(); };
+} else go();
 })();

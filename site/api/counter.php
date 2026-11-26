@@ -13,6 +13,11 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
 require_once __DIR__ . '/caps.php'; // CAPS e API_CAPS
+require_once __DIR__ . '/lib.php';
+bot_guard('counter', 90); // limite di richieste al minuto per indirizzo e blocco dei robot (api/bots.php)
+// robot che si fingono browser (api/bots.php: is_bot_visit; l'app manda ab=1 e il fuso): mappa gratuita e nessuna chiamata
+// a pagamento (foto e ricerche di Google, Street View), senza consumare le quote del mese
+if (is_bot_visit()) { echo json_encode(isset($_GET['api']) ? ['ok' => false] : ['use' => 'free']); exit; }
 
 // contatori fuori dal deploy (counter/** escluso in .github/workflows/deploy.yml) e non leggibili dal web
 $dir = dirname(__DIR__) . '/counter';

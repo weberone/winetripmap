@@ -30,6 +30,13 @@ RewriteRule ^(it|es|pt|fr|de|ru|ja|zh|pl|ko|id)/wineries/([a-z0-9-]+)/?$ seo/pla
 RewriteRule ^(it|es|pt|fr|de|ru|ja|zh|pl|ko|id)/wineries/([a-z0-9-]+)/([a-z0-9-]+)/?$ seo/places.php?country=$2&region=$3&lang=$1 [L,QSA]
 RewriteRule ^(it|es|pt|fr|de|ru|ja|zh|pl|ko|id)/wineries/([a-z0-9-]+)/([a-z0-9-]+)/([a-z0-9-]+)/?$ seo/places.php?country=$2&region=$3&city=$4&lang=$1 [L,QSA]
 RewriteRule ^sitemap\.xml$ seo/sitemap.php [L]
+# trappola per robot (link nascosto alle persone, vietato in robots.txt): chi la apre viene bloccato (api/trap.php)
+RewriteRule ^wineries-archive-all/?$ api/trap.php [L]
+# robot noti che fanno troppe richieste o ignorano robots.txt: 403 subito, senza passare da PHP e database
+RewriteCond %{HTTP_USER_AGENT} (Bytespider|PetalBot|SemrushBot|AhrefsBot|MJ12bot|DotBot|BLEXBot|DataForSeoBot|serpstatbot|Barkrowler|ImagesiftBot|MegaIndex|SeekportBot|Scrapy|python-requests|Go-http-client|HeadlessChrome) [NC]
+RewriteCond %{HTTP_USER_AGENT} !WTM-Test [NC]
+RewriteCond %{REQUEST_URI} !^/api/kofi\.php$
+RewriteRule ^ - [F,L]
 RewriteRule ^sitemap-((?:pages|wineries)(?:-(?:it|es|pt|fr|de|ru|ja|zh|pl|ko|id))?)\.xml$ seo/sitemap.php?part=$1 [L]
 
 # compressione: i dati della mappa (cantine.json, ~6 MB) viaggiano compressi (~3 MB), come pagine, stili e script

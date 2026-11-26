@@ -9,10 +9,12 @@
 // Il banner dei cookie (js/consent.js) manda {"e": ["consent:yes"]} anche dalle altre pagine; le pagine SEO {"e": ["page:seo"]}.
 // Gli amministratori (account in admins.json, browser con il cookie wtm_ns o in admin-vids.json) e i robot non contano.
 require __DIR__ . '/lib.php';
+bot_guard('track', 30); // limite di richieste al minuto per indirizzo e blocco dei robot (api/bots.php)
 header('Cache-Control: no-store');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_out(['error' => 'method'], 405);
 $u = current_user();
 if (is_bot() || is_admin($u) || is_admin_device()) json_out(['ok' => true]);
+if (!$u && (bot_net_busy() || ip_banned())) json_out(['ok' => true]); // robot (api/bots.php): fuori dalle statistiche
 $raw = (string)file_get_contents('php://input');
 if (strlen($raw) > 60000) json_out(['error' => 'size'], 413);
 $in = json_decode($raw, true) ?: [];
