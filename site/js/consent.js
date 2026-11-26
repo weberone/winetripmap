@@ -34,12 +34,14 @@
   function banner() {
     if (document.getElementById("wtmConsent")) return;
     const lang = (document.documentElement.lang || "en").slice(0, 2), t = T[lang] || T.en;
-    const sc = document.documentElement.dataset.scheme || document.documentElement.dataset.theme;
-    const dark = sc === "dark" || (sc !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+    // colori: chiari, o bordeaux molto scuro col tema scuro (come mappa e interfaccia); seguono il tema anche se cambia col banner aperto
+    const DK = "--cb:#2a1420;--ci:#f3e8ea;--cl:#45222e;--ca:#d0476a;--cs:.5";
     const css = document.createElement("style");
-    css.textContent = `#wtmConsent{--cb:${dark ? "#241b1a" : "#ffffff"};--ci:${dark ? "#f3ebe6" : "#2a1a1d"};--cl:${dark ? "#3a2c2b" : "#e2d6cf"};--ca:${dark ? "#c23a55" : "#8e1b33"};
+    css.textContent = `:root[data-scheme="dark"] #wtmConsent,:root[data-theme="dark"]:not([data-scheme]) #wtmConsent{${DK}}
+      @media (prefers-color-scheme:dark){:root:not([data-scheme]):not([data-theme]) #wtmConsent,:root[data-theme="auto"]:not([data-scheme]) #wtmConsent{${DK}}}
+      #wtmConsent{--cb:#ffffff;--ci:#2a1a1d;--cl:#e2d6cf;--ca:#8e1b33;--cs:.18;
       position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:400;max-width:560px;margin:0 auto;
-      background:var(--cb);color:var(--ci);border:1px solid var(--cl);border-radius:14px;padding:12px 14px;box-shadow:0 8px 30px rgb(0 0 0 / ${dark ? ".45" : ".18"});
+      background:var(--cb);color:var(--ci);border:1px solid var(--cl);border-radius:14px;padding:12px 14px;box-shadow:0 8px 30px rgb(0 0 0 / var(--cs));
       font:14px/1.45 "Work Sans",system-ui,sans-serif;display:flex;gap:14px;align-items:center}
       #wtmConsent p{margin:0;flex:1 1 auto;min-width:0} #wtmConsent a{color:var(--ca);white-space:nowrap}
       #wtmConsent .b{display:flex;gap:8px;flex:0 0 auto}

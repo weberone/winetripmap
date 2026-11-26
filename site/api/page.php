@@ -10,7 +10,7 @@ function page_start(string $title, string $right = '', string $logoHref = '/', a
     . '<title>' . h($title) . ' · WineTripMap</title><meta name="robots" content="noindex">'
     // tema prima di disegnare (niente lampo): quello scelto nella mappa, altrimenti quello del sistema
     . '<script>try{const t=JSON.parse(localStorage.getItem("wtm.theme"));const d=document.documentElement;d.dataset.scheme=t==="light"||t==="dark"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}catch(e){}</script>'
-    . '<meta name="theme-color" content="#8e1b33"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/fonts/fonts.css"><link rel="stylesheet" href="/css/pages.css?v=10"><script src="/js/consent.js?v=2"></script>'
+    . '<meta name="theme-color" content="#8e1b33"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/fonts/fonts.css"><link rel="stylesheet" href="/css/pages.css?v=10"><script src="/js/consent.js?v=3"></script>'
     . implode('', $extraHead) . '</head><body>'
     . '<header class="topbar"><a class="logo" href="' . h($logoHref) . '" aria-label="WineTripMap">' . WTM_WORDMARK . '</a><div class="topbar-r">' . $right . '</div></header>';
 }
