@@ -1073,7 +1073,8 @@ function bind() {
   $("radius").onchange = () => setRadius(+$("radius").value);
   $("list").onclick = (e) => { const b = e.target.closest(".item"); if (b) openDetail(b.dataset.id); };
   $("zoomIn").onclick = () => M.zoomBy(1); $("zoomOut").onclick = () => M.zoomBy(-1);
-  $("mapThemeBtn").onclick = () => setMapTheme(mapDark() ? "light" : "dark"); syncMapThemeBtn();
+  // sole/luna: mappa e interfaccia insieme (scuro = bordeaux molto scuro, come la mappa); vale anche per account e admin (wtm.theme)
+  $("mapThemeBtn").onclick = () => { const to = mapDark() ? "light" : "dark"; document.documentElement.dataset.theme = to; store.set("theme", to); applyScheme(); setMapTheme(to); }; syncMapThemeBtn();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyScheme);
   $("shareBtn").onclick = () => share(t("share_text"), location.origin + location.pathname);
   // Invio: il comune o la cantina con esattamente quel nome, altrimenti la ricerca del luogo

@@ -7,7 +7,7 @@
   color-scheme:light;
 }
 :root[data-scheme="dark"]{
-  --bg:#120d0c; --surface:#1d1615; --card:#241b1a; --ink:#f3ebe6; --muted:#ab9d97; --line:#3a2c2b;
+  --bg:#16080d; --surface:#22101a; --card:#2a1420; --ink:#f3e8ea; --muted:#b3949d; --line:#45222e;
   --accent:#c23a55; --accent-ink:#ffffff; --accent-soft:rgb(194 58 85 / .16); --ok:#6fcf8e; --err:#ff8a7a;
   color-scheme:dark}
 *,*::before,*::after{box-sizing:border-box}

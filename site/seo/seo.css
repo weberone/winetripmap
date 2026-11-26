@@ -1,8 +1,8 @@
 /* Pagine per i motori di ricerca (seo/*.php): stessi colori, caratteri e logo della mappa, tema chiaro e scuro */
 :root{--bg:#efe9e4;--surface:#fbf7f2;--card:#fff;--ink:#2a1a1d;--muted:#7d6e6a;--line:#e2d6cf;--accent:#8e1b33;--accent-ink:#fff;
   --f-body:"Work Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--f-display:"Work Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
-@media (prefers-color-scheme:dark){:root:not([data-scheme="light"]){--bg:#120d0c;--surface:#1d1615;--card:#241b1a;--ink:#f3ebe6;--muted:#ab9d97;--line:#3a2c2b;--accent:#c23a55}}
-:root[data-scheme="dark"]{--bg:#120d0c;--surface:#1d1615;--card:#241b1a;--ink:#f3ebe6;--muted:#ab9d97;--line:#3a2c2b;--accent:#c23a55}
+@media (prefers-color-scheme:dark){:root:not([data-scheme="light"]){--bg:#16080d;--surface:#22101a;--card:#2a1420;--ink:#f3e8ea;--muted:#b3949d;--line:#45222e;--accent:#c23a55}}
+:root[data-scheme="dark"]{--bg:#16080d;--surface:#22101a;--card:#2a1420;--ink:#f3e8ea;--muted:#b3949d;--line:#45222e;--accent:#c23a55}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 var(--f-body)}
 a{color:var(--accent);text-underline-offset:2px}
