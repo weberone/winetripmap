@@ -1721,7 +1721,7 @@ function load(url, css) {
     e.src = url; e.onload = res; e.onerror = () => { delete loaded[url]; rej(new Error("load " + url)); }; document.head.append(e);
   });
 }
-const MODULE = { google: "/core/js/map/map-google.js?v=6", gl: "/core/js/map/map-gl.js?v=8" };
+const MODULE = { google: "/core/js/map/map-google.js?v=6", gl: "/core/js/map/map-gl.js?v=9" };
 async function useModule(m) { if (window.SkateMapKind !== m) { delete loaded[MODULE[m]]; await load(MODULE[m]); window.SkateMapKind = m; } }
 async function counter(have, skip) {
   try { const r = await fetch(`/api/counter.php?have=${have.join(",")}&skip=${skip.join(",")}${BOTQ}`, { cache: "no-store" }); if (r.ok) return (await r.json()).use; } catch (e) {}
@@ -1742,7 +1742,7 @@ async function createMap(o) {
       } else if (use === "mapbox") {
         await Promise.all([load("https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js"), load("https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css", true)]);
         await useModule("gl");
-        await M.create($("map"), { ...o, lib: "mapbox", token: MAPS.mapboxToken, palette: PALETTE });
+        await M.create($("map"), { ...o, lib: "mapbox", token: MAPS.mapboxToken, styleLight: "mapbox://styles/mapbox/light-v11", palette: PALETTE });
       } else {
         await Promise.all([load("https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.js"), load("https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.css", true)]);
         await useModule("gl");
@@ -1764,10 +1764,11 @@ async function createMap(o) {
 // ---------- colori della mappa (stesse chiavi della palette del core) ----------
 const STYLE = "https://tiles.openfreemap.org/styles/liberty"; // stessa base per chiaro e scuro: il core la ricolora
 const PALETTE = {
-  light: { paper: "#fbf7f2", text: "#8f8580", halo: "#fbf7f2", residential: "rgba(214,184,174,0.28)", park: "#eef0e2", parkLine: "#e2e5d2",
-    wood: "rgba(206,214,186,0.45)", pitch: "#efe8d8", soft: "#f2ece2", school: "#f4ece6", hospital: "#f5e9e6", aero: "#f1ebe6",
-    water: "#c9dde6", river: "#b3cfdc", building: "#eadbd2", border: "#d9b9b0", border3: "#e8d3cb", rail: "#dcc6bc", relief: 0.3,
-    motorway: ["#e7b9a6", "#d49a86"], major: ["#f0cdbd", "#dcae9c"], medium: ["#f6e0d5", "#e8c8b8"], minor: ["#ffffff", "#efdcd2"] },
+  // chiara: bianco appena rosato, verde e azzurro virati verso il bordeaux chiaro (parchi rosa cipria, acqua malva, strade rosa antico)
+  light: { paper: "#fbf5f4", text: "#93757d", halo: "#fbf5f4", residential: "rgba(222,176,188,0.25)", park: "#f4e6e9", parkLine: "#ecd8dd",
+    wood: "rgba(232,205,212,0.45)", pitch: "#f4e2e6", soft: "#f6eaec", school: "#f6e8eb", hospital: "#f7e7ea", aero: "#f4ebed",
+    water: "#e2cdd4", river: "#d4b8c2", ice: "#ffffff", building: "#efd9de", border: "#d8aab6", border3: "#ead0d7", rail: "#dcc0c8", relief: 0.25,
+    motorway: ["#e6b3bf", "#d496a6"], major: ["#efc8d1", "#dcaab6"], medium: ["#f5dde3", "#e8c4cd"], minor: ["#ffffff", "#efd9de"] },
   // scura: bordeaux molto scuro (come lo sfondo intorno al globo, css/app.css), acqua quasi nera sul vinaccia, strade appena accennate,
   // nomi dei luoghi a basso contrasto (vinaccia spento con alone del colore dello sfondo): si leggono senza staccare dalla mappa
   dark: { paper: "#1e0b11", text: "#6e4853", halo: "#1e0b11", residential: "rgba(74,28,42,0.5)", park: "#220d14", parkLine: "#2a1219",
