@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it" data-theme="auto">
+<html lang="it" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
@@ -10,6 +10,7 @@
 <script src="/js/consent.js?v=3"></script>
 <script>
 // tema prima di disegnare la pagina (niente lampo del tema sbagliato): quello scelto col pulsante, altrimenti quello del sistema
+// di default scuro (bordeaux, 2026-11-27): chiaro solo se scelto col pulsante sole/luna
 try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
 { const d = document.documentElement; d.dataset.scheme = d.dataset.theme === "light" || (d.dataset.theme === "auto" && !matchMedia("(prefers-color-scheme: dark)").matches) ? "light" : "dark"; }
 </script>
@@ -168,6 +169,6 @@ try { const t = JSON.parse(localStorage.getItem("wtm.theme")); if (t === "light"
 <!-- trappola per robot: invisibile alle persone, vietata in robots.txt (api/trap.php) -->
 <a href="/wineries-archive-all/" rel="nofollow" tabindex="-1" aria-hidden="true" style="display:none">wineries archive</a>
 <script src="/js/i18n.js?v=16"></script>
-<script src="/js/app.js?v=69"></script>
+<script src="/js/app.js?v=70"></script>
 </body>
 </html>

@@ -152,7 +152,7 @@ function seo_head(string $title, string $desc, string $path, array $jsonld = [],
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#8e1b33">
-<script>try{const t=JSON.parse(localStorage.getItem("wtm.theme"));if(t==="light"||t==="dark")document.documentElement.dataset.scheme=t}catch(e){}</script>
+<script>try{const t=JSON.parse(localStorage.getItem("wtm.theme"));document.documentElement.dataset.scheme=t==="light"?"light":"dark"}catch(e){}</script>
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/seo/seo.css?v=5">
 <script src="/js/consent.js?v=3"></script>
